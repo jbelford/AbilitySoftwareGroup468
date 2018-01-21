@@ -10,6 +10,14 @@ type CommandHandler struct {
 	commands map[int]func(Command)
 }
 
+type Command struct {
+	c_type      int
+	userid      string
+	amount      int
+	stockSymbol string
+	filename    string
+}
+
 func (command *CommandHandler) On(command_name int, function_to_call func(args Command)) {
 	command.commands[command_name] = function_to_call
 }
@@ -23,13 +31,13 @@ func (command *CommandHandler) parse(commandStr string) {
 		return
 	}
 
-	command_type, err := strconv.ParseInt(parsed[0], 10, 0)
+	command_type, _ := strconv.ParseInt(parsed[0], 10, 0)
 	userid := parsed[1]
-  amount, err2 := strconv.ParseFloat(parsed[2], 10)
-  stockSymbol := parsed[3]
-  filename := parsed[4]
+	amount, _ := strconv.ParseFloat(parsed[2], 10)
+	stockSymbol := parsed[3]
+	filename := parsed[4]
 
-	command_obj = Command{command_type, userid, amount, stockSymbol, filename}
+	command_obj := Command{int(command_type), userid, int(amount), stockSymbol, filename}
 
 	defer command.commands[int(command_type)](command_obj)
 
