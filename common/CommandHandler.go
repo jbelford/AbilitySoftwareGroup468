@@ -18,6 +18,10 @@ type Command struct {
 	filename    string
 }
 
+func (cmd *Command) commandObjToString() string {
+	return str(cmd.c_type) + "," + cmd.userid + "," + str(cmd.amount) + "," + cmd.stockSymbol + "," + cmd.filename
+}
+
 func (command *CommandHandler) On(command_name int, function_to_call func(args Command)) {
 	command.commands[command_name] = function_to_call
 }
@@ -40,5 +44,4 @@ func (command *CommandHandler) parse(commandStr string) {
 	command_obj := Command{int(command_type), userid, int(amount), stockSymbol, filename}
 
 	defer command.commands[int(command_type)](command_obj)
-
 }
