@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/AbilitySoftwareGroup468/common"
+
 )
 
 func wrapHandler(
@@ -21,8 +23,21 @@ func wrapHandler(
 	return h
 }
 
+func passInfo(com common.Command){
+	conn, err := net.Dial("tcp", "192.168.1.134:80")
+	if err != nil {
+		log.Print(com)
+		// handle error
+	}
+	fmt.Fprintf(conn, "GET / HTTP/1.0\r\n\r\n")
+  status, err := bufio.NewReader(conn).ReadString('\n')
+	common.Command
+}
+
 func userHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+	user_info := common.Command({userid: vars["userid"],c_type: vars["c_type"],userid: vars["userid"],amount: vars["amount"],stockSymbol: vars["stockSymbol"],filename: vars["filename"]})
+	passInfo(vars)
 	t := template.New("test.html")
 	t, _ = t.ParseFiles("test.html")
 	t.Execute(w, vars)
