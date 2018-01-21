@@ -42,8 +42,15 @@ var Commands = [...]string{
 	"DISPLAY_SUMMARY",
 }
 
-// String() function will return the english name
-// that we want out constant Day be recognized as
-func (chr CommandHexReplacement) String() string {
+func (chr CommandHexReplacement) commandToString() string {
 	return Commands[chr-1]
+}
+
+func commandToInt(s string) int {
+	for k, v := range Commands {
+		if s == v {
+			return k
+		}
+	}
+	return -1
 }
