@@ -1,0 +1,54 @@
+package common
+
+import (
+	"encoding/json"
+	"log"
+	"os"
+
+	"gopkg.in/mgo.v2/bson"
+
+	"gopkg.in/mgo.v2"
+)
+
+var dbConfig DatabaseConfig
+
+type MongoDB struct {
+	url      string
+	name     string
+	session  *mgo.Session
+	database *mgo.Database
+}
+
+func (db *MongoDB) AddUserMoney(userId string, amount int) error {
+	info, err := db.database.C(db.name).Upsert(
+		bson.M{"userId": userId},
+		bson.M{"userId": userId, "$inc": bson.M{"balance": amount}})
+
+	if info.UpsertedId != nil {
+		log.Printf("Created user %s", userId)
+	}
+	return err
+}
+
+func (db *MongoDB) Close() {
+	db.session.Close()
+}
+
+func GetMongoDatabase() (*MongoDB, error) {
+	session, err := mgo.Dial(dbConfig.url)
+	if err != nil {
+		return nil, err
+	}
+	return &MongoDB{dbConfig.url, dbConfig.name, session, session.DB(dbConfig.name)}, nil
+}
+
+func init() {
+	file, err := os.Open("../config/config.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	decoder := json.NewDecoder(file)
+	var config Config
+	err = decoder.Decode(&config)
+	dbConfig = config.database
+}
