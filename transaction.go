@@ -1,12 +1,12 @@
-package transaction
+package main
 
 import (
 	"log"
 
-    "net"
-    //"fmt"
-    "bufio"
-    //"strings" // only needed below for sample processing
+	"net"
+	//"fmt"
+	"bufio"
+	//"strings" // only needed below for sample processing
 )
 
 type TransactionServer struct{}
@@ -80,10 +80,18 @@ func handle_display_summary(userid string) {
 }
 
 func (ts *TransactionServer) Start() {
-    conn, _ := net.Dial("tcp", "127.0.0.1:8081")
-    for {
-        message, _ := bufio.NewReader(conn).ReadString('\n')
-        log.Println("Received: ", string(message))
+	log.Println("Launching server...")
+
+	// listen on all interfaces
+	ln, _ := net.Listen("tcp", ":8081")
+
+	// accept connection on port
+	conn, _ := ln.Accept()
+
+	for {
+		message, _ := bufio.NewReader(conn).ReadString('\n')
+		log.Println("Received: ", string(message))
+		
 
         //so.On("add", handle_add)
         //so.On("quote", handle_quote)

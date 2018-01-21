@@ -1,5 +1,5 @@
-package common
 
+package main
 type Server interface {
 	Start()
 }
