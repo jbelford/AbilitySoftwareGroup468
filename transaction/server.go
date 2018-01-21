@@ -9,63 +9,63 @@ import (
 
 type TransactionServer struct{}
 
-func handle_add(userid int, amount float32) {
+func handle_add(userid string, amount float32) {
     log.Println("handle_add")
 }
 
-func handle_quote(userid int, amount float32) {
+func handle_quote(userid string, amount float32) {
     log.Println("handle_quote")
 }
 
-func handle_buy(userid int, stocksymbol string, amount float32) {
+func handle_buy(userid string, stocksymbol string, amount float32) {
     log.Println("handle_buy")
 }
 
-func handle_commit_buy(userid int) {
+func handle_commit_buy(userid string) {
     log.Println("handle_commit_buy")
 }
 
-func handle_cancel_buy(userid int) {
+func handle_cancel_buy(userid string) {
     log.Println("handle_cancel_buy")
 }
 
-func handle_sell(userid int, stocksymbol string, amount float32) {
+func handle_sell(userid string, stocksymbol string, amount float32) {
     log.Println("handle_sell")
 }
 
-func handle_commit_sell(userid int) {
+func handle_commit_sell(userid string) {
     log.Println("handle_commit_sell")
 }
 
-func handle_cancel_sell(userid int) {
+func handle_cancel_sell(userid string) {
     log.Println("handle_cancel_sell")
 }
 
-func handle_set_buy_amount(userid int, stocksymbol string, amount float32) {
+func handle_set_buy_amount(userid string, stocksymbol string, amount float32) {
     log.Println("handle_set_buy_amount")
 }
 
-func handle_cancel_set_buy(userid int, stocksymbol string) {
+func handle_cancel_set_buy(userid string, stocksymbol string) {
     log.Println("handle_cancel_set_buy")
 }
 
-func handle_set_buy_trigger(userid int, stocksymbol string, amount float32) {
+func handle_set_buy_trigger(userid string, stocksymbol string, amount float32) {
     log.Println("handle_set_buy_trigger")
 }
 
-func handle_set_sell_amount(userid int, stocksymbol string, amount float32) {
+func handle_set_sell_amount(userid string, stocksymbol string, amount float32) {
     log.Println("handle_set_sell_amount")
 }
 
-func handle_set_sell_trigger(userid int, stocksymbol string, amount float32) {
+func handle_set_sell_trigger(userid string, stocksymbol string, amount float32) {
     log.Println("handle_set_sell_trigger")
 }
 
-func handle_cancel_set_sell(userid int, stocksymbol string) {
+func handle_cancel_set_sell(userid string, stocksymbol string) {
     log.Println("handle_cancel_set_sell")
 }
 
-func handle_admin_dumplog(userid int, filename string) {
+func handle_admin_dumplog(userid string, filename string) {
     log.Println("handle_admin_dumplog")
 }
 
@@ -73,7 +73,7 @@ func handle_dumplog(filename string) {
     log.Println("handle_dumplog")
 }
 
-func handle_display_summary(userid int) {
+func handle_display_summary(userid string) {
     log.Println("handle_display_summary")
 }
 
