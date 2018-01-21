@@ -18,8 +18,19 @@ func (command *CommandHandler) parse(commandStr string) {
 
 	log.Println("Received!:", string(commandStr))
 	parsed := strings.Split(commandStr, ",")
-	command_type, err := strconv.ParseInt(parsed[0], 10, 0)
+	if len(parsed) < 5 {
+		log.Println("Error! Not enough arguments!!!")
+		return
+	}
 
-	defer command.commands[int(command_type)](parsed)
+	command_type, err := strconv.ParseInt(parsed[0], 10, 0)
+	userid := parsed[1]
+  amount, err2 := strconv.ParseFloat(parsed[2], 10)
+  stockSymbol := parsed[3]
+  filename := parsed[4]
+
+	command_obj = Command{command_type, userid, amount, stockSymbol, filename}
+
+	defer command.commands[int(command_type)](command_obj)
 
 }
