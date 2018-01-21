@@ -1,11 +1,11 @@
-package transaction
+package main
 
 import (
 	"log"
 
-	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
-
 	"net"
+
+	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 	//"fmt"
 	"bufio"
 	//"strings" // only needed below for sample processing

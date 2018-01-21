@@ -36,10 +36,7 @@ func passInfo(com common.Command){
 
 func userHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	user_info := common.Command({
-		userid: vars["userid"],
-
-	})
+	user_info := common.Command({userid: vars["userid"],c_type: vars["c_type"],userid: vars["userid"],amount: vars["amount"],stockSymbol: vars["stockSymbol"],filename: vars["filename"]})
 	passInfo(vars)
 	t := template.New("test.html")
 	t, _ = t.ParseFiles("test.html")

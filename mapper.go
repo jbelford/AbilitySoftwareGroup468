@@ -54,4 +54,3 @@ func commandToInt(s string) int {
 	}
 	return -1
 }
-
