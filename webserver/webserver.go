@@ -37,8 +37,8 @@ func passInfo(com common.Command){
 func userHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	user_info := common.Command({
-		userid: vars["userid"]
-		
+		userid: vars["userid"],
+
 	})
 	passInfo(vars)
 	t := template.New("test.html")
