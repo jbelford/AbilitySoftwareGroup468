@@ -11,22 +11,22 @@ type CommandHandler struct {
 }
 
 type Command struct {
-	c_type      int
-	userid      string
-	amount      int
-	stockSymbol string
-	filename    string
+	C_Type      int
+	UserId      string
+	Amount      int
+	StockSymbol string
+	FileName    string
 }
 
 func (cmd *Command) commandObjToString() string {
-	return str(cmd.c_type) + "," + cmd.userid + "," + str(cmd.amount) + "," + cmd.stockSymbol + "," + cmd.filename
+	return string(cmd.C_Type) + "," + cmd.UserId + "," + string(cmd.Amount) + "," + cmd.StockSymbol + "," + cmd.FileName
 }
 
-func (command *CommandHandler) On(command_name int, function_to_call func(args Command)) {
-	command.commands[command_name] = function_to_call
+func (command *CommandHandler) On(command_name CommandHexReplacement, function_to_call func(args Command)) {
+	command.commands[int(command_name)] = function_to_call
 }
 
-func (command *CommandHandler) parse(commandStr string) {
+func (command *CommandHandler) Parse(commandStr string) {
 
 	log.Println("Received!:", string(commandStr))
 	parsed := strings.Split(commandStr, ",")
