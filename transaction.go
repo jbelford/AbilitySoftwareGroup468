@@ -84,7 +84,6 @@ func handle_display_summary(userid string) {
 }
 
 func (ts *TransactionServer) Start() {
-<<<<<<< HEAD:transaction/server.go
 	mongoDb, err := common.GetMongoDatabase()
 	if err != nil {
 		log.Fatal(err)
@@ -93,41 +92,31 @@ func (ts *TransactionServer) Start() {
 	defer db.Close()
 
 	conn, _ := net.Dial("tcp", "127.0.0.1:8081")
+	handler = common.CommandHandler()
+
+	handler.On(CommandHexReplacement.ADD, handle_add)
+	handler.On("quote", handle_quote)
+	handler.On("buy", handle_buy)
+	handler.On("commmit_buy", handle_commit_buy)
+	handler.On("cancel_buy", handle_cancel_buy)
+	handler.On("sell", handle_sell)
+	handler.On("commmit_sell", handle_commit_sell)
+	handler.On("cancel_sell", handle_cancel_sell)
+	handler.On("set_buy_amount", handle_set_buy_amount)
+	handler.On("cancel_set_buy", handle_cancel_set_buy)
+	handler.On("set_buy_trigger", handle_set_buy_trigger)
+	handler.On("set_sell_amount", handle_set_sell_amount)
+	handler.On("set_sell_trigger", handle_set_sell_trigger)
+	handler.On("cancel_set_sell", handle_cancel_set_sell)
+	handler.On("dumplog", handle_dumplog)
+	handler.On("admin_dumplog", handle_admin_dumplog)
+	handler.On("display_summary", handle_display_summary)
+
 	for {
 		message, _ := bufio.NewReader(conn).ReadString('\n')
 		log.Println("Received: ", string(message))
-=======
-	log.Println("Launching server...")
+		handler.parse(message)
 
-	// listen on all interfaces
-	ln, _ := net.Listen("tcp", ":8081")
-
-	// accept connection on port
-	conn, _ := ln.Accept()
-
-	for {
-		message, _ := bufio.NewReader(conn).ReadString('\n')
-		log.Println("Received: ", string(message))
-
->>>>>>> 09e022a57b147784e8bd234027e083f5e4590654:transaction.go
-
-		//so.On("add", handle_add)
-		//so.On("quote", handle_quote)
-		//so.On("buy", handle_buy)
-		//so.On("commmit_buy", handle_commit_buy)
-		//so.On("cancel_buy", handle_cancel_buy)
-		//so.On("sell", handle_sell)
-		//so.On("commmit_sell", handle_commit_sell)
-		//so.On("cancel_sell", handle_cancel_sell)
-		//so.On("set_buy_amount", handle_set_buy_amount)
-		//so.On("cancel_set_buy", handle_cancel_set_buy)
-		//so.On("set_buy_trigger", handle_set_buy_trigger)
-		//so.On("set_sell_amount", handle_set_sell_amount)
-		//so.On("set_sell_trigger", handle_set_sell_trigger)
-		//so.On("cancel_set_sell", handle_cancel_set_sell)
-		//so.On("dumplog", handle_dumplog)
-		//so.On("admin_dumplog", handle_admin_dumplog)
-		//so.On("display_summary", handle_display_summary)
 	}
 }
 
