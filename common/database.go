@@ -1,13 +1,10 @@
 package common
 
 import (
-	"encoding/json"
 	"log"
-	"os"
-
-	"gopkg.in/mgo.v2/bson"
 
 	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var dbConfig DatabaseConfig
@@ -25,7 +22,7 @@ func (db *MongoDB) AddUserMoney(userId string, amount int) error {
 		bson.M{"userId": userId, "$inc": bson.M{"balance": amount}})
 
 	if info.UpsertedId != nil {
-		log.Printf("Created user %s", userId)
+		log.Printf("Created user s'%s'", userId)
 	}
 	return err
 }
@@ -43,12 +40,9 @@ func GetMongoDatabase() (*MongoDB, error) {
 }
 
 func init() {
-	file, err := os.Open("../config/config.json")
+	config, err := GetConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
-	decoder := json.NewDecoder(file)
-	var config Config
-	err = decoder.Decode(&config)
 	dbConfig = config.database
 }

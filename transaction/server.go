@@ -1,14 +1,11 @@
 package transaction
 
 import (
+	"bufio"
 	"log"
+	"net"
 
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
-
-	"net"
-	//"fmt"
-	"bufio"
-	//"strings" // only needed below for sample processing
 )
 
 var db *common.MongoDB
