@@ -1,10 +1,9 @@
-package transaction
+package main
 
 import (
 	"log"
 
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
-
 	"net"
 	//"fmt"
 	"bufio"
@@ -85,6 +84,7 @@ func handle_display_summary(userid string) {
 }
 
 func (ts *TransactionServer) Start() {
+<<<<<<< HEAD:transaction/server.go
 	mongoDb, err := common.GetMongoDatabase()
 	if err != nil {
 		log.Fatal(err)
@@ -96,6 +96,20 @@ func (ts *TransactionServer) Start() {
 	for {
 		message, _ := bufio.NewReader(conn).ReadString('\n')
 		log.Println("Received: ", string(message))
+=======
+	log.Println("Launching server...")
+
+	// listen on all interfaces
+	ln, _ := net.Listen("tcp", ":8081")
+
+	// accept connection on port
+	conn, _ := ln.Accept()
+
+	for {
+		message, _ := bufio.NewReader(conn).ReadString('\n')
+		log.Println("Received: ", string(message))
+
+>>>>>>> 09e022a57b147784e8bd234027e083f5e4590654:transaction.go
 
 		//so.On("add", handle_add)
 		//so.On("quote", handle_quote)

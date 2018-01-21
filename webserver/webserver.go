@@ -1,12 +1,16 @@
 package main
 
 import (
+	"bufio"
 	"flag"
+	"fmt"
 	"html/template"
 	"log"
+	"net"
 	"net/http"
 	"time"
 
+	"github.com/AbilitySoftwareGroup468/common"
 	"github.com/gorilla/mux"
 )
 
@@ -19,6 +23,17 @@ func wrapHandler(
 		handler(w, r)
 	}
 	return h
+}
+
+func passInfo(com common.Command) {
+	conn, err := net.Dial("tcp", "192.168.1.134:80")
+	if err != nil {
+		log.Print(com)
+		// handle error
+	}
+	fmt.Fprintf(conn, "GET / HTTP/1.0\r\n\r\n")
+	status, err := bufio.NewReader(conn).ReadString('\n')
+	common.Command
 }
 
 func userHandler(w http.ResponseWriter, r *http.Request) {
