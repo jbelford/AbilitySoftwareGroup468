@@ -22,69 +22,77 @@ func (cmd *Command) commandObjToString() string {
 	return string(cmd.C_type) + "," + cmd.UserId + "," + string(cmd.Amount) + "," + cmd.StockSymbol + "," + cmd.FileName
 }
 
-func commandConstructor(com string) Command {
-	com := com.split(",")
-	com[0] = commandToInt(com[0])
+func CommandConstructor(cmd string) Command {
+	trim_cmd := strings.TrimSpace(cmd)
+	com := strings.Split(trim_cmd, ",")
+	log.Print(com)
 	p := new(Command)
-	p.C_type = com[0]
+	p.C_type = CommandToInt(com[0])
 	switch p.C_type {
-	case common.ADD:
+	case ADD:
 		p.UserId = com[1]
-		p.Amount = com[2]
-	case common.QUOTE:
-		p.UserId = com[1]
-		p.StockSymbol = com[2]
-	case common.BUY:
-		p.UserId = com[1]
-		p.StockSymbol = com[2]
-		p.Amount = com[3]
-	case common.COMMIT_BUY:
-		p.UserId = com[1]
-	case common.CANCEL_BUY:
-		p.UserId = com[1]
-	case common.SELL:
+		temp_amount, err := strconv.ParseFloat(com[2], 32)
+		log.Print(err)
+		p.Amount = int(temp_amount * 100)
+	case QUOTE:
 		p.UserId = com[1]
 		p.StockSymbol = com[2]
-		p.Amount = com[3]
-	case common.COMMIT_SELL:
-		p.UserId = com[1]
-	case common.CANCEL_SELL:
-		p.UserId = com[1]
-	case common.SET_BUY_AMOUNT:
+	case BUY:
 		p.UserId = com[1]
 		p.StockSymbol = com[2]
-		p.Amount = com[3]
-	case common.CANCEL_SET_BUY:
+		temp_amount, _ := strconv.ParseFloat(com[3], 32)
+		p.Amount = int(temp_amount * 100)
+	case COMMIT_BUY:
+		p.UserId = com[1]
+	case CANCEL_BUY:
+		p.UserId = com[1]
+	case SELL:
 		p.UserId = com[1]
 		p.StockSymbol = com[2]
-	case common.SET_BUY_TRIGGER:
+		temp_amount, _ := strconv.ParseFloat(com[3], 32)
+		p.Amount = int(temp_amount * 100)
+	case COMMIT_SELL:
+		p.UserId = com[1]
+	case CANCEL_SELL:
+		p.UserId = com[1]
+	case SET_BUY_AMOUNT:
 		p.UserId = com[1]
 		p.StockSymbol = com[2]
-		p.Amount = com[3]
-	case common.SET_SELL_AMOUNT:
+		temp_amount, _ := strconv.ParseFloat(com[3], 32)
+		p.Amount = int(temp_amount * 100)
+	case CANCEL_SET_BUY:
 		p.UserId = com[1]
 		p.StockSymbol = com[2]
-		p.Amount = com[3]
-	case common.SET_SELL_TRIGGER:
+	case SET_BUY_TRIGGER:
 		p.UserId = com[1]
 		p.StockSymbol = com[2]
-		p.Amount = com[3]
-	case common.CANCEL_SET_SELL:
+		temp_amount, _ := strconv.ParseFloat(com[3], 32)
+		p.Amount = int(temp_amount * 100)
+	case SET_SELL_AMOUNT:
 		p.UserId = com[1]
 		p.StockSymbol = com[2]
-	case common.DUMPLOG:
-		if len(com) == 3{
+		temp_amount, _ := strconv.ParseFloat(com[3], 32)
+		p.Amount = int(temp_amount * 100)
+	case SET_SELL_TRIGGER:
+		p.UserId = com[1]
+		p.StockSymbol = com[2]
+		temp_amount, _ := strconv.ParseFloat(com[3], 32)
+		p.Amount = int(temp_amount * 100)
+	case CANCEL_SET_SELL:
+		p.UserId = com[1]
+		p.StockSymbol = com[2]
+	case DUMPLOG:
+		if len(com) == 3 {
 			p.UserId = com[1]
 			p.FileName = com[2]
-		}
-		else{
-			p.C_type = common.ADMIN_DUMPLOG
+		} else {
+			p.C_type = ADMIN_DUMPLOG
 			p.FileName = com[1]
 		}
-	case common.DISPLAY_SUMMARY:
+	case DISPLAY_SUMMARY:
 		p.UserId = com[1]
 	}
-	return p
+	return *p
 }
 
 func (command *CommandHandler) On(command_name int, function_to_call func(args Command)) {

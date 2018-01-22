@@ -88,7 +88,6 @@ func (ts *TransactionServer) Start() {
 	}
 	db = mongoDb
 	defer db.Close()
-
 	conn, _ := net.Dial("tcp", "127.0.0.1:8081")
 	handler := common.CommandHandler{}
 

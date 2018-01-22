@@ -3,7 +3,7 @@ package common
 type CommandHexReplacement int
 
 const (
-	ADD CommandHexReplacement = 0 + iota
+	ADD int = 0 + iota
 	QUOTE
 	BUY
 	COMMIT_BUY
