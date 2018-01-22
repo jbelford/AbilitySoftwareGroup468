@@ -4,7 +4,6 @@ import (
 	"os"
 
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
-	"github.com/mattpaletta/AbilitySoftwareGroup468/transaction"
 )
 
 var server common.Server
@@ -18,7 +17,7 @@ func init() {
 	servType := os.Args[1]
 	switch servType {
 	case "transaction":
-		server = new(transaction.TransactionServer)
+		server = new(TransactionServer)
 	}
 	// addr = os.Args[1]
 	// port = os.Args[2]
