@@ -3,6 +3,7 @@
         "url": "localhost:27017"
     },
     "quoteserver": {
-        "address": "quoteserve.seng:4443"
+        "address": "quoteserve.seng:4443",
+        "mock": false
     }
 }
