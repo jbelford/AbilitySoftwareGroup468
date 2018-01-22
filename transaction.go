@@ -117,7 +117,3 @@ func (ts *TransactionServer) Start() {
 
 	}
 }
-
-func main() {
-
-}
