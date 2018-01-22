@@ -11,15 +11,51 @@ type CommandHandler struct {
 }
 
 type Command struct {
-	c_type      int
-	userid      string
-	amount      int
-	stockSymbol string
-	filename    string
+	C_type      int
+	UserId      string
+	Amount      int
+	StockSymbol string
+	FileName    string
 }
 
 func (cmd *Command) commandObjToString() string {
-	return string(cmd.c_type) + "," + cmd.userid + "," + string(cmd.amount) + "," + cmd.stockSymbol + "," + cmd.filename
+	return string(cmd.C_type) + "," + cmd.UserId + "," + string(cmd.Amount) + "," + cmd.StockSymbol + "," + cmd.FileName
+}
+
+func commandConstructor(com string) Command {
+	com := com.split(",")
+	com[0] = commandToInt(com[0])
+	p := new(Command)
+	p.C_type = com[0]
+	switch p.C_type {
+	case 0: //add
+		p.Amount = com[1]
+	case 1: //quote
+		p.StockSymbol = com[1]
+	case 2:
+
+	case 3:
+	case 4:
+	case 5:
+	case 6:
+	case 7:
+	case 8:
+	case 9:
+	case 10:
+	case 11:
+	case 12:
+	case 13:
+	case 14:
+	case 15:
+	case 16:
+
+	}
+	p.C_type = 0
+	p.UserId = ""
+	p.Amount = 0
+	p.StockSymbol = ""
+	p.FileName = ""
+	return p
 }
 
 func (command *CommandHandler) On(command_name int, function_to_call func(args Command)) {

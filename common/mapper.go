@@ -3,7 +3,7 @@ package common
 type CommandHexReplacement int
 
 const (
-	ADD CommandHexReplacement = 1 + iota
+	ADD CommandHexReplacement = 0 + iota
 	QUOTE
 	BUY
 	COMMIT_BUY
@@ -54,4 +54,3 @@ func commandToInt(s string) int {
 	}
 	return -1
 }
-
