@@ -45,7 +45,6 @@ func passInfo(com common.Command) {
 }
 
 func userHandler(w http.ResponseWriter, r *http.Request) {
-
 	temp_c_type, _ := strconv.Atoi(r.FormValue("c_type"))
 	temp_amount, _ := strconv.Atoi(r.FormValue("amount"))
 	user_info := common.Command{

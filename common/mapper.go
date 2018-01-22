@@ -46,7 +46,7 @@ func (chr CommandHexReplacement) commandToString() string {
 	return Commands[chr-1]
 }
 
-func commandToInt(s string) int {
+func CommandToInt(s string) int {
 	for k, v := range Commands {
 		if s == v {
 			return k

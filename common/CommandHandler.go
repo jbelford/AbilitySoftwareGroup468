@@ -28,33 +28,62 @@ func commandConstructor(com string) Command {
 	p := new(Command)
 	p.C_type = com[0]
 	switch p.C_type {
-	case 0: //add
-		p.Amount = com[1]
-	case 1: //quote
-		p.StockSymbol = com[1]
-	case 2:
-
-	case 3:
-	case 4:
-	case 5:
-	case 6:
-	case 7:
-	case 8:
-	case 9:
-	case 10:
-	case 11:
-	case 12:
-	case 13:
-	case 14:
-	case 15:
-	case 16:
-
+	case common.ADD:
+		p.UserId = com[1]
+		p.Amount = com[2]
+	case common.QUOTE:
+		p.UserId = com[1]
+		p.StockSymbol = com[2]
+	case common.BUY:
+		p.UserId = com[1]
+		p.StockSymbol = com[2]
+		p.Amount = com[3]
+	case common.COMMIT_BUY:
+		p.UserId = com[1]
+	case common.CANCEL_BUY:
+		p.UserId = com[1]
+	case common.SELL:
+		p.UserId = com[1]
+		p.StockSymbol = com[2]
+		p.Amount = com[3]
+	case common.COMMIT_SELL:
+		p.UserId = com[1]
+	case common.CANCEL_SELL:
+		p.UserId = com[1]
+	case common.SET_BUY_AMOUNT:
+		p.UserId = com[1]
+		p.StockSymbol = com[2]
+		p.Amount = com[3]
+	case common.CANCEL_SET_BUY:
+		p.UserId = com[1]
+		p.StockSymbol = com[2]
+	case common.SET_BUY_TRIGGER:
+		p.UserId = com[1]
+		p.StockSymbol = com[2]
+		p.Amount = com[3]
+	case common.SET_SELL_AMOUNT:
+		p.UserId = com[1]
+		p.StockSymbol = com[2]
+		p.Amount = com[3]
+	case common.SET_SELL_TRIGGER:
+		p.UserId = com[1]
+		p.StockSymbol = com[2]
+		p.Amount = com[3]
+	case common.CANCEL_SET_SELL:
+		p.UserId = com[1]
+		p.StockSymbol = com[2]
+	case common.DUMPLOG:
+		if len(com) == 3{
+			p.UserId = com[1]
+			p.FileName = com[2]
+		}
+		else{
+			p.C_type = common.ADMIN_DUMPLOG
+			p.FileName = com[1]
+		}
+	case common.DISPLAY_SUMMARY:
+		p.UserId = com[1]
 	}
-	p.C_type = 0
-	p.UserId = ""
-	p.Amount = 0
-	p.StockSymbol = ""
-	p.FileName = ""
 	return p
 }
 
