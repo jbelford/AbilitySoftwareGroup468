@@ -10,18 +10,18 @@ type Server interface {
 }
 
 type Config struct {
-	database    DatabaseConfig
-	quoteserver QuoteServConfig
+	Database    DatabaseConfig  `json:"database"`
+	Quoteserver QuoteServConfig `json:"quoteserver"`
 }
 
 type DatabaseConfig struct {
-	url  string
-	name string
+	Url  string `json:"url"`
+	Name string `json:"name"`
 }
 
 type QuoteServConfig struct {
-	address string
-	mock    bool
+	Address string `json:"address"`
+	Mock    bool   `json:"mock"`
 }
 
 type QuoteData struct {
@@ -32,7 +32,7 @@ type QuoteData struct {
 	Cryptokey string
 }
 
-// Can be used to mock net.Conn
+// Mock struct of net.Conn
 type MockConn struct {
 	data string
 }

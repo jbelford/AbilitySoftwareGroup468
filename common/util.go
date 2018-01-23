@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"os"
 )
 
@@ -15,11 +16,10 @@ func init() {
 
 func GetConfig() (Config, error) {
 	var config Config
-	file, err := os.Open(configPath)
+	data, err := ioutil.ReadFile(configPath)
 	if err != nil {
 		return config, err
 	}
-	decoder := json.NewDecoder(file)
-	err = decoder.Decode(&config)
+	err = json.Unmarshal(data, &config)
 	return config, err
 }

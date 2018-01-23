@@ -18,7 +18,7 @@ type Command struct {
 	FileName    string
 }
 
-func (cmd *Command) commandObjToString() string {
+func (cmd *Command) CommandObjToString() string {
 	return string(cmd.C_type) + "," + cmd.UserId + "," + string(cmd.Amount) + "," + cmd.StockSymbol + "," + cmd.FileName
 }
 
