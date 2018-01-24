@@ -9,14 +9,14 @@ Example error response:
 ```
 
 
-#### `/{user_id}/add?amount={amount}`
+#### `POST /{user_id}/add?amount={amount}`
 ```json
 {
   "success": true
 }
 ```
 
-#### `/{user_id}/quote?stock={symbol}`
+#### `GET /{user_id}/quote?stock={symbol}`
 
 ```json
 {
@@ -26,7 +26,7 @@ Example error response:
 }
 ```
 
-#### `/{user_id}/buy?stock={symbol}&amount={amount}`
+#### `POST /{user_id}/buy?stock={symbol}&amount={amount}`
 
 ```json
 {
@@ -38,7 +38,7 @@ Example error response:
 }
 ```
 
-#### `/{user_id}/commit_buy`
+#### `POST /{user_id}/commit_buy`
 
 ```json
 {
@@ -49,7 +49,7 @@ Example error response:
 }
 ```
 
-#### `/{user_id}/cancel_buy`
+#### `POST /{user_id}/cancel_buy`
 
 ```json
 {
@@ -59,7 +59,7 @@ Example error response:
 }
 ```
 
-#### `/{user_id}/sell?stock={symbol}&amount={amount}`
+#### `POST /{user_id}/sell?stock={symbol}&amount={amount}`
 
 ```json
 {
@@ -71,7 +71,7 @@ Example error response:
 }
 ```
 
-#### `/{user_id}/commit_sell`
+#### `POST /{user_id}/commit_sell`
 
 ```json
 {
@@ -82,7 +82,7 @@ Example error response:
 }
 ```
 
-#### `/{user_id}/cancel_sell`
+#### `POST /{user_id}/cancel_sell`
 
 ```json
 {
@@ -92,7 +92,7 @@ Example error response:
 }
 ```
 
-#### `/{user_id}/set_buy_amount?stock={symbol}&amount={amount}`
+#### `POST /{user_id}/set_buy_amount?stock={symbol}&amount={amount}`
 
 ```json
 {
@@ -100,7 +100,7 @@ Example error response:
 }
 ```
 
-#### `/{user_id}/cancel_set_buy?stock={symbol}`
+#### `POST /{user_id}/cancel_set_buy?stock={symbol}`
 
 ```json
 {
@@ -109,7 +109,7 @@ Example error response:
 }
 ```
 
-#### `/{user_id}/set_buy_trigger?stock={symbol}&amount={amount}`
+#### `POST /{user_id}/set_buy_trigger?stock={symbol}&amount={amount}`
 
 ```json
 {
@@ -117,7 +117,7 @@ Example error response:
 }
 ```
 
-#### `/{user_id}/set_sell_amount?stock={symbol}&amount={amount}`
+#### `POST /{user_id}/set_sell_amount?stock={symbol}&amount={amount}`
 
 ```json
 {
@@ -125,7 +125,7 @@ Example error response:
 }
 ```
 
-#### `/{user_id}/set_sell_trigger?stock={symbol}&amount={amount}`
+#### `POST /{user_id}/set_sell_trigger?stock={symbol}&amount={amount}`
 
 ```json
 {
@@ -133,7 +133,7 @@ Example error response:
 }
 ```
 
-#### `/{user_id}/cancel_set_sell?stock={symbol}`
+#### `POST /{user_id}/cancel_set_sell?stock={symbol}`
 
 ```json
 {
@@ -141,7 +141,7 @@ Example error response:
 }
 ```
 
-#### `/{user_id}/dumplog?filename={filename}`
+#### `POST /{user_id}/dumplog?filename={filename}`
 
 ```json
 {
@@ -149,7 +149,7 @@ Example error response:
 }
 ```
 
-#### `/{admin_id}/dumplog?filename={filename}`
+#### `POST /{admin_id}/dumplog?filename={filename}`
 
 ```json
 {
@@ -157,7 +157,7 @@ Example error response:
 }
 ```
 
-#### `/{user_id}/display_summary`
+#### `GET /{user_id}/display_summary`
 
 ```json
 {

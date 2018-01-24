@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"log"
 	"net"
 
@@ -12,73 +13,93 @@ var db *common.MongoDB
 
 type TransactionServer struct{}
 
-func handle_add(cmd common.Command) {
+func handle_add(cmd *common.Command) *common.Response {
 	err := db.AddUserMoney(cmd.UserId, cmd.Amount)
-	log.Fatal(err)
+	if err != nil {
+		log.Println(err)
+		return &common.Response{Success: false, Message: "Failed"}
+	}
+	return &common.Response{Success: true}
 }
 
-func handle_quote(cmd common.Command) {
+func handle_quote(cmd *common.Command) *common.Response {
 	log.Println("handle_quote")
+	return nil
 }
 
-func handle_buy(cmd common.Command) {
+func handle_buy(cmd *common.Command) *common.Response {
 	log.Println("handle_buy")
+	return nil
 }
 
-func handle_commit_buy(cmd common.Command) {
+func handle_commit_buy(cmd *common.Command) *common.Response {
 	log.Println("handle_commit_buy")
+	return nil
 }
 
-func handle_cancel_buy(cmd common.Command) {
+func handle_cancel_buy(cmd *common.Command) *common.Response {
 	log.Println("handle_cancel_buy")
+	return nil
 }
 
-func handle_sell(cmd common.Command) {
+func handle_sell(cmd *common.Command) *common.Response {
 	log.Println("handle_sell")
+	return nil
 }
 
-func handle_commit_sell(cmd common.Command) {
+func handle_commit_sell(cmd *common.Command) *common.Response {
 	log.Println("handle_commit_sell")
+	return nil
 }
 
-func handle_cancel_sell(cmd common.Command) {
+func handle_cancel_sell(cmd *common.Command) *common.Response {
 	log.Println("handle_cancel_sell")
+	return nil
 }
 
-func handle_set_buy_amount(cmd common.Command) {
+func handle_set_buy_amount(cmd *common.Command) *common.Response {
 	log.Println("handle_set_buy_amount")
+	return nil
 }
 
-func handle_cancel_set_buy(cmd common.Command) {
+func handle_cancel_set_buy(cmd *common.Command) *common.Response {
 	log.Println("handle_cancel_set_buy")
+	return nil
 }
 
-func handle_set_buy_trigger(cmd common.Command) {
+func handle_set_buy_trigger(cmd *common.Command) *common.Response {
 	log.Println("handle_set_buy_trigger")
+	return nil
 }
 
-func handle_set_sell_amount(cmd common.Command) {
+func handle_set_sell_amount(cmd *common.Command) *common.Response {
 	log.Println("handle_set_sell_amount")
+	return nil
 }
 
-func handle_set_sell_trigger(cmd common.Command) {
+func handle_set_sell_trigger(cmd *common.Command) *common.Response {
 	log.Println("handle_set_sell_trigger")
+	return nil
 }
 
-func handle_cancel_set_sell(cmd common.Command) {
+func handle_cancel_set_sell(cmd *common.Command) *common.Response {
 	log.Println("handle_cancel_set_sell")
+	return nil
 }
 
-func handle_admin_dumplog(cmd common.Command) {
+func handle_admin_dumplog(cmd *common.Command) *common.Response {
 	log.Println("handle_admin_dumplog")
+	return nil
 }
 
-func handle_dumplog(cmd common.Command) {
+func handle_dumplog(cmd *common.Command) *common.Response {
 	log.Println("handle_dumplog")
+	return nil
 }
 
-func handle_display_summary(cmd common.Command) {
+func handle_display_summary(cmd *common.Command) *common.Response {
 	log.Println("handle_display_summary")
+	return nil
 }
 
 func (ts *TransactionServer) Start() {
@@ -88,8 +109,12 @@ func (ts *TransactionServer) Start() {
 	}
 	db = mongoDb
 	defer db.Close()
-	conn, _ := net.Dial("tcp", "127.0.0.1:8081")
-	handler := common.CommandHandler{}
+	ln, err := net.Listen("tcp", "127.0.0.1:8081")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	handler := common.NewCommandHandler()
 
 	handler.On(common.ADD, handle_add)
 	handler.On(common.QUOTE, handle_quote)
@@ -110,9 +135,21 @@ func (ts *TransactionServer) Start() {
 	handler.On(common.DISPLAY_SUMMARY, handle_display_summary)
 
 	for {
-		message, _ := bufio.NewReader(conn).ReadString('\n')
+		conn, err := ln.Accept()
+		message, err := bufio.NewReader(conn).ReadString('\n')
+		if err != nil {
+			continue
+		}
 		log.Println("Received: ", string(message))
-		handler.Parse(message)
-
+		var resp *common.Response
+		resp, err = handler.Parse(message)
+		if err != nil {
+			log.Println(err)
+			resp = &common.Response{Success: false, Message: "Internal error parsing request"}
+		}
+		var respByte []byte
+		respByte, err = json.Marshal(resp)
+		conn.Write(append(respByte, '\n'))
+		conn.Close()
 	}
 }

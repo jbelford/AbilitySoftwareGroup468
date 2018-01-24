@@ -6,11 +6,11 @@ import (
 	"os"
 )
 
-var configPath = "../config/config.local.json"
+var configPath = "./config/config.local.json"
 
 func init() {
 	if len(os.Args) > 2 && os.Args[2] == "--prod" {
-		configPath = "../config/config.prod.json"
+		configPath = "./config/config.prod.json"
 	}
 }
 

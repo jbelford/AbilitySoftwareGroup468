@@ -9,6 +9,11 @@ type Server interface {
 	Start()
 }
 
+type Response struct {
+	Success bool
+	Message string `json:",omitempty"`
+}
+
 type Config struct {
 	Database    DatabaseConfig  `json:"database"`
 	Quoteserver QuoteServConfig `json:"quoteserver"`

@@ -1,21 +1,30 @@
 package common
 
 import (
+	"encoding/json"
 	"log"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type CommandHandler struct {
-	commands map[int]func(Command)
+	commands map[int]func(*Command) *Response
+}
+
+func NewCommandHandler() *CommandHandler {
+	var h CommandHandler
+	h.commands = make(map[int]func(*Command) *Response)
+	return &h
 }
 
 type Command struct {
 	C_type      int
 	UserId      string
-	Amount      int
-	StockSymbol string
-	FileName    string
+	Amount      int       `json:",omitempty"`
+	StockSymbol string    `json:",omitempty"`
+	FileName    string    `json:",omitempty"`
+	Timestamp   time.Time `json:",omitempty"`
 }
 
 func (cmd *Command) CommandObjToString() string {
@@ -95,26 +104,33 @@ func CommandConstructor(cmd string) Command {
 	return *p
 }
 
-func (command *CommandHandler) On(command_name int, function_to_call func(args Command)) {
+func (command *CommandHandler) On(command_name int, function_to_call func(args *Command) *Response) {
 	command.commands[command_name] = function_to_call
 }
 
-func (command *CommandHandler) Parse(commandStr string) {
-
+func (command *CommandHandler) Parse(commandStr string) (*Response, error) {
 	log.Println("Received!:", string(commandStr))
-	parsed := strings.Split(commandStr, ",")
-	if len(parsed) < 5 {
-		log.Println("Error! Not enough arguments!!!")
-		return
+
+	var cmd *Command
+	err := json.Unmarshal([]byte(commandStr), &cmd)
+	if err != nil {
+		return nil, err
 	}
 
-	command_type, _ := strconv.ParseInt(parsed[0], 10, 0)
-	userid := parsed[1]
-	amount, _ := strconv.ParseFloat(parsed[2], 10)
-	stockSymbol := parsed[3]
-	filename := parsed[4]
+	return command.commands[cmd.C_type](cmd), nil
 
-	command_obj := Command{int(command_type), userid, int(amount), stockSymbol, filename}
+	// parsed := strings.Split(commandStr, ",")
+	// if len(parsed) < 5 {
+	// 	log.Println("Error! Not enough arguments!!!")
+	// 	return
+	// }
 
-	defer command.commands[int(command_type)](command_obj)
+	// command_type, _ := strconv.ParseInt(parsed[0], 10, 0)
+	// userid := parsed[1]
+	// amount, _ := strconv.ParseFloat(parsed[2], 10)
+	// stockSymbol := parsed[3]
+	// filename := parsed[4]
+
+	// command_obj := Command{int(command_type), userid, int(amount), stockSymbol, filename, time.Now()}
+
 }

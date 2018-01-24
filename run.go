@@ -18,27 +18,11 @@ func init() {
 	switch servType {
 	case "transaction":
 		server = new(TransactionServer)
+	case "webserver":
+		server = new(WebServer)
 	}
-	// addr = os.Args[1]
-	// port = os.Args[2]
 }
 
 func main() {
 	server.Start()
-	// // Start server
-	// address := fmt.Sprintf("%s:%s", addr, port)
-	// log.Printf("Listening at %s\n", address)
-	// listener, err := net.Listen("tcp", address)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// // Accept connection to the port
-	// conn, err := listener.Accept()
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// msg, _ := bufio.NewReader(conn).ReadString('\n')
-	// log.Printf("Received message: %s", msg)
 }

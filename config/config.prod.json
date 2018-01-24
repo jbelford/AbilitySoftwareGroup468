@@ -1,6 +1,7 @@
 {
     "database": {
-        "url": "localhost:27017"
+        "url": "localhost:27017",
+        "name": "seng468"
     },
     "quoteserver": {
         "address": "quoteserve.seng:4443",

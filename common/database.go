@@ -17,11 +17,11 @@ type MongoDB struct {
 }
 
 func (db *MongoDB) AddUserMoney(userId string, amount int) error {
-	info, err := db.database.C(db.name).Upsert(
+	info, err := db.database.C("Users").Upsert(
 		bson.M{"userId": userId},
-		bson.M{"userId": userId, "$inc": bson.M{"balance": amount}})
+		bson.M{"$setOnInsert": bson.M{"userId": userId}, "$inc": bson.M{"balance": amount}})
 
-	if info.UpsertedId != nil {
+	if info != nil && info.UpsertedId != nil {
 		log.Printf("Created user s'%s'", userId)
 	}
 	return err
