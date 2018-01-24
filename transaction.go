@@ -13,7 +13,7 @@ var db *common.MongoDB
 type TransactionServer struct{}
 
 func handle_add(cmd common.Command) {
-	err := db.AddUserMoney(cmd.UserId, int(cmd.Amount*100))
+	err := db.AddUserMoney(cmd.UserId, cmd.Amount)
 	log.Fatal(err)
 }
 

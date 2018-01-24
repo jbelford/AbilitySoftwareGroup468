@@ -18,7 +18,7 @@ type Command struct {
 	FileName    string
 }
 
-func (cmd *Command) commandObjToString() string {
+func (cmd *Command) CommandObjToString() string {
 	return string(cmd.C_type) + "," + cmd.UserId + "," + string(cmd.Amount) + "," + cmd.StockSymbol + "," + cmd.FileName
 }
 
@@ -99,7 +99,7 @@ func (command *CommandHandler) On(command_name int, function_to_call func(args C
 	command.commands[command_name] = function_to_call
 }
 
-func (command *CommandHandler) parse(commandStr string) {
+func (command *CommandHandler) Parse(commandStr string) {
 
 	log.Println("Received!:", string(commandStr))
 	parsed := strings.Split(commandStr, ",")

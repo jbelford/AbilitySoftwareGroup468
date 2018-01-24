@@ -32,11 +32,11 @@ func (db *MongoDB) Close() {
 }
 
 func GetMongoDatabase() (*MongoDB, error) {
-	session, err := mgo.Dial(dbConfig.url)
+	session, err := mgo.Dial(dbConfig.Url)
 	if err != nil {
 		return nil, err
 	}
-	return &MongoDB{dbConfig.url, dbConfig.name, session, session.DB(dbConfig.name)}, nil
+	return &MongoDB{dbConfig.Url, dbConfig.Name, session, session.DB(dbConfig.Name)}, nil
 }
 
 func init() {
@@ -44,5 +44,5 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	dbConfig = config.database
+	dbConfig = config.Database
 }

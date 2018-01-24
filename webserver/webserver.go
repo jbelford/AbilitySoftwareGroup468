@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/AbilitySoftwareGroup468/common"
 	"github.com/gorilla/mux"
+	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 )
 
 func wrapHandler(
@@ -29,22 +29,23 @@ func passInfo(com common.Command) {
 	conn, err := net.Dial("tcp", "127.0.0.1:8081")
 	if err != nil {
 		log.Print(com)
+		return
 	}
-	writeResponse, err := conn.Write(com.commandObjToString())
+	_, err = conn.Write([]byte(com.CommandObjToString()))
 	if err != nil {
 		log.Print(com)
+		return
 	}
 
-	readResponse, err := conn.Read()
+	var readResponse []byte
+	_, err = conn.Read(readResponse)
 	if err != nil {
 		log.Print(com)
 	}
 	conn.Close()
-
 }
 
 func userHandler(w http.ResponseWriter, r *http.Request) {
-
 	user_info := common.CommandConstructor(r.FormValue("data"))
 	passInfo(user_info)
 	t := template.New("test.html")

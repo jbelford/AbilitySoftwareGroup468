@@ -34,10 +34,13 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	qsConfig = config.quoteserver
-	conn, err := net.Dial("tcp", "quoteserve.seng:4443")
-	if err != nil {
-		log.Fatal(err)
+	qsConfig = config.Quoteserver
+	if qsConfig.Mock {
+		tcpConn = &MockConn{"12.50,ABC,NA,1111111111,123198fadfa"}
+	} else {
+		tcpConn, err = net.Dial("tcp", qsConfig.Address)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
-	tcpConn = conn
 }
