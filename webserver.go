@@ -51,13 +51,13 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	t.Execute(w, "")
 }
 
-func userAddHandler(w http.ResponseWriter, r *http.Request) interface{} {
+func userAddHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	amount, err := strconv.ParseFloat(r.URL.Query().Get("amount"), 32)
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		return common.Response{Success: false, Message: "Could not process field: 'amount'"}
+		return &common.Response{Success: false, Message: "Could not process field: 'amount'"}
 	} else if amount <= 0 {
-		return common.Response{Success: false, Message: "Parameter: 'amount' must be greater than 0"}
+		return &common.Response{Success: false, Message: "Parameter: 'amount' must be greater than 0"}
 	}
 	cmd := common.Command{
 		C_type:    common.ADD,
@@ -69,7 +69,7 @@ func userAddHandler(w http.ResponseWriter, r *http.Request) interface{} {
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return common.Response{Success: false, Message: "Internal error prevented operation"}
+		return &common.Response{Success: false, Message: "Internal error prevented operation"}
 	} else if !resp.Success {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
@@ -106,7 +106,7 @@ func issueTransactionCommand(com common.Command) *common.Response {
 }
 
 func wrapHandler(
-	handler func(w http.ResponseWriter, r *http.Request) interface{},
+	handler func(w http.ResponseWriter, r *http.Request) *common.Response,
 ) func(w http.ResponseWriter, r *http.Request) {
 
 	h := func(w http.ResponseWriter, r *http.Request) {
