@@ -35,7 +35,7 @@ func init() {
 		log.Fatal(err)
 	}
 	qsConfig = config.quoteserver
-	conn, err := net.Dial("tcp", qsConfig.address)
+	conn, err := net.Dial("tcp", "quoteserve.seng:4443")
 	if err != nil {
 		log.Fatal(err)
 	}
