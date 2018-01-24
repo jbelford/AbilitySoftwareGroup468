@@ -29,10 +29,12 @@ func passInfo(com common.Command) {
 	conn, err := net.Dial("tcp", "127.0.0.1:8081")
 	if err != nil {
 		log.Print(com)
+		return
 	}
 	_, err = conn.Write([]byte(com.CommandObjToString()))
 	if err != nil {
 		log.Print(com)
+		return
 	}
 
 	var readResponse []byte
