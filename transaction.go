@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"bufio"
 	"encoding/json"
 	"log"
 	"net"
+	gjson "github.com/gorilla/rpc/json"
+  "net/http"
 
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 )
@@ -119,6 +122,23 @@ func handle_display_summary(cmd *common.Command) *common.Response {
 	log.Println("handle_display_summary")
 	// success, status{balance}, transactions[{type, triggered, stock, amount, shares, timestamp}], triggers[{stock, type, amount, when}]
 	return nil
+}
+
+func LogResult(args common.Args){
+	url := "http://localhost:44424/log"
+	message, err := gjson.EncodeClientRequest("Arith.Multiply", args)
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(message))
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	client := new(http.Client)
+	client.Do(req)
+	//resp, err := client.Do(req)
+	//Do we care about getting anything back from the audit server?
 }
 
 func (ts *TransactionServer) Start() {

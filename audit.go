@@ -7,15 +7,11 @@ import (
   "bufio"
   "os"
   "github.com/gorilla/mux"
-  "github.com/gorilla/rpc2"
-  "github.com/gorilla/rpc/json2"
-  //"github.com/mattpaletta/AbilitySoftwareGroup468/common"
+  "github.com/gorilla/rpc/v2"
+  "github.com/gorilla/rpc/v2/json"
+  "net/http"
+  "github.com/mattpaletta/AbilitySoftwareGroup468/common"
 )
-
-type Args struct {
-  action, command, cryptokey, debugMessage, errorMessage, fileName, server, stockSymbol, timestamp, username string
-  funds, price, quoteServerTime, transactionNum int
-}
 
 type AuditServer struct{}
 
@@ -23,27 +19,33 @@ type Logging struct {}
 
 type Result string
 
-func (l *Logging) logUserCommand(r *http.Request, args *Args, result *Result) error {
+func (l *Logging) logUserCommand(r *http.Request, args *common.Args, result *Result) error {
+  return nil
 }
 
-func (l *Logging) logQuoteServer(r *http.Request, args *Args, result *Result) error {
+func (l *Logging) logQuoteServer(r *http.Request, args *common.Args, result *Result) error {
 
+    return nil
 }
 
-func (l *Logging) logAccountTransaction(r *http.Request, args *Args, result *Result) error {
+func (l *Logging) logAccountTransaction(r *http.Request, args *common.Args, result *Result) error {
 
+    return nil
 }
 
-func (l *Logging) logSystemEvent(r *http.Request, args *Args, result *Result) error {
+func (l *Logging) logSystemEvent(r *http.Request, args *common.Args, result *Result) error {
 
+    return nil
 }
 
-func (l *Logging) logErrorEvent(r *http.Request, args *Args, result *Result) error {
+func (l *Logging) logErrorEvent(r *http.Request, args *common.Args, result *Result) error {
 
+    return nil
 }
 
-func (l *Logging) logDebugEvent(r *http.Request, args *Args, result *Result) error {
+func (l *Logging) logDebugEvent(r *http.Request, args *common.Args, result *Result) error {
 
+    return nil
 }
 
 func log_msg(MSG string) {

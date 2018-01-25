@@ -4,6 +4,11 @@ import (
 	"encoding/xml"
 )
 
+type Args struct {
+  action, command, cryptokey, debugMessage, errorMessage, fileName, server, stockSymbol, timestamp, username string
+  funds, price, quoteServerTime, transactionNum int
+}
+
 type UserCommand struct {
   		XMLName         xml.Name  `xml:"serCommand"`
   		timestamp       string    `xml:"timestamp"`
