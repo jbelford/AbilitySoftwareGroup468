@@ -1,6 +1,7 @@
 version: '3'
 services:
   transaction:
+    image: ability:latest
     container_name: "transaction"
     build: .
     ports:
@@ -13,6 +14,7 @@ services:
     tty: true
   webserver:
     container_name: "webserver"
+    image: ability:latest
     build: .
     ports:
       - 8080:8080
@@ -24,6 +26,7 @@ services:
     command: bash -c "go run *.go webserver"
   auditserver:
     container_name: "auditserver"
+    image: ability:latest
     build: .
     ports:
       - 8081:8081
@@ -32,6 +35,7 @@ services:
     #entrypoint: /bin/bash
   workloadgen:
     container_name: "workloadgen"
+    image: ability:latest
     build: .
     tty: true
     entrypoint: /bin/bash
