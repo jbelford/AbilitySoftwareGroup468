@@ -1,0 +1,13 @@
+language: go
+
+go:
+  - 1.9
+  - master 
+
+install: true
+
+before_script:
+  - go get -v ./...
+
+script:
+  - go build *.go
