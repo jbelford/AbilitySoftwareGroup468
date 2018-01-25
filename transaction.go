@@ -1,14 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"bufio"
 	"encoding/json"
 	"log"
 	"net"
+	"net/rpc"
 	"time"
-	gjson "github.com/gorilla/rpc/json"
-  "net/http"
 
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 )
@@ -189,20 +187,14 @@ func handle_display_summary(cmd *common.Command) *common.Response {
 	return nil
 }
 
-func LogResult(args common.Args){
-	url := "http://localhost:44424/log"
-	message, err := gjson.EncodeClientRequest("Arith.Multiply", args)
+func LogResult(args common.Args) {
+	client, err := rpc.Dial("tcp", "127.0.0.2:8081")
 	if err != nil {
-		log.Fatalf("%s", err)
+		log.Fatal(err)
 	}
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(message))
-	if err != nil {
-		log.Fatalf("%s", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	client := new(http.Client)
-	client.Do(req)
-	//resp, err := client.Do(req)
+	var result Result
+	err = client.Call("Logging.LogUserCommand", args, &result)
+
 	//Do we care about getting anything back from the audit server?
 }
 
