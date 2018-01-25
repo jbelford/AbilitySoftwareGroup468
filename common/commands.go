@@ -21,7 +21,7 @@ func NewCommandHandler() *CommandHandler {
 type Command struct {
 	C_type      int
 	UserId      string
-	Amount      int       `json:",omitempty"`
+	Amount      int64     `json:",omitempty"`
 	StockSymbol string    `json:",omitempty"`
 	FileName    string    `json:",omitempty"`
 	Timestamp   time.Time `json:",omitempty"`
@@ -40,17 +40,17 @@ func CommandConstructor(cmd string) Command {
 	switch p.C_type {
 	case ADD:
 		p.UserId = com[1]
-		temp_amount, err := strconv.ParseFloat(com[2], 32)
+		temp_amount, err := strconv.ParseInt(com[2], 10, 32)
 		log.Print(err)
-		p.Amount = int(temp_amount * 100)
+		p.Amount = temp_amount
 	case QUOTE:
 		p.UserId = com[1]
 		p.StockSymbol = com[2]
 	case BUY:
 		p.UserId = com[1]
 		p.StockSymbol = com[2]
-		temp_amount, _ := strconv.ParseFloat(com[3], 32)
-		p.Amount = int(temp_amount * 100)
+		temp_amount, _ := strconv.ParseInt(com[3], 10, 32)
+		p.Amount = temp_amount
 	case COMMIT_BUY:
 		p.UserId = com[1]
 	case CANCEL_BUY:
@@ -58,8 +58,8 @@ func CommandConstructor(cmd string) Command {
 	case SELL:
 		p.UserId = com[1]
 		p.StockSymbol = com[2]
-		temp_amount, _ := strconv.ParseFloat(com[3], 32)
-		p.Amount = int(temp_amount * 100)
+		temp_amount, _ := strconv.ParseInt(com[3], 10, 32)
+		p.Amount = temp_amount
 	case COMMIT_SELL:
 		p.UserId = com[1]
 	case CANCEL_SELL:
@@ -67,26 +67,26 @@ func CommandConstructor(cmd string) Command {
 	case SET_BUY_AMOUNT:
 		p.UserId = com[1]
 		p.StockSymbol = com[2]
-		temp_amount, _ := strconv.ParseFloat(com[3], 32)
-		p.Amount = int(temp_amount * 100)
+		temp_amount, _ := strconv.ParseInt(com[3], 10, 32)
+		p.Amount = temp_amount
 	case CANCEL_SET_BUY:
 		p.UserId = com[1]
 		p.StockSymbol = com[2]
 	case SET_BUY_TRIGGER:
 		p.UserId = com[1]
 		p.StockSymbol = com[2]
-		temp_amount, _ := strconv.ParseFloat(com[3], 32)
-		p.Amount = int(temp_amount * 100)
+		temp_amount, _ := strconv.ParseInt(com[3], 10, 32)
+		p.Amount = temp_amount
 	case SET_SELL_AMOUNT:
 		p.UserId = com[1]
 		p.StockSymbol = com[2]
-		temp_amount, _ := strconv.ParseFloat(com[3], 32)
-		p.Amount = int(temp_amount * 100)
+		temp_amount, _ := strconv.ParseInt(com[3], 10, 32)
+		p.Amount = temp_amount
 	case SET_SELL_TRIGGER:
 		p.UserId = com[1]
 		p.StockSymbol = com[2]
-		temp_amount, _ := strconv.ParseFloat(com[3], 32)
-		p.Amount = int(temp_amount * 100)
+		temp_amount, _ := strconv.ParseInt(com[3], 10, 32)
+		p.Amount = temp_amount
 	case CANCEL_SET_SELL:
 		p.UserId = com[1]
 		p.StockSymbol = com[2]
@@ -127,10 +127,10 @@ func (command *CommandHandler) Parse(commandStr string) (*Response, error) {
 
 	// command_type, _ := strconv.ParseInt(parsed[0], 10, 0)
 	// userid := parsed[1]
-	// amount, _ := strconv.ParseFloat(parsed[2], 10)
+	// amount, _ := strconv.ParseInt(parsed[2], 10)
 	// stockSymbol := parsed[3]
 	// filename := parsed[4]
 
-	// command_obj := Command{int(command_type), userid, int(amount), stockSymbol, filename, time.Now()}
+	// command_obj := Command{int(command_type), userid, amount), stockSymbol, filename, time.Now()}
 
 }
