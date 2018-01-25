@@ -176,7 +176,6 @@ func userAddHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	```
 */
 func userQuoteHandler(w http.ResponseWriter, r *http.Request) *common.Response {
-	//
 	quote_id := r.URL.Query().Get("stock")
 	if quote_id == "" { //should maybe do is alpha numeric check here
 		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}

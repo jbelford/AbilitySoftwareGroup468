@@ -6,18 +6,20 @@ import (
 	"encoding/json"
 	"log"
 	"net"
+	"time"
 	gjson "github.com/gorilla/rpc/json"
   "net/http"
 
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 )
 
+var cache common.Cache
 var db *common.MongoDB
 
 type TransactionServer struct{}
 
 func handle_add(cmd *common.Command) *common.Response {
-	err := db.AddUserMoney(cmd.UserId, cmd.Amount)
+	err := db.Users.AddUserMoney(cmd.UserId, cmd.Amount)
 	if err != nil {
 		log.Println(err)
 		return &common.Response{Success: false, Message: "Failed"}
@@ -34,40 +36,103 @@ func handle_quote(cmd *common.Command) *common.Response {
 }
 
 func handle_buy(cmd *common.Command) *common.Response {
-	log.Println("handle_buy")
-	// TODO://
-	// RESPONSE: success, amount_requested, real_amount, shares, expiration
-	return nil
+	user, err := db.Users.GetUser(cmd.UserId)
+	if err != nil {
+		return &common.Response{Success: false, Message: "User does not exist"}
+	}
+	if user.Balance < cmd.Amount {
+		return &common.Response{Success: false, Message: "Specified amount is greater than can afford"}
+	}
+	quote, err := common.GetQuote(cmd.StockSymbol)
+	if err != nil {
+		return &common.Response{Success: false, Message: "Failed to get quote for that stock"}
+	}
+
+	shares := int(cmd.Amount / quote.Quote)
+	if shares <= 0 {
+		return &common.Response{Success: false, Message: "Specified amount is not enough to purchase any shares"}
+	}
+	cost := int64(shares) * quote.Quote
+	expiry := time.Now().Add(time.Minute)
+
+	pending := common.PendingTxn{Type: "BUY", Price: cost, Shares: shares, Stock: quote.Symbol, Expiry: expiry}
+	cache.PushPendingTxn(cmd.UserId, pending)
+
+	return &common.Response{Success: true, ReqAmount: cmd.Amount, RealAmount: cost, Shares: shares, Expiration: expiry.Unix()}
 }
 
 func handle_commit_buy(cmd *common.Command) *common.Response {
-	log.Println("handle_commit_buy")
-	//success, stock, shares, paid
-	return nil
+	buy := cache.PopPendingTxn(cmd.UserId, "BUY")
+	if buy == nil {
+		return &common.Response{Success: false, Message: "There are no pending transactions"}
+	}
+
+	err := db.Users.ProcessBuy(cmd.UserId, buy)
+	if err != nil {
+		return &common.Response{Success: false, Message: "User can no longer afford this purchase"}
+	}
+
+	return &common.Response{Success: true, Stock: buy.Stock, Shares: buy.Shares, Paid: buy.Price}
 }
 
 func handle_cancel_buy(cmd *common.Command) *common.Response {
-	log.Println("handle_cancel_buy")
-	// success, stock, shares
-	return nil
+	buy := cache.PopPendingTxn(cmd.UserId, "BUY")
+	if buy == nil {
+		return &common.Response{Success: false, Message: "There is no buy to cancel"}
+	}
+	return &common.Response{Success: true, Stock: buy.Stock, Shares: buy.Shares}
 }
 
 func handle_sell(cmd *common.Command) *common.Response {
-	log.Println("handle_sell")
-	// success, amount_requested, real_amount, shares, expiration
-	return nil
+	user, err := db.Users.GetUser(cmd.UserId)
+	if err != nil {
+		return &common.Response{Success: false, Message: "User does not exist"}
+	} else if user.Stock[cmd.StockSymbol] == 0 {
+		return &common.Response{Success: false, Message: "User does not own any shares for that stock"}
+	}
+
+	quote, err := common.GetQuote(cmd.StockSymbol)
+	if err != nil {
+		return &common.Response{Success: false, Message: "Failed to get quote for that stock"}
+	}
+	actualShares := int(cmd.Amount / quote.Quote)
+	shares := actualShares
+	if shares <= 0 {
+		return &common.Response{Success: false, Message: "A single share is worth more than specified amount"}
+	} else if user.Stock[cmd.StockSymbol] < shares {
+		shares = user.Stock[cmd.StockSymbol]
+	}
+
+	sellFor := int64(shares) * quote.Quote
+	expiry := time.Now().Add(time.Minute)
+
+	pending := common.PendingTxn{Type: "SELL", Price: sellFor, Shares: shares, Stock: quote.Symbol, Expiry: expiry}
+	cache.PushPendingTxn(cmd.UserId, pending)
+
+	return &common.Response{Success: true, ReqAmount: cmd.Amount, RealAmount: int64(actualShares) * quote.Quote,
+		Shares: actualShares, SharesAfford: shares, AffordAmount: sellFor, Expiration: expiry.Unix()}
 }
 
 func handle_commit_sell(cmd *common.Command) *common.Response {
-	log.Println("handle_commit_sell")
-	// success, stock, shares, received
-	return nil
+	sell := cache.PopPendingTxn(cmd.UserId, "SELL")
+	if sell == nil {
+		return &common.Response{Success: false, Message: "There are no pending transactions"}
+	}
+
+	err := db.Users.ProcessSell(cmd.UserId, sell)
+	if err != nil {
+		return &common.Response{Success: false, Message: "User no longer has the correct number of shares to sell"}
+	}
+
+	return &common.Response{Success: true, Stock: sell.Stock, Shares: sell.Shares, Received: sell.Price}
 }
 
 func handle_cancel_sell(cmd *common.Command) *common.Response {
-	log.Println("handle_cancel_sell")
-	//success, stock, shares
-	return nil
+	sell := cache.PopPendingTxn(cmd.UserId, "SELL")
+	if sell == nil {
+		return &common.Response{Success: false, Message: "There is no sell to cancel"}
+	}
+	return &common.Response{Success: true, Stock: sell.Stock, Shares: sell.Shares}
 }
 
 func handle_set_buy_amount(cmd *common.Command) *common.Response {
@@ -142,6 +207,7 @@ func LogResult(args common.Args){
 }
 
 func (ts *TransactionServer) Start() {
+	cache = common.NewCache()
 	mongoDb, err := common.GetMongoDatabase()
 	if err != nil {
 		log.Fatal(err)
