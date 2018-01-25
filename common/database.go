@@ -16,7 +16,7 @@ type MongoDB struct {
 	database *mgo.Database
 }
 
-func (db *MongoDB) AddUserMoney(userId string, amount int) error {
+func (db *MongoDB) AddUserMoney(userId string, amount int64) error {
 	info, err := db.database.C("Users").Upsert(
 		bson.M{"userId": userId},
 		bson.M{"$setOnInsert": bson.M{"userId": userId}, "$inc": bson.M{"balance": amount}})
