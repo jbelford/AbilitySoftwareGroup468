@@ -16,6 +16,8 @@
 
 .vscode
 
-.docker
+*.docker
+
+data/
 
 **/debug

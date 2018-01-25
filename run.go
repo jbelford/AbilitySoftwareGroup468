@@ -2,7 +2,7 @@ package main
 
 import (
 	"os"
-
+	"log"
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 )
 
@@ -20,9 +20,10 @@ func init() {
 		server = new(TransactionServer)
 	case "webserver":
 		server = new(WebServer)
-	case "audit":
+	case "auditserver":
 		server = new(AuditServer)
 	}
+	log.Println(servType)
 }
 
 func main() {

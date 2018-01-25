@@ -13,6 +13,7 @@ import (
 
 var cache common.Cache
 var db *common.MongoDB
+var serverName string
 
 type TransactionServer struct{}
 
@@ -187,13 +188,55 @@ func handle_display_summary(cmd *common.Command) *common.Response {
 	return nil
 }
 
-func LogResult(args common.Args) {
+func createUserCommandLog(cmd *common.Command, tranNum int) *common.Args {
+
+	args := &common.Args{
+		Timestamp: uint64(cmd.Timestamp.Unix()),
+		Server: serverName,
+		TransactionNum: tranNum,
+		Username: cmd.UserId,
+		Funds: cmd.Amount,
+		StockSymbol: cmd.StockSymbol,
+		FileName: cmd.FileName,
+	}
+	return args
+}
+
+func createQuoteServerLog(quote *common.QuoteData, tranNum int) *common.Args {
+
+	args := &common.Args{
+		Timestamp: quote.Timestamp,
+		Server: serverName,
+		TransactionNum: tranNum,
+		Username: quote.UserId,
+		Price: quote.Quote,
+		StockSymbol: quote.Symbol,
+		Cryptokey: quote.Cryptokey,
+	}
+	return args
+}
+
+func createAccountTransactionLog(cmd *common.Command, tranNum int, action string) *common.Args {
+
+	timestamp := time.Now()
+	args := &common.Args{
+		Timestamp: uint64(timestamp.Unix()),
+		Server: serverName,
+		TransactionNum: tranNum,
+		Action: action,
+		Username: cmd.UserId,
+		Funds: cmd.Amount,
+	}
+	return args
+}
+
+func LogResult(args common.Args, logtype string) {
 	client, err := rpc.Dial("tcp", "127.0.0.2:8081")
 	if err != nil {
 		log.Fatal(err)
 	}
 	var result Result
-	err = client.Call("Logging.LogUserCommand", args, &result)
+	err = client.Call(logtype, args, &result)
 
 	//Do we care about getting anything back from the audit server?
 }
