@@ -23,10 +23,11 @@ func handle_add(cmd *common.Command) *common.Response {
 }
 
 func handle_quote(cmd *common.Command) *common.Response {
-	log.Println("handle_quote")
-	// TODO:// Get the current quote from quote cache, return in response.
-	// RESPONSE: success, stock, quote
-	return nil
+	data, err := common.GetQuote(cmd.StockSymbol)
+	if err != nil {
+		return &common.Response{Success: false, Message: "Failed"}
+	}
+	return &common.Response{Success: true, Quote: data.Quote, Stock: data.Symbol}
 }
 
 func handle_buy(cmd *common.Command) *common.Response {

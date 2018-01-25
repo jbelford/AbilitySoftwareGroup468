@@ -22,7 +22,7 @@ Example error response:
 {
   "success": true,
   "stock": "ABC",
-  "quote": 12.50
+  "quote": 1250
 }
 ```
 
@@ -32,7 +32,7 @@ Example error response:
 {
   "success": true,
   "amount_requested": 200,
-  "real_amount": 195.15,
+  "real_amount": 19515,
   "shares": 20,
   "expiration": 1516767552619
 }
@@ -45,7 +45,7 @@ Example error response:
   "success": true,
   "stock": "ABC",
   "shares": 20,
-  "paid": 195.15
+  "paid": 19515
 }
 ```
 
@@ -65,7 +65,7 @@ Example error response:
 {
   "success": true,
   "amount_requested": 200,
-  "real_amount": 182.21,
+  "real_amount": 18221,
   "shares": 19,
   "expiration": 1516767552619
 }
@@ -78,7 +78,7 @@ Example error response:
   "success": true,
   "stock": "ABC",
   "shares": 19,
-  "received": 182.21
+  "received": 18221
 }
 ```
 
@@ -170,7 +170,7 @@ Example error response:
       "type": "BUY",
       "triggered": false,
       "stock": "ABC",
-      "amount": 192.15,
+      "amount": 19215,
       "shares": 20,
       "timestamp": 1516767552619
     }
@@ -180,7 +180,7 @@ Example error response:
       "stock": "ABC",
       "type": "SELL",
       "amount": 200,
-      "when": 10.50
+      "when": 1050
     }
   ]
 }
