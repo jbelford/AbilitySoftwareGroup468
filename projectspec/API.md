@@ -31,7 +31,7 @@ Example error response:
 ```json
 {
   "success": true,
-  "amount_requested": 200,
+  "amount_requested": 20000,
   "real_amount": 19515,
   "shares": 20,
   "expiration": 1516767552619
@@ -64,9 +64,11 @@ Example error response:
 ```json
 {
   "success": true,
-  "amount_requested": 200,
+  "amount_requested": 20000,
   "real_amount": 18221,
   "shares": 19,
+  "shares_afford": 10,
+  "afford_amount": 13000,
   "expiration": 1516767552619
 }
 ```

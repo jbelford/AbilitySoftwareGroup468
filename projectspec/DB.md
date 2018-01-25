@@ -8,6 +8,7 @@
 {
     "userId": string;
     "balance": number;
+    "stock": { [symbol:string]: number; }
     "triggers": ObjectId[];
 }
 ```
