@@ -24,81 +24,99 @@ func handle_add(cmd *common.Command) *common.Response {
 
 func handle_quote(cmd *common.Command) *common.Response {
 	log.Println("handle_quote")
+	// TODO:// Get the current quote from quote cache, return in response.
+	// RESPONSE: success, stock, quote
 	return nil
 }
 
 func handle_buy(cmd *common.Command) *common.Response {
 	log.Println("handle_buy")
+	// TODO://
+	// RESPONSE: success, amount_requested, real_amount, shares, expiration
 	return nil
 }
 
 func handle_commit_buy(cmd *common.Command) *common.Response {
 	log.Println("handle_commit_buy")
+	//success, stock, shares, paid
 	return nil
 }
 
 func handle_cancel_buy(cmd *common.Command) *common.Response {
 	log.Println("handle_cancel_buy")
+	// success, stock, shares
 	return nil
 }
 
 func handle_sell(cmd *common.Command) *common.Response {
 	log.Println("handle_sell")
+	// success, amount_requested, real_amount, shares, expiration
 	return nil
 }
 
 func handle_commit_sell(cmd *common.Command) *common.Response {
 	log.Println("handle_commit_sell")
+	// success, stock, shares, received
 	return nil
 }
 
 func handle_cancel_sell(cmd *common.Command) *common.Response {
 	log.Println("handle_cancel_sell")
+	//success, stock, shares
 	return nil
 }
 
 func handle_set_buy_amount(cmd *common.Command) *common.Response {
 	log.Println("handle_set_buy_amount")
+	//success
 	return nil
 }
 
 func handle_cancel_set_buy(cmd *common.Command) *common.Response {
 	log.Println("handle_cancel_set_buy")
+	// success, stock
 	return nil
 }
 
 func handle_set_buy_trigger(cmd *common.Command) *common.Response {
 	log.Println("handle_set_buy_trigger")
+	// success
 	return nil
 }
 
 func handle_set_sell_amount(cmd *common.Command) *common.Response {
 	log.Println("handle_set_sell_amount")
+	// success
 	return nil
 }
 
 func handle_set_sell_trigger(cmd *common.Command) *common.Response {
 	log.Println("handle_set_sell_trigger")
+	// success
 	return nil
 }
 
 func handle_cancel_set_sell(cmd *common.Command) *common.Response {
 	log.Println("handle_cancel_set_sell")
+	// success
 	return nil
 }
 
 func handle_admin_dumplog(cmd *common.Command) *common.Response {
 	log.Println("handle_admin_dumplog")
+	//success
 	return nil
 }
 
 func handle_dumplog(cmd *common.Command) *common.Response {
 	log.Println("handle_dumplog")
+	// success
 	return nil
 }
 
 func handle_display_summary(cmd *common.Command) *common.Response {
 	log.Println("handle_display_summary")
+	// success, status{balance}, transactions[{type, triggered, stock, amount, shares, timestamp}], triggers[{stock, type, amount, when}]
 	return nil
 }
 
