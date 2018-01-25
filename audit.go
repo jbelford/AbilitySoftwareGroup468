@@ -1,28 +1,23 @@
 package main
 
 import (
-  //"net"
-  //"encoding/xml"
-
+  "net"
+  "encoding/xml"
+  "log"
+  "bufio"
+  "os"
   //"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 )
 
 type AuditServer struct{}
 
-/*
-v := &Person{Id: 13, FirstName: "John", LastName: "Doe", Age: 42}
-output, err := xml.MarshalIndent(v, "  ", "    ")
-  	if err != nil {
-  		fmt.Printf("error: %v\n", err)
-  	}
+func log_msg(MSG string) {
+  log.Println("TODO:// Add user ID to log_msg struct")
+  user := "1"
 
-  	os.Stdout.Write(output)
-*/
-
-func (user string, MSG struct) log_msg() {
   user_log, err := xml.MarshalIndent(MSG, "  ", "    ")
   if err != nil {
-    fmt.Printf("error: %v\n", err)
+    log.Println("error: %v\n", err)
   }
 
   f1, err := os.OpenFile(user + ".txt", os.O_APPEND|os.O_WRONLY, 0600)
@@ -38,17 +33,15 @@ func (user string, MSG struct) log_msg() {
   defer f1.Close()
   defer f2.Close()
 
-  if _, err = f1.WriteString(user_log); err != nil {
-    panic(err)
-  }
-
-  if _, err = f2.WriteString(user_log); err != nil {
-    panic(err)
-  }
+  enc := xml.NewEncoder(f1)
+	enc.Indent("  ", "    ")
+	enc.Encode(user_log)
+  enc2 := xml.NewEncoder(f2)
+  enc2.Encode(user_log)
 }
 
 func (ad *AuditServer) Start() {
-  ln, err := net.Listen("tcp", "127.0.0.1:8082")
+  ln, err := net.Listen("tcp", "127.0.0.2:8081")
   if err != nil {
     log.Fatal(err)
   }
@@ -60,7 +53,7 @@ func (ad *AuditServer) Start() {
       continue
     }
     log.Println("Received: ", string(message))
-    defer log_msg(message)
+    //defer log_msg("1", message)
     conn.Close()
   }
 }
