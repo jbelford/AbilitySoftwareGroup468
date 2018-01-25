@@ -20,6 +20,8 @@ func init() {
 		server = new(TransactionServer)
 	case "webserver":
 		server = new(WebServer)
+	case "audit":
+		server = new(AuditServer)
 	}
 }
 
