@@ -7,10 +7,10 @@ docker image build --file Dockerfile --tag ability:latest .
 echo "Saving Docker Image To File: ability.docker"
 docker image save ability:latest -o ability.docker
 
-echo "Creating Bundle"
-docker-compose bundle -c docker-compose.yml
-
 echo "Creating Zip File"
-zip -r zipfile.zip ability.docker docker-compose.yml abilitysoftwaregroup468.dab
+zip -r zipfile.zip ability.docker docker-compose.yml
+
+echo "Running Cleanup"
+rm -rf data/ ability.docker *.dab && echo "Done Cleanup" & 
 
 echo "Ready for deployment!"
