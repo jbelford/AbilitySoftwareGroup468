@@ -23,8 +23,9 @@ func (db *MongoDB) Close() {
 type UsersCollection interface {
 	AddUserMoney(userId string, amount int64) error
 	GetUser(userId string) (User, error)
-	ProcessBuy(userId string, buy *PendingTxn) error
-	ProcessSell(userId string, sell *PendingTxn) error
+	BulkTransaction(txns []*PendingTxn) error
+	ProcessBuy(buy *PendingTxn) error
+	ProcessSell(sell *PendingTxn) error
 }
 
 type users struct {
@@ -51,28 +52,57 @@ func (c *users) GetUser(userId string) (User, error) {
 	return user, err
 }
 
-func (c *users) ProcessBuy(userId string, buy *PendingTxn) error {
+func (c *users) BulkTransaction(txns []*PendingTxn) error {
+	bulk := c.Bulk()
+	for _, txn := range txns {
+		var selector map[string]interface{}
+		if txn.Type == "BUY" {
+			selector = bson.M{"_id": txn.UserId, "balance": bson.M{"$gte": txn.Price}}
+			txn.Price *= -1
+		} else {
+			selector = bson.M{"_id": txn.UserId, "stock." + txn.Stock: bson.M{"$gte": txn.Shares}}
+			txn.Shares *= -1
+		}
+		update := bson.M{"$inc": bson.M{
+			"balance":            txn.Price,
+			"stock." + txn.Stock: txn.Shares,
+		}}
+		bulk.Update(selector, update)
+	}
+	_, err := bulk.Run()
+	return err
+}
+
+func (c *users) ProcessBuy(buy *PendingTxn) error {
 	return c.Update(
-		bson.M{"_id": userId, "balance": bson.M{"$gte": buy.Price}},
+		bson.M{"_id": buy.UserId, "balance": bson.M{"$gte": buy.Price}},
 		bson.M{"$inc": bson.M{
 			"balance":            -buy.Price,
 			"stock." + buy.Stock: buy.Shares,
 		}})
 }
 
-func (c *users) ProcessSell(userId string, sell *PendingTxn) error {
+func (c *users) ProcessSell(sell *PendingTxn) error {
 	return c.Update(
-		bson.M{"_id": userId, "stock." + sell.Stock: bson.M{"$gte": sell.Shares}},
+		bson.M{"_id": sell.UserId, "stock." + sell.Stock: bson.M{"$gte": sell.Shares}},
 		bson.M{"$inc": bson.M{
 			"balance":             sell.Price,
 			"stock." + sell.Stock: -sell.Shares,
 		}})
 }
 
-type TriggersCollection interface{}
+type TriggersCollection interface {
+	GetAll() ([]Trigger, error)
+}
 
 type triggers struct {
 	*mgo.Collection
+}
+
+func (c *triggers) GetAll() ([]Trigger, error) {
+	var result []Trigger
+	err := c.Find(bson.M{}).All(&result)
+	return result, err
 }
 
 type TransactionsCollection interface{}

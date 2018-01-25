@@ -26,7 +26,7 @@ func handle_add(cmd *common.Command) *common.Response {
 }
 
 func handle_quote(cmd *common.Command) *common.Response {
-	data, err := common.GetQuote(cmd.StockSymbol)
+	data, err := cache.GetQuote(cmd.StockSymbol)
 	if err != nil {
 		return &common.Response{Success: false, Message: "Failed"}
 	}
@@ -41,7 +41,7 @@ func handle_buy(cmd *common.Command) *common.Response {
 	if user.Balance < cmd.Amount {
 		return &common.Response{Success: false, Message: "Specified amount is greater than can afford"}
 	}
-	quote, err := common.GetQuote(cmd.StockSymbol)
+	quote, err := cache.GetQuote(cmd.StockSymbol)
 	if err != nil {
 		return &common.Response{Success: false, Message: "Failed to get quote for that stock"}
 	}
@@ -53,8 +53,8 @@ func handle_buy(cmd *common.Command) *common.Response {
 	cost := int64(shares) * quote.Quote
 	expiry := time.Now().Add(time.Minute)
 
-	pending := common.PendingTxn{Type: "BUY", Price: cost, Shares: shares, Stock: quote.Symbol, Expiry: expiry}
-	cache.PushPendingTxn(cmd.UserId, pending)
+	pending := common.PendingTxn{UserId: cmd.UserId, Type: "BUY", Price: cost, Shares: shares, Stock: quote.Symbol, Expiry: expiry}
+	cache.PushPendingTxn(pending)
 
 	return &common.Response{Success: true, ReqAmount: cmd.Amount, RealAmount: cost, Shares: shares, Expiration: expiry.Unix()}
 }
@@ -65,7 +65,7 @@ func handle_commit_buy(cmd *common.Command) *common.Response {
 		return &common.Response{Success: false, Message: "There are no pending transactions"}
 	}
 
-	err := db.Users.ProcessBuy(cmd.UserId, buy)
+	err := db.Users.ProcessBuy(buy)
 	if err != nil {
 		return &common.Response{Success: false, Message: "User can no longer afford this purchase"}
 	}
@@ -89,7 +89,7 @@ func handle_sell(cmd *common.Command) *common.Response {
 		return &common.Response{Success: false, Message: "User does not own any shares for that stock"}
 	}
 
-	quote, err := common.GetQuote(cmd.StockSymbol)
+	quote, err := cache.GetQuote(cmd.StockSymbol)
 	if err != nil {
 		return &common.Response{Success: false, Message: "Failed to get quote for that stock"}
 	}
@@ -104,8 +104,8 @@ func handle_sell(cmd *common.Command) *common.Response {
 	sellFor := int64(shares) * quote.Quote
 	expiry := time.Now().Add(time.Minute)
 
-	pending := common.PendingTxn{Type: "SELL", Price: sellFor, Shares: shares, Stock: quote.Symbol, Expiry: expiry}
-	cache.PushPendingTxn(cmd.UserId, pending)
+	pending := common.PendingTxn{UserId: cmd.UserId, Type: "SELL", Price: sellFor, Shares: shares, Stock: quote.Symbol, Expiry: expiry}
+	cache.PushPendingTxn(pending)
 
 	return &common.Response{Success: true, ReqAmount: cmd.Amount, RealAmount: int64(actualShares) * quote.Quote,
 		Shares: actualShares, SharesAfford: shares, AffordAmount: sellFor, Expiration: expiry.Unix()}
@@ -117,7 +117,7 @@ func handle_commit_sell(cmd *common.Command) *common.Response {
 		return &common.Response{Success: false, Message: "There are no pending transactions"}
 	}
 
-	err := db.Users.ProcessSell(cmd.UserId, sell)
+	err := db.Users.ProcessSell(sell)
 	if err != nil {
 		return &common.Response{Success: false, Message: "User no longer has the correct number of shares to sell"}
 	}

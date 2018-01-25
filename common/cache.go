@@ -7,7 +7,8 @@ import (
 )
 
 type Cache interface {
-	PushPendingTxn(userId string, pending PendingTxn)
+	GetQuote(symbol string) (*QuoteData, error)
+	PushPendingTxn(pending PendingTxn)
 	PopPendingTxn(userId string, txnType string) *PendingTxn
 }
 
@@ -15,8 +16,22 @@ type cache struct {
 	*gcache.Cache
 }
 
-func (c *cache) PushPendingTxn(userId string, pending PendingTxn) {
-	key := userId + ":" + pending.Type
+func (c *cache) GetQuote(symbol string) (*QuoteData, error) {
+	key := "Quote:" + symbol
+	quoteI, found := c.Get(key)
+	quote, ok := quoteI.(*QuoteData)
+	if !ok || !found {
+		quote, err := getQuote(symbol)
+		if err != nil {
+			return nil, err
+		}
+		c.Set(key, quote, time.Minute)
+	}
+	return quote, nil
+}
+
+func (c *cache) PushPendingTxn(pending PendingTxn) {
+	key := pending.UserId + ":" + pending.Type
 	buysI, found := c.Get(key)
 	if buys, ok := buysI.([]PendingTxn); !ok || !found {
 		c.Set(key, []PendingTxn{pending}, time.Minute)

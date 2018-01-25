@@ -12,7 +12,7 @@ import (
 var qsConfig QuoteServConfig
 var tcpConn net.Conn
 
-func GetQuote(symbol string) (*QuoteData, error) {
+func getQuote(symbol string) (*QuoteData, error) {
 	var msg string
 	if qsConfig.Mock {
 		msg = fmt.Sprintf("12.50,%s,NA,1111111111,123198fadfa", symbol)

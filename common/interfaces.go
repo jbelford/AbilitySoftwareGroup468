@@ -24,6 +24,7 @@ type Response struct {
 }
 
 type PendingTxn struct {
+	UserId string
 	Type   string
 	Stock  string
 	Price  int64
@@ -59,6 +60,15 @@ type User struct {
 	Balance  int64          `json:"balance"`
 	Stock    map[string]int `json:"stock"`
 	Triggers []string       `json:"triggers"`
+}
+
+type Trigger struct {
+	TriggerID string `json:"_id"`
+	UserId    string `json:"userId"`
+	Stock     string `json:"stock"`
+	Type      string `json:"type"`
+	Amount    int64  `json:"amount"`
+	When      int64  `json:"when"`
 }
 
 func main() {
