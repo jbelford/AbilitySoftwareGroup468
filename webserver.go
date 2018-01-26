@@ -666,7 +666,7 @@ func issueTransactionCommand(com common.Command) *common.Response {
 		return nil
 	}
 
-	conn, err := net.Dial("tcp", "transaction.prod.ability.com:44421")
+	conn, err := net.Dial("tcp", common.CFG.TxnServer.Url)
 	if err != nil {
 		return nil
 	}

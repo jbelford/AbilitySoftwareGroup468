@@ -336,15 +336,18 @@ func createAccountTransactionLog(cmd *common.Command, tranNum int, action string
 	return args
 }
 
-func LogResult(args common.Args, logtype string) {
-	client, err := rpc.Dial("tcp", "auditserver.prod.ability.com:44422")
+func LogResult(args *common.Args, logtype string) error {
+	client, err := rpc.Dial("tcp", common.CFG.AuditServer.Url)
 	if err != nil {
 		log.Fatal(err)
 	}
 	var result Result
 	err = client.Call(logtype, args, &result)
-
-	//Do we care about getting anything back from the audit server?
+	if err != nil {
+		log.Println(err)
+	}
+	log.Println(result)
+	return err
 }
 
 func (ts *TransactionServer) Start() {

@@ -14,6 +14,6 @@
         "url": "localhost:8081"
     },
     "auditserver": {
-        "url": "locahost:8082"
+        "url": "localhost:8082"
     }
 }
