@@ -1,8 +1,7 @@
-package workloads
+package main
 
 import (
 	"bufio"
-	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 	"log"
 	"net/http"
 	"net/url"
@@ -47,7 +46,7 @@ func main() {
 	wg.Add(int(threadCount))
 	sentMessages := make([]int, int(threadCount))
 
-	web_url := "http://" + common.CFG.WebServer.Url
+	web_url := "http://webserver.prod.ability.com:44420"
 
 	log.Println("Sending Traffic to: " + web_url + " using " + string(threadCount) + " threads...")
 	start := time.Now()

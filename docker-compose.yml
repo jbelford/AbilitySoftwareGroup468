@@ -55,7 +55,7 @@ services:
       context: workloads
       dockerfile: Dockerfile
     tty: true
-    command: 1userWorkLoad.txt 1
+    #command: 1userWorkLoad.txt 1
     #entrypoint: /bin/bash
     depends_on:
       - webserver
