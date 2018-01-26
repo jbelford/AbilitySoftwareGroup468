@@ -7,8 +7,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-var dbConfig DatabaseConfig
-
 type MongoDB struct {
 	session      *mgo.Session
 	Users        UsersCollection
@@ -191,24 +189,16 @@ type transactions struct {
 }
 
 func GetMongoDatabase() (*MongoDB, error) {
-	log.Println("Connecting to db using", dbConfig.Url)
-	session, err := mgo.Dial(dbConfig.Url)
+	log.Println("Connecting to db using", CFG.Database.Url)
+	session, err := mgo.Dial(CFG.Database.Url)
 	if err != nil {
 		return nil, err
 	}
-	db := session.DB(dbConfig.Name)
+	db := session.DB(CFG.Database.Name)
 	return &MongoDB{
 		session:      session,
 		Users:        &users{db.C("Users")},
 		Triggers:     &triggers{db.C("Triggers")},
 		Transactions: &transactions{db.C("Transactions")},
 	}, nil
-}
-
-func init() {
-	config, err := GetConfig()
-	if err != nil {
-		log.Fatal(err)
-	}
-	dbConfig = config.Database
 }

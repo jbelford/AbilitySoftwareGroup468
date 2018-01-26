@@ -359,7 +359,7 @@ func (ts *TransactionServer) Start() {
 	tm.Start()
 
 	defer db.Close()
-	ln, err := net.Listen("tcp", "transaction.prod.ability.com:44421")
+	ln, err := net.Listen("tcp", common.CFG.TxnServer.Url)
 	if err != nil {
 		log.Fatal(err)
 	}

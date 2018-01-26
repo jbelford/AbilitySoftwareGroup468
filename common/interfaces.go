@@ -34,18 +34,23 @@ type PendingTxn struct {
 }
 
 type Config struct {
-	Database    DatabaseConfig  `json:"database"`
-	Quoteserver QuoteServConfig `json:"quoteserver"`
-}
-
-type DatabaseConfig struct {
-	Url  string `json:"url"`
-	Name string `json:"name"`
-}
-
-type QuoteServConfig struct {
-	Address string `json:"address"`
-	Mock    bool   `json:"mock"`
+	Database struct {
+		Url  string `json:"url"`
+		Name string `json:"name"`
+	} `json:"database"`
+	Quoteserver struct {
+		Address string `json:"address"`
+		Mock    bool   `json:"mock"`
+	} `json:"quoteserver"`
+	TxnServer struct {
+		Url string `json:"url"`
+	} `json:"transactionserver"`
+	WebServer struct {
+		Url string `json:"url"`
+	} `json:"webserver"`
+	AuditServer struct {
+		Url string `json:"url"`
+	} `json:"auditserver"`
 }
 
 type QuoteData struct {

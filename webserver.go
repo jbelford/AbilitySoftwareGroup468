@@ -61,7 +61,7 @@ func (ws *WebServer) Start() {
 
 	srv := &http.Server{
 		Handler:      r,
-		Addr:         "webserver.prod.ability.com:44420",
+		Addr:         common.CFG.WebServer.Url,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
