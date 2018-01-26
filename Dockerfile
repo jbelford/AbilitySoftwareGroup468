@@ -7,7 +7,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -tags netgo -install
 
 #FROM alpine:3.7 as certs
 #ENV PATH=/bin
-#RUN apk update && apk add ca-certificates && rm -rf /var/cache/apk/*
+#RUN apk add --update ca-certificates && rm -rf /var/cache/apk/*
 
 FROM alpine:latest
 ENV PATH=/bin

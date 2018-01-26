@@ -61,6 +61,7 @@ func (ws *WebServer) Start() {
 
 	r.PathPrefix("/templates/").Handler(http.StripPrefix("/templates/", http.FileServer(http.Dir(dir))))
 
+	log.Println("Listening on:", common.CFG.WebServer.Url)
 	srv := &http.Server{
 		Handler:      r,
 		Addr:         common.CFG.WebServer.Url,
@@ -142,7 +143,8 @@ func userSummaryHandler(w http.ResponseWriter, r *http.Request) *common.Response
 	```
 */
 func userAddHandler(w http.ResponseWriter, r *http.Request) *common.Response {
-	amount, err := strconv.ParseInt(r.URL.Query().Get("amount"), 10, 32)
+	r.ParseForm()
+	amount, err := strconv.ParseInt(r.Form.Get("amount"), 10, 32)
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		return &common.Response{Success: false, Message: "Could not process field: 'amount'"}
