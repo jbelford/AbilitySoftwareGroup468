@@ -123,6 +123,7 @@ func main() {
 				json_data := linesInFiles[j]
 				b := new(bytes.Buffer)
 				json.NewEncoder(b).Encode(json_data[1])
+				log.Println("Sending", json_data[0], json_data[1])
 				_, err := http.Post(json_data[0], "application/json; charset=utf-8", b)
 
 				if err != nil {
