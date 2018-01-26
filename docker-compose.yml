@@ -3,7 +3,9 @@ services:
   transaction:
     image: ability:latest
     container_name: "transaction"
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
     ports:
       - 44421:44421
     depends_on:
@@ -18,7 +20,9 @@ services:
   webserver:
     container_name: "webserver"
     image: ability:latest
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
     ports:
       - 44420:44420
     depends_on:
@@ -33,7 +37,9 @@ services:
   auditserver:
     container_name: "auditserver"
     image: ability:latest
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
     ports:
       - 44422:44422
     command: auditserver
@@ -44,13 +50,15 @@ services:
           - auditserver.prod.ability.com
   workloadgen:
     container_name: "workloadgen"
-    image: ubuntu:latest
-    #build: .
+    image: workloadgen:latest
+    build: 
+      context: workloads
+      dockerfile: Dockerfile
     tty: true
-    #entrypoint: ./workloadgen /workloads/1userWorkLoad.txt 1
+    command: 1userWorkLoad.txt 1
     #entrypoint: /bin/bash
-    #depends_on:
-      #- webserver
+    depends_on:
+      - webserver
     networks:
       mynetwork:
         aliases:
