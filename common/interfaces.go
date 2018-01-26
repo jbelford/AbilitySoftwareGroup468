@@ -9,18 +9,39 @@ type Server interface {
 }
 
 type Response struct {
-	Success      bool   `json:"success"`
-	Message      string `json:"message,omitempty"`
-	Stock        string `json:"stock,omitempty"`
-	Quote        int64  `json:"quote,omitempty"`
-	ReqAmount    int64  `json:"amount_requested,omitempty"`
-	RealAmount   int64  `json:"real_amount,omitempty"`
-	Shares       int    `json:"shares,omitempty"`
-	Expiration   int64  `json:"expiration,omitempty"`
-	Paid         int64  `json:"paid,omitempty"`
-	Received     int64  `json:"received,omitempty"`
-	SharesAfford int    `json:"shares_afford,omitempty"`
-	AffordAmount int64  `json:"afford_amount,omitempty"`
+	Success      bool          `json:"success"`
+	Message      string        `json:"message,omitempty"`
+	Stock        string        `json:"stock,omitempty"`
+	Quote        int64         `json:"quote,omitempty"`
+	ReqAmount    int64         `json:"amount_requested,omitempty"`
+	RealAmount   int64         `json:"real_amount,omitempty"`
+	Shares       int           `json:"shares,omitempty"`
+	Expiration   int64         `json:"expiration,omitempty"`
+	Paid         int64         `json:"paid,omitempty"`
+	Received     int64         `json:"received,omitempty"`
+	SharesAfford int           `json:"shares_afford,omitempty"`
+	AffordAmount int64         `json:"afford_amount,omitempty"`
+	Status       UserInfo      `json:"status,omitempty"`
+	Transactions []Transaction `json:"transactions,omitempty"`
+	Triggers     []Trigger     `json:"triggers,omitempty"`
+}
+
+type UserInfo struct {
+	Balance  int64 `json:"balance"`
+	Reserved int64 `json:"reserved"`
+	Stock    map[string]struct {
+		Real     int `json:"real"`
+		Reserved int `json:"reserved"`
+	} `json:"stock"`
+}
+
+type Transaction struct {
+	Type      string `json:"type"`
+	Triggered bool   `json:"triggered"`
+	Stock     string `json:"stock"`
+	Amount    int64  `json:"amount"`
+	Shares    int    `json:"shares"`
+	Timestamp uint64 `json:"timestamp"`
 }
 
 type PendingTxn struct {
@@ -69,7 +90,6 @@ type User struct {
 		Real     int `json:"real"`
 		Reserved int `json:"reserved"`
 	} `json:"stock"`
-	Triggers []string `json:"triggers"`
 }
 
 type Trigger struct {
@@ -79,8 +99,4 @@ type Trigger struct {
 	Shares int    `json:"shares"`
 	Amount int64  `json:"amount"`
 	When   int64  `json:"when"`
-}
-
-func main() {
-
 }

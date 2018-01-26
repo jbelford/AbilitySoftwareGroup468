@@ -29,6 +29,10 @@ func (tm *TriggerManager) Start() {
 					if err != nil {
 						log.Println(err)
 					}
+					err = tm.db.Transactions.BulkLog(txns, true)
+					if err != nil {
+						log.Println(err)
+					}
 					err = tm.db.Triggers.BulkClose(txns)
 					if err != nil {
 						log.Println(err)
