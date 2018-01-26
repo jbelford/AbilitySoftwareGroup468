@@ -29,7 +29,7 @@ services:
       - transaction
       - auditserver
     tty: true
-    command: webserver
+    command: webserver --prod
     networks:
       mynetwork:
         aliases:
@@ -42,7 +42,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - 44422:44422
-    command: auditserver
+    command: auditserver --prod
     tty: true
     networks:
       mynetwork:
@@ -78,4 +78,4 @@ services:
           - db1.prod.ability.com
 networks:
   mynetwork:
-    driver: bridge
+    driver: overlay
