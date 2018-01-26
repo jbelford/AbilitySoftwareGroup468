@@ -637,9 +637,10 @@ func userDumplogHandler(w http.ResponseWriter, r *http.Request) *common.Response
 	}
 
 	cmd := common.Command{
+		FileName:      mux.Vars(r)["user_id"],
 		TransactionID: t_id,
+		UserId:        mux.Vars(r)["user_id"],
 		C_type:        common.DUMPLOG,
-		FileName:      filename,
 		Timestamp:     time.Now(),
 	}
 
@@ -649,6 +650,9 @@ func userDumplogHandler(w http.ResponseWriter, r *http.Request) *common.Response
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
 	} else if !resp.Success {
 		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.Header().Set("Content-Disposition", "attachment; filename="+filename)
+		w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
 	}
 	return resp
 }
@@ -663,6 +667,7 @@ func adminDumplogHandler(w http.ResponseWriter, r *http.Request) *common.Respons
 	}
 
 	cmd := common.Command{
+		FileName:      mux.Vars(r)["admin_id"],
 		TransactionID: t_id,
 		C_type:        common.ADMIN_DUMPLOG,
 		Timestamp:     time.Now(),

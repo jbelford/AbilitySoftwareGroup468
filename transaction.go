@@ -286,7 +286,7 @@ func handle_cancel_set_sell(cmd *common.Command) *common.Response {
 func handle_admin_dumplog(cmd *common.Command) *common.Response {
 	log.Println("handle_admin_dumplog")
 	//success
-	return nil
+	return &common.Response{Success: true}
 }
 
 func handle_dumplog(cmd *common.Command) *common.Response {
