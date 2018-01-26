@@ -19,6 +19,7 @@
 {
     "_id": ObjectId;
     "userId": string;
+    "stock": string;
     "type": "BUY" | "SELL";
     "amount": number;
     "when": number;

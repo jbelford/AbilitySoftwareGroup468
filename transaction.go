@@ -39,7 +39,8 @@ func handle_buy(cmd *common.Command) *common.Response {
 	if err != nil {
 		return &common.Response{Success: false, Message: "User does not exist"}
 	}
-	if user.Balance < cmd.Amount {
+	cacheReserve := cache.GetReserved(user.UserId)
+	if user.Balance-cacheReserve < cmd.Amount {
 		return &common.Response{Success: false, Message: "Specified amount is greater than can afford"}
 	}
 	quote, err := cache.GetQuote(cmd.StockSymbol)
@@ -54,7 +55,8 @@ func handle_buy(cmd *common.Command) *common.Response {
 	cost := int64(shares) * quote.Quote
 	expiry := time.Now().Add(time.Minute)
 
-	pending := common.PendingTxn{UserId: cmd.UserId, Type: "BUY", Price: cost, Shares: shares, Stock: quote.Symbol, Expiry: expiry}
+	pending := common.PendingTxn{UserId: cmd.UserId, Type: "BUY", Price: cost, Shares: shares,
+		Reserved: cmd.Amount, Stock: quote.Symbol, Expiry: expiry}
 	cache.PushPendingTxn(pending)
 
 	return &common.Response{Success: true, ReqAmount: cmd.Amount, RealAmount: cost, Shares: shares, Expiration: expiry.Unix()}
@@ -86,7 +88,7 @@ func handle_sell(cmd *common.Command) *common.Response {
 	user, err := db.Users.GetUser(cmd.UserId)
 	if err != nil {
 		return &common.Response{Success: false, Message: "User does not exist"}
-	} else if user.Stock[cmd.StockSymbol] == 0 {
+	} else if user.Stock[cmd.StockSymbol].Real == 0 {
 		return &common.Response{Success: false, Message: "User does not own any shares for that stock"}
 	}
 
@@ -98,8 +100,8 @@ func handle_sell(cmd *common.Command) *common.Response {
 	shares := actualShares
 	if shares <= 0 {
 		return &common.Response{Success: false, Message: "A single share is worth more than specified amount"}
-	} else if user.Stock[cmd.StockSymbol] < shares {
-		shares = user.Stock[cmd.StockSymbol]
+	} else if user.Stock[cmd.StockSymbol].Real < shares {
+		shares = user.Stock[cmd.StockSymbol].Real
 	}
 
 	sellFor := int64(shares) * quote.Quote
@@ -135,39 +137,143 @@ func handle_cancel_sell(cmd *common.Command) *common.Response {
 }
 
 func handle_set_buy_amount(cmd *common.Command) *common.Response {
-	log.Println("handle_set_buy_amount")
-	//success
-	return nil
+	user, err := db.Users.GetUser(cmd.UserId)
+	if err != nil {
+		return &common.Response{Success: false, Message: "The user does not exist"}
+	} else if user.Balance < cmd.Amount {
+		return &common.Response{Success: false, Message: "Not enough funds"}
+	}
+	_, err = cache.GetQuote(cmd.StockSymbol)
+	if err != nil {
+		return &common.Response{Success: false, Message: "Failed to get quote for that stock"}
+	}
+
+	trigger := &common.Trigger{
+		UserId: cmd.UserId,
+		Stock:  cmd.StockSymbol,
+		Type:   "BUY",
+		Amount: cmd.Amount,
+		When:   0,
+	}
+	db.Triggers.Set(trigger)
+	db.Users.ReserveMoney(cmd.UserId, cmd.Amount)
+
+	return &common.Response{Success: true}
 }
 
 func handle_cancel_set_buy(cmd *common.Command) *common.Response {
-	log.Println("handle_cancel_set_buy")
-	// success, stock
-	return nil
+	_, err := db.Users.GetUser(cmd.UserId)
+	if err != nil {
+		return &common.Response{Success: false, Message: "The user does not exist"}
+	}
+
+	trig, err := db.Triggers.Cancel(cmd.UserId, cmd.StockSymbol, "BUY")
+	if err != nil {
+		return &common.Response{Success: false, Message: "No buy trigger to cancel"}
+	}
+	err = db.Users.UnreserveMoney(cmd.UserId, trig.Amount)
+	if err != nil {
+		log.Println(err)
+		return &common.Response{Success: false, Message: "Internal server error"}
+	}
+
+	return &common.Response{Success: true, Stock: cmd.StockSymbol}
 }
 
 func handle_set_buy_trigger(cmd *common.Command) *common.Response {
-	log.Println("handle_set_buy_trigger")
-	// success
-	return nil
+	_, err := db.Users.GetUser(cmd.UserId)
+	if err != nil {
+		return &common.Response{Success: false, Message: "The user does not exist"}
+	}
+
+	trig, err := db.Triggers.Get(cmd.UserId, cmd.StockSymbol, "BUY")
+	if err != nil {
+		return &common.Response{Success: false, Message: "User must set buy amount first"}
+	}
+
+	trig.When = cmd.Amount
+	err = db.Triggers.Set(trig)
+	if err != nil {
+		return &common.Response{Success: false, Message: "Internal error during operation"}
+	}
+
+	return &common.Response{Success: true}
 }
 
 func handle_set_sell_amount(cmd *common.Command) *common.Response {
-	log.Println("handle_set_sell_amount")
-	// success
-	return nil
+	user, err := db.Users.GetUser(cmd.UserId)
+	if err != nil {
+		return &common.Response{Success: false, Message: "The user does not exist"}
+	}
+	realStocks := user.Stock[cmd.StockSymbol].Real - cache.GetReservedShares(cmd.UserId, cmd.StockSymbol)
+	if realStocks == 0 {
+		return &common.Response{Success: false, Message: "The user does not have any stock"}
+	}
+
+	quote, err := cache.GetQuote(cmd.StockSymbol)
+	if err != nil {
+		return &common.Response{Success: false, Message: "Failed to get quote for that stock"}
+	}
+
+	// Get reserved shares
+	reservedShares := int(cmd.Amount / quote.Quote)
+	if reservedShares > realStocks {
+		reservedShares = realStocks
+	}
+
+	trigger := &common.Trigger{
+		UserId: cmd.UserId,
+		Type:   "SELL",
+		Shares: reservedShares,
+		Stock:  cmd.StockSymbol,
+		Amount: cmd.Amount,
+		When:   0,
+	}
+
+	err = db.Triggers.Set(trigger)
+	if err != nil {
+		return &common.Response{Success: false, Message: "Failed to set sell amount"}
+	}
+	db.Users.ReserveShares(cmd.UserId, cmd.StockSymbol, reservedShares)
+
+	return &common.Response{Success: true}
 }
 
 func handle_set_sell_trigger(cmd *common.Command) *common.Response {
-	log.Println("handle_set_sell_trigger")
-	// success
-	return nil
+	_, err := db.Users.GetUser(cmd.UserId)
+	if err != nil {
+		return &common.Response{Success: false, Message: "The user does not exist"}
+	}
+
+	trig, err := db.Triggers.Get(cmd.UserId, cmd.StockSymbol, "SELL")
+	if err != nil {
+		return &common.Response{Success: false, Message: "User must set sell amount first"}
+	}
+
+	trig.When = cmd.Amount
+	db.Triggers.Set(trig)
+
+	return &common.Response{Success: true}
 }
 
 func handle_cancel_set_sell(cmd *common.Command) *common.Response {
-	log.Println("handle_cancel_set_sell")
-	// success
-	return nil
+	_, err := db.Users.GetUser(cmd.UserId)
+	if err != nil {
+		return &common.Response{Success: false, Message: "The user does not exist"}
+	}
+
+	trig, err := db.Triggers.Cancel(cmd.UserId, cmd.StockSymbol, "SELL")
+	if err != nil {
+		return &common.Response{Success: false, Message: "No sell trigger to cancel"}
+	}
+
+	err = db.Users.UnreserveShares(cmd.UserId, cmd.StockSymbol, trig.Shares)
+	if err != nil {
+		log.Println(err)
+		return &common.Response{Success: false, Message: "Internal server error"}
+	}
+
+	return &common.Response{Success: true}
 }
 
 func handle_admin_dumplog(cmd *common.Command) *common.Response {
@@ -191,13 +297,13 @@ func handle_display_summary(cmd *common.Command) *common.Response {
 func createUserCommandLog(cmd *common.Command, tranNum int) *common.Args {
 
 	args := &common.Args{
-		Timestamp: uint64(cmd.Timestamp.Unix()),
-		Server: serverName,
+		Timestamp:      uint64(cmd.Timestamp.Unix()),
+		Server:         serverName,
 		TransactionNum: tranNum,
-		Username: cmd.UserId,
-		Funds: cmd.Amount,
-		StockSymbol: cmd.StockSymbol,
-		FileName: cmd.FileName,
+		Username:       cmd.UserId,
+		Funds:          cmd.Amount,
+		StockSymbol:    cmd.StockSymbol,
+		FileName:       cmd.FileName,
 	}
 	return args
 }
@@ -205,13 +311,13 @@ func createUserCommandLog(cmd *common.Command, tranNum int) *common.Args {
 func createQuoteServerLog(quote *common.QuoteData, tranNum int) *common.Args {
 
 	args := &common.Args{
-		Timestamp: quote.Timestamp,
-		Server: serverName,
+		Timestamp:      quote.Timestamp,
+		Server:         serverName,
 		TransactionNum: tranNum,
-		Username: quote.UserId,
-		Price: quote.Quote,
-		StockSymbol: quote.Symbol,
-		Cryptokey: quote.Cryptokey,
+		Username:       quote.UserId,
+		Price:          quote.Quote,
+		StockSymbol:    quote.Symbol,
+		Cryptokey:      quote.Cryptokey,
 	}
 	return args
 }
@@ -220,12 +326,12 @@ func createAccountTransactionLog(cmd *common.Command, tranNum int, action string
 
 	timestamp := time.Now()
 	args := &common.Args{
-		Timestamp: uint64(timestamp.Unix()),
-		Server: serverName,
+		Timestamp:      uint64(timestamp.Unix()),
+		Server:         serverName,
 		TransactionNum: tranNum,
-		Action: action,
-		Username: cmd.UserId,
-		Funds: cmd.Amount,
+		Action:         action,
+		Username:       cmd.UserId,
+		Funds:          cmd.Amount,
 	}
 	return args
 }
@@ -248,6 +354,10 @@ func (ts *TransactionServer) Start() {
 		log.Fatal(err)
 	}
 	db = mongoDb
+
+	tm := common.NewTrigMan(cache, db)
+	tm.Start()
+
 	defer db.Close()
 	ln, err := net.Listen("tcp", "127.0.0.1:8081")
 	if err != nil {

@@ -24,12 +24,13 @@ type Response struct {
 }
 
 type PendingTxn struct {
-	UserId string
-	Type   string
-	Stock  string
-	Price  int64
-	Shares int
-	Expiry time.Time
+	UserId   string
+	Type     string
+	Stock    string
+	Reserved int64
+	Price    int64
+	Shares   int
+	Expiry   time.Time
 }
 
 type Config struct {
@@ -56,19 +57,23 @@ type QuoteData struct {
 }
 
 type User struct {
-	UserId   string         `json:"_id"`
-	Balance  int64          `json:"balance"`
-	Stock    map[string]int `json:"stock"`
-	Triggers []string       `json:"triggers"`
+	UserId   string `json:"_id"`
+	Balance  int64  `json:"balance"`
+	Reserved int64  `json:"reserved"`
+	Stock    map[string]struct {
+		Real     int `json:"real"`
+		Reserved int `json:"reserved"`
+	} `json:"stock"`
+	Triggers []string `json:"triggers"`
 }
 
 type Trigger struct {
-	TriggerID string `json:"_id"`
-	UserId    string `json:"userId"`
-	Stock     string `json:"stock"`
-	Type      string `json:"type"`
-	Amount    int64  `json:"amount"`
-	When      int64  `json:"when"`
+	UserId string `bson:"userId" json:"userId"`
+	Stock  string `json:"stock"`
+	Type   string `json:"type"`
+	Shares int    `json:"shares"`
+	Amount int64  `json:"amount"`
+	When   int64  `json:"when"`
 }
 
 func main() {
