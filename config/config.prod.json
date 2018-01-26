@@ -5,6 +5,6 @@
     },
     "quoteserver": {
         "address": "quoteserve.seng:4443",
-        "mock": false
+        "mock": true
     }
 }

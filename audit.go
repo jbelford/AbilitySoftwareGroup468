@@ -82,7 +82,7 @@ func (ad *AuditServer) Start() {
 		log.Fatal(err)
 	}
 	go func() {
-		defer ln.Close()
+		//defer ln.Close()
 		for {
 			conn, _ := ln.Accept()
 			go rpc.ServeConn(conn)

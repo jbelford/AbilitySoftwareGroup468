@@ -62,8 +62,8 @@ services:
       - MONGO_DATA_DIR=/data/db
       - MONGO_LOG_DIR=/dev/null
     ports:
-      - 44423:27017
-    command: mongod --smallfiles --logpath=/dev/null # --quiet
+      - 44423:44423
+    command: mongod --smallfiles --port 44423 --bind_ip db1.prod.ability.com --logpath=/dev/null # --quiet
     networks:
       mynetwork:
         aliases:
