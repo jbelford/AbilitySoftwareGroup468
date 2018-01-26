@@ -13,6 +13,7 @@ type TriggerManager struct {
 func (tm *TriggerManager) Start() {
 	go func() {
 		for {
+			log.Println("Executing job...")
 			trigs, err := tm.db.Triggers.GetAll()
 			if err == nil {
 				txns := make([]*PendingTxn, 0)
@@ -23,7 +24,12 @@ func (tm *TriggerManager) Start() {
 					}
 				}
 				if len(txns) > 0 {
+					log.Printf("Resolving %d transactions\n", len(txns))
 					err = tm.db.Users.BulkTransaction(txns)
+					if err != nil {
+						log.Println(err)
+					}
+					err = tm.db.Triggers.BulkClose(txns)
 					if err != nil {
 						log.Println(err)
 					}
@@ -44,13 +50,21 @@ func (tm *TriggerManager) processTrigger(t Trigger) *PendingTxn {
 	if !isTriggered {
 		return nil
 	}
-	shares := int(t.Amount / quote.Quote)
+	shares := t.Shares
+	if t.Type == "BUY" {
+		shares = int(t.Amount / quote.Quote)
+	}
 	price := int64(shares) * quote.Quote
 	return &PendingTxn{
-		UserId: t.UserId,
-		Price:  price,
-		Shares: shares,
-		Type:   t.Type,
-		Stock:  t.Stock,
+		UserId:   t.UserId,
+		Price:    price,
+		Reserved: t.Amount,
+		Shares:   shares,
+		Type:     t.Type,
+		Stock:    t.Stock,
 	}
+}
+
+func NewTrigMan(c Cache, db *MongoDB) *TriggerManager {
+	return &TriggerManager{c, db}
 }

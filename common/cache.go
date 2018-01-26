@@ -8,6 +8,8 @@ import (
 
 type Cache interface {
 	GetQuote(symbol string) (*QuoteData, error)
+	GetReserved(userId string) int64
+	GetReservedShares(userId string, stock string) int
 	PushPendingTxn(pending PendingTxn)
 	PopPendingTxn(userId string, txnType string) *PendingTxn
 }
@@ -21,13 +23,52 @@ func (c *cache) GetQuote(symbol string) (*QuoteData, error) {
 	quoteI, found := c.Get(key)
 	quote, ok := quoteI.(*QuoteData)
 	if !ok || !found {
-		quote, err := getQuote(symbol)
+		var err error
+		quote, err = getQuote(symbol)
 		if err != nil {
 			return nil, err
 		}
 		c.Set(key, quote, time.Minute)
 	}
 	return quote, nil
+}
+
+func (c *cache) GetReserved(userId string) int64 {
+	key := userId + ":BUY"
+	buysI, found := c.Get(key)
+	if !found {
+		return 0
+	}
+	now := time.Now()
+	var total int64
+	buys, ok := buysI.([]PendingTxn)
+	if ok {
+		for _, txn := range buys {
+			if txn.Expiry.After(now) {
+				total += txn.Reserved
+			}
+		}
+	}
+	return total
+}
+
+func (c *cache) GetReservedShares(userId string, stock string) int {
+	key := userId + ":SELL"
+	sellsI, found := c.Get(key)
+	if !found {
+		return 0
+	}
+	now := time.Now()
+	var total int
+	sells, ok := sellsI.([]PendingTxn)
+	if ok {
+		for _, txn := range sells {
+			if txn.Expiry.After(now) && txn.Stock == stock {
+				total += txn.Shares
+			}
+		}
+	}
+	return total
 }
 
 func (c *cache) PushPendingTxn(pending PendingTxn) {

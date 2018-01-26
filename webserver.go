@@ -29,7 +29,7 @@ func (ws *WebServer) Start() {
 	r.HandleFunc("/{user_id}/display_summary", wrapHandler(userSummaryHandler)).Methods("GET")
 
 	r.HandleFunc("/{user_id}/add", wrapHandler(userAddHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/quote", wrapHandler(userQuoteHandler)).Methods("POST")
+	r.HandleFunc("/{user_id}/quote", wrapHandler(userQuoteHandler)).Methods("GET")
 
 	//buying stocks
 	r.HandleFunc("/{user_id}/buy", wrapHandler(userBuyHandler)).Methods("POST")
