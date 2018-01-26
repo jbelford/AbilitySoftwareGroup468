@@ -46,9 +46,9 @@ func main() {
 	wg.Add(int(threadCount))
 	sentMessages := make([]int, int(threadCount))
 
-	web_url := "http://127.0.0.1:8000"
+	web_url := "http://webserver.prod.ability.com:44420"
 
-	log.Println("Sending Traffic using " + string(threadCount) + " threads...")
+	log.Println("Sending Traffic to: " + web_url + " using " + string(threadCount) + " threads...")
 	start := time.Now()
 
 	for i := 0; i < int(threadCount); i++ {

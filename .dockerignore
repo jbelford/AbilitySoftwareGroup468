@@ -1,0 +1,7 @@
+*.zip
+*.docker
+data/
+*.md
+*.pdf
+*.html
+*.sh

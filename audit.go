@@ -77,7 +77,7 @@ func log_msg(MSG string) {
 func (ad *AuditServer) Start() {
 	logging := new(Logging)
 	rpc.Register(logging)
-	ln, err := net.Listen("tcp", "127.0.0.2:8081")
+	ln, err := net.Listen("tcp", "auditserver.prod.ability.com:44422")
 	if err != nil {
 		log.Fatal(err)
 	}

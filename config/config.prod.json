@@ -1,6 +1,6 @@
 {
     "database": {
-        "url": "localhost:27017",
+        "url": "db1.prod.ability.com:44423",
         "name": "seng468"
     },
     "quoteserver": {

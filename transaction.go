@@ -231,7 +231,7 @@ func createAccountTransactionLog(cmd *common.Command, tranNum int, action string
 }
 
 func LogResult(args common.Args, logtype string) {
-	client, err := rpc.Dial("tcp", "127.0.0.2:8081")
+	client, err := rpc.Dial("tcp", "auditserver.prod.ability.com:44422")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -249,7 +249,7 @@ func (ts *TransactionServer) Start() {
 	}
 	db = mongoDb
 	defer db.Close()
-	ln, err := net.Listen("tcp", "127.0.0.1:8081")
+	ln, err := net.Listen("tcp", "transaction.prod.ability.com:44421")
 	if err != nil {
 		log.Fatal(err)
 	}

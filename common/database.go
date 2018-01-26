@@ -112,6 +112,7 @@ type transactions struct {
 }
 
 func GetMongoDatabase() (*MongoDB, error) {
+	log.Println("Connecting to db using", dbConfig.Url)
 	session, err := mgo.Dial(dbConfig.Url)
 	if err != nil {
 		return nil, err

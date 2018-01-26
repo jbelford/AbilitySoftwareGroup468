@@ -23,7 +23,7 @@ func init() {
 	case "auditserver":
 		server = new(AuditServer)
 	}
-	log.Println(servType)
+	log.Println("Starting:", servType)
 }
 
 func main() {
