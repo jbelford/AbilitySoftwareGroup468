@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"log"
 	"net"
-	"net/rpc"
 	"time"
 
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
@@ -72,6 +71,10 @@ func handle_commit_buy(cmd *common.Command) *common.Response {
 	if err != nil {
 		return &common.Response{Success: false, Message: "User can no longer afford this purchase"}
 	}
+	err = db.Transactions.LogTxn(buy, false)
+	if err != nil {
+		log.Println("Failed to log buy")
+	}
 
 	return &common.Response{Success: true, Stock: buy.Stock, Shares: buy.Shares, Paid: buy.Price}
 }
@@ -123,6 +126,10 @@ func handle_commit_sell(cmd *common.Command) *common.Response {
 	err := db.Users.ProcessSell(sell)
 	if err != nil {
 		return &common.Response{Success: false, Message: "User no longer has the correct number of shares to sell"}
+	}
+	err = db.Transactions.LogTxn(sell, false)
+	if err != nil {
+		log.Println("Failed to log sell")
 	}
 
 	return &common.Response{Success: true, Stock: sell.Stock, Shares: sell.Shares, Received: sell.Price}
@@ -283,69 +290,93 @@ func handle_admin_dumplog(cmd *common.Command) *common.Response {
 }
 
 func handle_dumplog(cmd *common.Command) *common.Response {
-	log.Println("handle_dumplog")
-	// success
-	return nil
+	_, err := db.Users.GetUser(cmd.UserId)
+	if err != nil {
+		return &common.Response{Success: false, Message: "The user does not exist"}
+	}
+
+	return &common.Response{Success: true}
 }
 
 func handle_display_summary(cmd *common.Command) *common.Response {
-	log.Println("handle_display_summary")
-	// success, status{balance}, transactions[{type, triggered, stock, amount, shares, timestamp}], triggers[{stock, type, amount, when}]
-	return nil
-}
-
-func createUserCommandLog(cmd *common.Command, tranNum int) *common.Args {
-
-	args := &common.Args{
-		Timestamp:      uint64(cmd.Timestamp.Unix()),
-		Server:         serverName,
-		TransactionNum: tranNum,
-		Username:       cmd.UserId,
-		Funds:          cmd.Amount,
-		StockSymbol:    cmd.StockSymbol,
-		FileName:       cmd.FileName,
-	}
-	return args
-}
-
-func createQuoteServerLog(quote *common.QuoteData, tranNum int) *common.Args {
-
-	args := &common.Args{
-		Timestamp:      quote.Timestamp,
-		Server:         serverName,
-		TransactionNum: tranNum,
-		Username:       quote.UserId,
-		Price:          quote.Quote,
-		StockSymbol:    quote.Symbol,
-		Cryptokey:      quote.Cryptokey,
-	}
-	return args
-}
-
-func createAccountTransactionLog(cmd *common.Command, tranNum int, action string) *common.Args {
-
-	timestamp := time.Now()
-	args := &common.Args{
-		Timestamp:      uint64(timestamp.Unix()),
-		Server:         serverName,
-		TransactionNum: tranNum,
-		Action:         action,
-		Username:       cmd.UserId,
-		Funds:          cmd.Amount,
-	}
-	return args
-}
-
-func LogResult(args common.Args, logtype string) {
-	client, err := rpc.Dial("tcp", "auditserver.prod.ability.com:44422")
+	user, err := db.Users.GetUser(cmd.UserId)
 	if err != nil {
-		log.Fatal(err)
+		return &common.Response{Success: false, Message: "The user does not exist"}
 	}
-	var result Result
-	err = client.Call(logtype, args, &result)
 
-	//Do we care about getting anything back from the audit server?
+	transactions, err := db.Transactions.Get(cmd.UserId)
+	if err != nil {
+		return &common.Response{Success: false, Message: "Failed to get transactions"}
+	}
+
+	triggers, err := db.Triggers.GetAllUser(cmd.UserId)
+	if err != nil {
+		return &common.Response{Success: false, Message: "Failed to get triggers"}
+	}
+
+	return &common.Response{
+		Success:      true,
+		Status:       common.UserInfo{Balance: user.Balance, Reserved: user.Reserved, Stock: user.Stock},
+		Transactions: transactions,
+		Triggers:     triggers,
+	}
 }
+
+// func createUserCommandLog(cmd *common.Command, tranNum int) *logging.Args {
+
+// 	args := &common.Args{
+// 		Timestamp:      uint64(cmd.Timestamp.Unix()),
+// 		Server:         serverName,
+// 		TransactionNum: tranNum,
+// 		Username:       cmd.UserId,
+// 		Funds:          cmd.Amount,
+// 		StockSymbol:    cmd.StockSymbol,
+// 		FileName:       cmd.FileName,
+// 	}
+// 	return args
+// }
+
+// func createQuoteServerLog(quote *common.QuoteData, tranNum int) *common.Args {
+
+// 	args := &common.Args{
+// 		Timestamp:      quote.Timestamp,
+// 		Server:         serverName,
+// 		TransactionNum: tranNum,
+// 		Username:       quote.UserId,
+// 		Price:          quote.Quote,
+// 		StockSymbol:    quote.Symbol,
+// 		Cryptokey:      quote.Cryptokey,
+// 	}
+// 	return args
+// }
+
+// func createAccountTransactionLog(cmd *common.Command, tranNum int, action string) *common.Args {
+
+// 	timestamp := time.Now()
+// 	args := &common.Args{
+// 		Timestamp:      uint64(timestamp.Unix()),
+// 		Server:         serverName,
+// 		TransactionNum: tranNum,
+// 		Action:         action,
+// 		Username:       cmd.UserId,
+// 		Funds:          cmd.Amount,
+// 	}
+// 	return args
+// }
+
+// func LogResult(args *common.Args, logtype string) error {
+// 	client, err := rpc.Dial("tcp", common.CFG.AuditServer.Url)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	var result Result
+// 	err = client.Call(logtype, args, &result)
+// 	if err != nil {
+// 		log.Println(err)
+// 	}
+// 	log.Println(result)
+// 	return err
+// }
 
 func (ts *TransactionServer) Start() {
 	cache = common.NewCache()
@@ -359,7 +390,7 @@ func (ts *TransactionServer) Start() {
 	tm.Start()
 
 	defer db.Close()
-	ln, err := net.Listen("tcp", "transaction.prod.ability.com:44421")
+	ln, err := net.Listen("tcp", common.CFG.TxnServer.Url)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -6,5 +6,14 @@
     "quoteserver": {
         "address": "quoteserve.seng:4443",
         "mock": true
+    },    
+    "transactionserver": {
+        "url": "localhost:8080"
+    },
+    "webserver": {
+        "url": "localhost:8081"
+    },
+    "auditserver": {
+        "url": "localhost:8082"
     }
 }

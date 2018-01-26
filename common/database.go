@@ -2,12 +2,11 @@ package common
 
 import (
 	"log"
+	"time"
 
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
-
-var dbConfig DatabaseConfig
 
 type MongoDB struct {
 	session      *mgo.Session
@@ -138,6 +137,7 @@ type TriggersCollection interface {
 	Set(t *Trigger) error
 	Cancel(userId string, stock string, trigType string) (*Trigger, error)
 	Get(userId string, stock string, trigType string) (*Trigger, error)
+	GetAllUser(userId string) ([]Trigger, error)
 	BulkClose(txn []*PendingTxn) error
 }
 
@@ -148,6 +148,12 @@ type triggers struct {
 func (c *triggers) GetAll() ([]Trigger, error) {
 	var result []Trigger
 	err := c.Find(bson.M{"when": bson.M{"$gt": 0}}).All(&result)
+	return result, err
+}
+
+func (c *triggers) GetAllUser(userId string) ([]Trigger, error) {
+	var result []Trigger
+	err := c.Find(bson.M{"userId": userId}).All(&result)
 	return result, err
 }
 
@@ -184,31 +190,61 @@ func (c *triggers) BulkClose(txn []*PendingTxn) error {
 	return err
 }
 
-type TransactionsCollection interface{}
+type TransactionsCollection interface {
+	LogTxn(txn *PendingTxn, triggered bool) error
+	BulkLog(txns []*PendingTxn, triggered bool) error
+	Get(userId string) ([]Transaction, error)
+}
 
 type transactions struct {
 	*mgo.Collection
 }
 
+func (c *transactions) LogTxn(txn *PendingTxn, triggered bool) error {
+	return c.Insert(bson.M{
+		"type":      txn.Type,
+		"triggered": triggered,
+		"stock":     txn.Stock,
+		"amount":    txn.Price,
+		"shares":    txn.Shares,
+		"timestamp": time.Now().Unix(),
+	})
+}
+
+func (c *transactions) BulkLog(txns []*PendingTxn, triggered bool) error {
+	timestamp := time.Now().Unix()
+	bulk := c.Bulk()
+	for _, txn := range txns {
+		bulk.Insert(bson.M{
+			"type":      txn.Type,
+			"triggered": triggered,
+			"stock":     txn.Stock,
+			"amount":    txn.Price,
+			"shares":    txn.Shares,
+			"timestamp": timestamp,
+		})
+	}
+	_, err := bulk.Run()
+	return err
+}
+
+func (c *transactions) Get(userId string) ([]Transaction, error) {
+	var txns []Transaction
+	err := c.Find(bson.M{"_id": userId}).All(&txns)
+	return txns, err
+}
+
 func GetMongoDatabase() (*MongoDB, error) {
-	log.Println("Connecting to db using", dbConfig.Url)
-	session, err := mgo.Dial(dbConfig.Url)
+	log.Println("Connecting to db using", CFG.Database.Url)
+	session, err := mgo.Dial(CFG.Database.Url)
 	if err != nil {
 		return nil, err
 	}
-	db := session.DB(dbConfig.Name)
+	db := session.DB(CFG.Database.Name)
 	return &MongoDB{
 		session:      session,
 		Users:        &users{db.C("Users")},
 		Triggers:     &triggers{db.C("Triggers")},
 		Transactions: &transactions{db.C("Transactions")},
 	}, nil
-}
-
-func init() {
-	config, err := GetConfig()
-	if err != nil {
-		log.Fatal(err)
-	}
-	dbConfig = config.Database
 }

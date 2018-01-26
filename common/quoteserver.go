@@ -3,22 +3,21 @@ package common
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"net"
 	"strconv"
 	"strings"
 )
 
-var qsConfig QuoteServConfig
-var tcpConn net.Conn
-
 func getQuote(symbol string) (*QuoteData, error) {
 	var msg string
-	if qsConfig.Mock {
+	if CFG.Quoteserver.Mock {
 		msg = fmt.Sprintf("12.50,%s,NA,1111111111,123198fadfa", symbol)
 	} else {
+		tcpConn, err := net.Dial("tcp", CFG.Quoteserver.Address)
+		if err != nil {
+			return nil, err
+		}
 		tcpConn.Write([]byte(symbol))
-		var err error
 		msg, err = bufio.NewReader(tcpConn).ReadString('\n')
 		if err != nil {
 			return nil, err
@@ -34,18 +33,4 @@ func getQuote(symbol string) (*QuoteData, error) {
 		Timestamp: timestamp,
 		Cryptokey: args[4]}
 	return data, nil
-}
-
-func init() {
-	config, err := GetConfig()
-	if err != nil {
-		log.Fatal(err)
-	}
-	qsConfig = config.Quoteserver
-	if !qsConfig.Mock {
-		tcpConn, err = net.Dial("tcp", qsConfig.Address)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
 }

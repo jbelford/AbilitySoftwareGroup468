@@ -61,7 +61,7 @@ func (ws *WebServer) Start() {
 
 	srv := &http.Server{
 		Handler:      r,
-		Addr:         "webserver.prod.ability.com:44420",
+		Addr:         common.CFG.WebServer.Url,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
@@ -666,7 +666,7 @@ func issueTransactionCommand(com common.Command) *common.Response {
 		return nil
 	}
 
-	conn, err := net.Dial("tcp", "transaction.prod.ability.com:44421")
+	conn, err := net.Dial("tcp", common.CFG.TxnServer.Url)
 	if err != nil {
 		return nil
 	}
