@@ -74,7 +74,6 @@ func parseWorkloadCommand(cmdLine string) (string, string) {
 		default:
 			panic("unrecognized command: "+  C_type)
 	}
-	resp, _ := json.Marshal(WorkResp)
 	return end_url, string(resp)
 }
 
@@ -92,11 +91,11 @@ func main() {
 
 	scanner := bufio.NewScanner(file)
 
-	var linesInFiles [][]string
+	var linesInFiles []string
 	for scanner.Scan() {
 		line := scanner.Text()
-		endpoint, parsed := parseWorkloadCommand(strings.Split(line, "] ")[1])
-		linesInFiles = append(linesInFiles, []string{endpoint,parsed})
+		endpoint := parseWorkloadCommand(strings.Split(line, "] ")[1])
+		linesInFiles = append(linesInFiles, endpoint)
 	}
 
 	sliceLength := len(linesInFiles)
@@ -121,10 +120,8 @@ func main() {
 			defer wg.Done()
 			for j := 0; j < int(sliceLength); j++ {
 				json_data := linesInFiles[j]
-				b := new(bytes.Buffer)
-				json.NewEncoder(b).Encode(json_data[1])
-				log.Println("Sending", json_data[0], json_data[1])
-				_, err := http.Post(json_data[0], "application/json; charset=utf-8", b)
+				log.Println("Sending", json_data, json_data)
+				_, err := http.Post(json_data)
 
 				if err != nil {
 					// handle error

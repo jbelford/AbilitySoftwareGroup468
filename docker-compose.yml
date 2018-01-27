@@ -3,7 +3,7 @@ services:
   transaction:
     image: ability:latest
     container_name: "transaction"
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
     ports:
@@ -20,7 +20,7 @@ services:
   webserver:
     container_name: "webserver"
     image: ability:latest
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
     ports:
@@ -37,7 +37,7 @@ services:
   auditserver:
     container_name: "auditserver"
     image: ability:latest
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
     ports:
@@ -51,7 +51,7 @@ services:
   workloadgen:
     container_name: "workloadgen"
     image: workloadgen:latest
-    build: 
+    build:
       context: workloads
       dockerfile: Dockerfile
     tty: true
@@ -68,10 +68,10 @@ services:
     container_name: "mongodb"
     environment:
       - MONGO_DATA_DIR=/data/db
-      - MONGO_LOG_DIR=/dev/null
+      #- MONGO_LOG_DIR=/dev/null
     ports:
       - 44423:44423
-    command: mongod --smallfiles --port 44423 --bind_ip db1.prod.ability.com --logpath=/dev/null # --quiet
+    command: mongod --smallfiles --port 44423 --bind_ip db1.prod.ability.com #--logpath=/dev/null # --quiet
     networks:
       mynetwork:
         aliases:
