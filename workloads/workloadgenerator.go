@@ -5,18 +5,16 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	//"net/url"
-	"bytes"
-	"encoding/json"
 	"os"
 	"strconv"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
 )
 
 const (
-	CTYPE   = "C_type"
+	//CTYPE   = "C_type"
 	USER    = "UserId"
 	AMOUNT  = "Amount"
 	STOCK   = "StockSymbol"
@@ -32,7 +30,7 @@ type endpoint struct {
 var rest = map[string]endpoint{
 	"ADD": endpoint{
 		Method: "POST",
-		Query:  "%s/%s/add?amount=%s",
+		Query: "%s/%s/add?amount=%s",
 	},
 	"QUOTE": endpoint{
 		Method: "GET",
@@ -52,7 +50,7 @@ var rest = map[string]endpoint{
 	},
 	"SELL": endpoint{
 		Method: "POST",
-		Query: "%s/%s/sell?stock=%s&amount=%s"
+		Query: "%s/%s/sell?stock=%s&amount=%s",
 	},
 	"COMMIT_SELL": endpoint{
 		Method: "POST",
@@ -64,11 +62,11 @@ var rest = map[string]endpoint{
 	},
 	"SET_BUY_AMOUNT": endpoint{
 		Method: "POST",
-		Query: "%s/%s/set_buy_amount?stock=%s&amount=%s"
+		Query: "%s/%s/set_buy_amount?stock=%s&amount=%s",
 	},
 	"CANCEL_SET_BUY": endpoint{
 		Method: "POST",
-		Query: "%s/%s/cancel_set_buy?stock=%s"
+		Query: "%s/%s/cancel_set_buy?stock=%s",
 	},
 	"SET_BUY_TRIGGER": endpoint{
 		Method: "POST",
@@ -76,43 +74,50 @@ var rest = map[string]endpoint{
 	},
 	"SET_SELL_AMOUNT": endpoint{
 		Method: "POST",
-		Query: "%s/%s/set_sell_amount?stock=%s&amount=%s"
+		Query: "%s/%s/set_sell_amount?stock=%s&amount=%s",
 	},
 	"SET_SELL_TRIGGER": endpoint{
 		Method: "POST",
-		Query: "%s/%s/set_sell_trigger?stock=%s&amount=%s"
+		Query: "%s/%s/set_sell_trigger?stock=%s&amount=%s",
 	},
 	"CANCEL_SET_SELL": endpoint{
 		Method: "POST",
-		Query: "%s/%s/cancel_set_sell?stock=%s"
+		Query: "%s/%s/cancel_set_sell?stock=%s",
 	},
 	"DUMPLOG": endpoint{
 		Method: "POST",
-		Query: "%s/%s/dumplog?filename=%s"
+		Query: "%s/dumplog?filename=%s",
 	},
-	"DUMPLOG": endpoint{
+	"ADMIN_DUMPLOG": endpoint{
 		Method: "POST",
-		Query: "%s/0/dumplog?filename=%s"
+		Query: "%s/0/dumplog?filename=%s",
 	},
 	"DISPLAY_SUMMARY": endpoint{
 		Method: "GET",
-		Query: "%s/%s/display_summary"
-	}
-
+		Query: "%s/%s/display_summary",
+	},
 }
 
-func parseWorkloadCommand(cmdLine string) (string, string) {
+func parseWorkloadCommand(cmdLine string) string {
 	split_cmd := strings.Split(cmdLine, ",")
 	if len(split_cmd) == 0 {
 		log.Fatal("Empty Command!")
 	}
-	var WorkResp map[string]string
+	//var WorkResp map[string]string
 
-	C_type := split_cmd[0]
+	//C_type := split_cmd[0]
 
 	mapped := rest[split_cmd[0]]
-	split := make([]interface{}, 0)
-	split = append(split, split_cmd[1:])
+	split := make([]interface{}, len(split_cmd))
+	split[0] = WEB_URL
+	for i, val := range split_cmd[1:] {
+			temp_val := strings.TrimSpace(val)
+			amount, err := strconv.ParseFloat(strings.TrimSpace(val), 64)
+			if err == nil { // It's a float!
+				temp_val = strconv.Itoa(int(amount * 100.0))
+			}
+			split[i+1] = temp_val
+  }
 	end_url := fmt.Sprintf(mapped.Query, split...)
 	//log.Println(end_url)
 
@@ -162,7 +167,7 @@ func main() {
 			for j := 0; j < int(sliceLength); j++ {
 				json_data := linesInFiles[j]
 				log.Println("Sending", json_data, json_data)
-				_, err := http.Post(json_data)
+				_, err := http.PostForm(json_data, url.Values{})
 
 				if err != nil {
 					// handle error
