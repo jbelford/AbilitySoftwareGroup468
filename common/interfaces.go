@@ -24,7 +24,7 @@ type Response struct {
 	Status       *UserInfo      `json:"status,omitempty"`
 	Transactions *[]Transaction `json:"transactions,omitempty"`
 	Triggers     *[]Trigger     `json:"triggers,omitempty"`
-	File         *[]byte        `json:"-"`
+	File         *[]byte        `json:"file,omitempty"`
 }
 
 type UserInfo struct {
@@ -94,10 +94,11 @@ type User struct {
 }
 
 type Trigger struct {
-	UserId string `bson:"userId" json:"userId"`
-	Stock  string `json:"stock"`
-	Type   string `json:"type"`
-	Shares int    `json:"shares"`
-	Amount int64  `json:"amount"`
-	When   int64  `json:"when"`
+	UserId        string `bson:"userId" json:"userId"`
+	Stock         string `json:"stock"`
+	TransactionID int64  `json:"transactionId"`
+	Type          string `json:"type"`
+	Shares        int    `json:"shares"`
+	Amount        int64  `json:"amount"`
+	When          int64  `json:"when"`
 }

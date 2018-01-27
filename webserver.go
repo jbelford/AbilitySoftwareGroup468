@@ -2,8 +2,10 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"flag"
+	"github.com/mattpaletta/AbilitySoftwareGroup468/logging"
 	"html/template"
 	"log"
 	"net"
@@ -15,49 +17,60 @@ import (
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 )
 
-type WebServer struct{}
+type WebServer struct {
+	logger logging.Logger
+}
+
+func (ws *WebServer) error(cmd *common.Command, msg string) *common.Response {
+	go ws.logger.ErrorEvent(cmd, msg)
+	return &common.Response{Success: false, Message: msg}
+}
 
 var t_id int64 = 0
 
 func (ws *WebServer) Start() {
+	for ws.logger == nil {
+		ws.logger = logging.GetLogger(common.CFG.WebServer.Url)
+		time.Sleep(time.Second)
+	}
 	var dir string
 
 	flag.StringVar(&dir, "dir", ".", "the directory to serve files from. Defaults to the current dir")
 	flag.Parse()
 
 	r := mux.NewRouter()
-	r.HandleFunc("/", indexHandler).Methods("GET")
+	r.HandleFunc("/", ws.indexHandler).Methods("GET")
 
-	r.HandleFunc("/{user_id}/display_summary", wrapHandler(userSummaryHandler)).Methods("GET")
+	r.HandleFunc("/{user_id}/display_summary", wrapHandler(ws.userSummaryHandler)).Methods("GET")
 
-	r.HandleFunc("/{user_id}/add", wrapHandler(userAddHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/quote", wrapHandler(userQuoteHandler)).Methods("GET")
+	r.HandleFunc("/{user_id}/add", wrapHandler(ws.userAddHandler)).Methods("POST")
+	r.HandleFunc("/{user_id}/quote", wrapHandler(ws.userQuoteHandler)).Methods("GET")
 
 	//buying stocks
-	r.HandleFunc("/{user_id}/buy", wrapHandler(userBuyHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/commit_buy", wrapHandler(userCommitBuyHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/cancel_buy", wrapHandler(userCancelBuyHandler)).Methods("POST")
+	r.HandleFunc("/{user_id}/buy", wrapHandler(ws.userBuyHandler)).Methods("POST")
+	r.HandleFunc("/{user_id}/commit_buy", wrapHandler(ws.userCommitBuyHandler)).Methods("POST")
+	r.HandleFunc("/{user_id}/cancel_buy", wrapHandler(ws.userCancelBuyHandler)).Methods("POST")
 
 	//selling stocks
-	r.HandleFunc("/{user_id}/sell", wrapHandler(userSellHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/commit_sell", wrapHandler(userCommitSellHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/cancel_sell", wrapHandler(userCancelSellHandler)).Methods("POST")
+	r.HandleFunc("/{user_id}/sell", wrapHandler(ws.userSellHandler)).Methods("POST")
+	r.HandleFunc("/{user_id}/commit_sell", wrapHandler(ws.userCommitSellHandler)).Methods("POST")
+	r.HandleFunc("/{user_id}/cancel_sell", wrapHandler(ws.userCancelSellHandler)).Methods("POST")
 
 	//buy triggers
-	r.HandleFunc("/{user_id}/set_buy_amount", wrapHandler(userSetBuyAmountHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/cancel_set_buy", wrapHandler(userCancelSetBuyHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/set_buy_trigger", wrapHandler(userSetBuyTriggerHandler)).Methods("POST")
+	r.HandleFunc("/{user_id}/set_buy_amount", wrapHandler(ws.userSetBuyAmountHandler)).Methods("POST")
+	r.HandleFunc("/{user_id}/cancel_set_buy", wrapHandler(ws.userCancelSetBuyHandler)).Methods("POST")
+	r.HandleFunc("/{user_id}/set_buy_trigger", wrapHandler(ws.userSetBuyTriggerHandler)).Methods("POST")
 
 	//sell triggers
-	r.HandleFunc("/{user_id}/set_sell_amount", wrapHandler(userSetSellAmountHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/set_sell_trigger", wrapHandler(userSetSellTriggerHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/cancel_set_sell", wrapHandler(userCancelSetSellHandler)).Methods("POST")
+	r.HandleFunc("/{user_id}/set_sell_amount", wrapHandler(ws.userSetSellAmountHandler)).Methods("POST")
+	r.HandleFunc("/{user_id}/set_sell_trigger", wrapHandler(ws.userSetSellTriggerHandler)).Methods("POST")
+	r.HandleFunc("/{user_id}/cancel_set_sell", wrapHandler(ws.userCancelSetSellHandler)).Methods("POST")
 
 	//user log
-	r.HandleFunc("/{user_id}/dumplog", wrapHandler(userDumplogHandler)).Methods("GET")
+	r.HandleFunc("/{user_id}/dumplog", wrapHandler(ws.userDumplogHandler)).Methods("GET")
 
 	//admin log
-	r.HandleFunc("/{admin_id}/dumplog", wrapHandler(adminDumplogHandler)).Methods("GET")
+	r.HandleFunc("/{admin_id}/dumplog", wrapHandler(ws.adminDumplogHandler)).Methods("GET")
 
 	r.PathPrefix("/templates/").Handler(http.StripPrefix("/templates/", http.FileServer(http.Dir(dir))))
 
@@ -76,7 +89,7 @@ func (ws *WebServer) Start() {
 Handles basic page visibility function
 returns page template
 */
-func indexHandler(w http.ResponseWriter, r *http.Request) {
+func (ws *WebServer) indexHandler(w http.ResponseWriter, r *http.Request) {
 	t := template.New("test.html")
 	t, _ = t.ParseFiles("./templates/test.html")
 	t.Execute(w, "")
@@ -112,13 +125,14 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	```
 */
-func userSummaryHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userSummaryHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	cmd := common.Command{
 		TransactionID: t_id,
 		C_type:        common.DISPLAY_SUMMARY,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
 	}
+	ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -140,7 +154,7 @@ func userSummaryHandler(w http.ResponseWriter, r *http.Request) *common.Response
 	}
 	```
 */
-func userAddHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userAddHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	amount, err := strconv.ParseInt(r.URL.Query().Get("amount"), 10, 32)
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
@@ -155,6 +169,7 @@ func userAddHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 		Amount:        amount,
 		Timestamp:     time.Now(),
 	}
+	ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -178,7 +193,7 @@ func userAddHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	}
 	```
 */
-func userQuoteHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userQuoteHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	quote_id := r.URL.Query().Get("stock")
 	if quote_id == "" { //should maybe do is alpha numeric check here
 		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
@@ -190,6 +205,7 @@ func userQuoteHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
 	}
+	ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -215,7 +231,7 @@ func userQuoteHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	}
 	```
 */
-func userBuyHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userBuyHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	quote_id := r.URL.Query().Get("stock")
 	if quote_id == "" { //should maybe do is alpha numeric check here
 		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
@@ -238,6 +254,7 @@ func userBuyHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
 	}
+	ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -253,13 +270,14 @@ func userBuyHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	Default handler, for any url that does not require validity testing
 	commit buy, cancel buy, commit sell, cancel sell,
 */
-func userCommitBuyHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userCommitBuyHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	cmd := common.Command{
 		TransactionID: t_id,
 		C_type:        common.COMMIT_BUY,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
 	}
+	ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -275,13 +293,14 @@ func userCommitBuyHandler(w http.ResponseWriter, r *http.Request) *common.Respon
 
 	cancel buy
 */
-func userCancelBuyHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userCancelBuyHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	cmd := common.Command{
 		TransactionID: t_id,
 		C_type:        common.CANCEL_BUY,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
 	}
+	ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -307,7 +326,7 @@ JSON response
 }
 ```
 */
-func userSellHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userSellHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	quote_id := r.URL.Query().Get("stock")
 	if quote_id == "" { //should maybe do is alpha numeric check here
 		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
@@ -330,6 +349,7 @@ func userSellHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
 	}
+	ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -344,13 +364,14 @@ func userSellHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 /*
 	commit sell
 */
-func userCommitSellHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userCommitSellHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	cmd := common.Command{
 		TransactionID: t_id,
 		C_type:        common.COMMIT_SELL,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
 	}
+	ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -365,13 +386,14 @@ func userCommitSellHandler(w http.ResponseWriter, r *http.Request) *common.Respo
 /*
 	cancel sell
 */
-func userCancelSellHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userCancelSellHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	cmd := common.Command{
 		TransactionID: t_id,
 		C_type:        common.CANCEL_SELL,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
 	}
+	ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -393,7 +415,7 @@ json response
 }
 ```
 */
-func userSetBuyAmountHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userSetBuyAmountHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	quote_id := r.URL.Query().Get("stock")
 	if quote_id == "" { //should maybe do is alpha numeric check here
 		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
@@ -416,6 +438,7 @@ func userSetBuyAmountHandler(w http.ResponseWriter, r *http.Request) *common.Res
 		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
 	}
+	ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -437,7 +460,7 @@ cancels previous set buys
 }
 ```
 */
-func userCancelSetBuyHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userCancelSetBuyHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	quote_id := r.URL.Query().Get("stock")
 	if quote_id == "" { //should maybe do is alpha numeric check here
 		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
@@ -450,6 +473,7 @@ func userCancelSetBuyHandler(w http.ResponseWriter, r *http.Request) *common.Res
 		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
 	}
+	ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -470,7 +494,7 @@ sets buy triggers
 }
 ```
 */
-func userSetBuyTriggerHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userSetBuyTriggerHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	quote_id := r.URL.Query().Get("stock")
 	if quote_id == "" { //should maybe do is alpha numeric check here
 		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
@@ -493,6 +517,7 @@ func userSetBuyTriggerHandler(w http.ResponseWriter, r *http.Request) *common.Re
 		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
 	}
+	ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -514,7 +539,7 @@ JSON response
 }
 ```
 */
-func userSetSellAmountHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userSetSellAmountHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	quote_id := r.URL.Query().Get("stock")
 	if quote_id == "" { //should maybe do is alpha numeric check here
 		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
@@ -537,6 +562,7 @@ func userSetSellAmountHandler(w http.ResponseWriter, r *http.Request) *common.Re
 		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
 	}
+	ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -558,7 +584,7 @@ JSON response
 }
 ```
 */
-func userSetSellTriggerHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userSetSellTriggerHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	quote_id := r.URL.Query().Get("stock")
 	if quote_id == "" { //should maybe do is alpha numeric check here
 		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
@@ -581,6 +607,7 @@ func userSetSellTriggerHandler(w http.ResponseWriter, r *http.Request) *common.R
 		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
 	}
+	ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -602,7 +629,7 @@ JSON response
 }
 ```
 */
-func userCancelSetSellHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userCancelSetSellHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	quote_id := r.URL.Query().Get("stock")
 	if quote_id == "" { //should maybe do is alpha numeric check here
 		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
@@ -615,6 +642,7 @@ func userCancelSetSellHandler(w http.ResponseWriter, r *http.Request) *common.Re
 		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
 	}
+	ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -629,7 +657,7 @@ func userCancelSetSellHandler(w http.ResponseWriter, r *http.Request) *common.Re
 /*
 dumps a log
 */
-func userDumplogHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userDumplogHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	filename := r.URL.Query().Get("filename")
 	if filename == "" { //should maybe do is alpha numeric check here
 		return &common.Response{Success: false, Message: "Parameter: 'filename' cannot be an empty string"}
@@ -642,6 +670,7 @@ func userDumplogHandler(w http.ResponseWriter, r *http.Request) *common.Response
 		C_type:        common.DUMPLOG,
 		Timestamp:     time.Now(),
 	}
+	ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -652,7 +681,8 @@ func userDumplogHandler(w http.ResponseWriter, r *http.Request) *common.Response
 	} else {
 		//_, err := io.Copy(w, resp.File)
 		w.Header().Set("Content-Disposition", "attachment; filename="+filename)
-		w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
+		w.Header().Set("Content-Type", "application/xml")
+		io.Copy(w, bytes.NewReader(*resp.File))
 	}
 	return resp
 }
@@ -660,7 +690,7 @@ func userDumplogHandler(w http.ResponseWriter, r *http.Request) *common.Response
 /*
 dumps the big log
 */
-func adminDumplogHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) adminDumplogHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	filename := r.URL.Query().Get("filename")
 	if filename == "" { //should maybe do is alpha numeric check here
 		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
@@ -672,6 +702,7 @@ func adminDumplogHandler(w http.ResponseWriter, r *http.Request) *common.Respons
 		C_type:        common.ADMIN_DUMPLOG,
 		Timestamp:     time.Now(),
 	}
+	ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -723,11 +754,13 @@ func wrapHandler(
 		t_id++
 		resp := handler(w, r)
 
-		respJSON, err := json.Marshal(resp)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		} else {
-			w.Write(respJSON)
+		if w.Header().Get("Content-Type") == "application/json" {
+			respJSON, err := json.Marshal(resp)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+			} else {
+				w.Write(respJSON)
+			}
 		}
 	}
 	return h
