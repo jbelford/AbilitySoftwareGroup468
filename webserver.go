@@ -7,6 +7,7 @@ import (
 	"flag"
 	"github.com/mattpaletta/AbilitySoftwareGroup468/logging"
 	"html/template"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -679,7 +680,6 @@ func (ws *WebServer) userDumplogHandler(w http.ResponseWriter, r *http.Request) 
 	} else if !resp.Success {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
-		//_, err := io.Copy(w, resp.File)
 		w.Header().Set("Content-Disposition", "attachment; filename="+filename)
 		w.Header().Set("Content-Type", "application/xml")
 		io.Copy(w, bytes.NewReader(*resp.File))
@@ -710,6 +710,10 @@ func (ws *WebServer) adminDumplogHandler(w http.ResponseWriter, r *http.Request)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
 	} else if !resp.Success {
 		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.Header().Set("Content-Disposition", "attachment; filename="+filename)
+		w.Header().Set("Content-Type", "application/xml")
+		io.Copy(w, bytes.NewReader(*resp.File))
 	}
 	return resp
 }
