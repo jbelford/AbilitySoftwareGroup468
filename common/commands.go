@@ -18,7 +18,7 @@ func NewCommandHandler() *CommandHandler {
 
 type Command struct {
 	C_type        int
-	TransactionID int
+	TransactionID int64
 	UserId        string
 	Amount        int64     `json:",omitempty"`
 	StockSymbol   string    `json:",omitempty"`

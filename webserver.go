@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"html/template"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -17,7 +18,7 @@ import (
 
 type WebServer struct{}
 
-var t_id int = 0
+var t_id int64 = 0
 
 func (ws *WebServer) Start() {
 	var dir string
@@ -54,10 +55,10 @@ func (ws *WebServer) Start() {
 	r.HandleFunc("/{user_id}/cancel_set_sell", wrapHandler(userCancelSetSellHandler)).Methods("POST")
 
 	//user log
-	r.HandleFunc("/{user_id}/dumplog", wrapHandler(userDumplogHandler)).Methods("POST")
+	r.HandleFunc("/{user_id}/dumplog", wrapHandler(userDumplogHandler)).Methods("GET")
 
 	//admin log
-	r.HandleFunc("/{admin_id}/dumplog", wrapHandler(adminDumplogHandler)).Methods("POST")
+	r.HandleFunc("/{admin_id}/dumplog", wrapHandler(adminDumplogHandler)).Methods("GET")
 
 	r.PathPrefix("/templates/").Handler(http.StripPrefix("/templates/", http.FileServer(http.Dir(dir))))
 
@@ -77,8 +78,6 @@ Handles basic page visibility function
 returns page template
 */
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	// user_info := common.CommandConstructor(r.FormValue("data"))
-	// passInfo(user_info)
 	t := template.New("test.html")
 	t, _ = t.ParseFiles("./templates/test.html")
 	t.Execute(w, "")
@@ -652,6 +651,7 @@ func userDumplogHandler(w http.ResponseWriter, r *http.Request) *common.Response
 	} else if !resp.Success {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
+		_, err := io.Copy(w, resp.File)
 		w.Header().Set("Content-Disposition", "attachment; filename="+filename)
 		w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
 	}
