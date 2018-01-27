@@ -13,7 +13,7 @@ type TriggerManager struct {
 func (tm *TriggerManager) Start() {
 	go func() {
 		for {
-			log.Println("Executing job...")
+			log.Println("Executing triggers...")
 			trigs, err := tm.db.Triggers.GetAll()
 			if err == nil {
 				txns := make([]*PendingTxn, 0)
