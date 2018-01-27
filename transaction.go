@@ -300,6 +300,7 @@ func (ts *TransactionServer) handle_dumplog(cmd *common.Command) *common.Respons
 	}
 	data, err := ts.logger.DumpLogUser(cmd.UserId)
 	if err != nil {
+		log.Println(err)
 		return &common.Response{Success: false, Message: "Failed to get user log"}
 	}
 	return &common.Response{Success: true, File: data}

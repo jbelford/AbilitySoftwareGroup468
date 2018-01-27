@@ -126,15 +126,15 @@ func (l *logger) DebugEvent(cmd *common.Command, debug string) error {
 }
 
 func (l *logger) DumpLogUser(userId string) (*[]byte, error) {
-	var data *[]byte
-	err := l.client.Call(dumpLogMethod, &Args{FileName: userId + ".xml"}, &data)
-	return data, err
+	var data []byte
+	err := l.client.Call(dumpLogMethod, Args{FileName: userId + ".xml"}, &data)
+	return &data, err
 }
 
 func (l *logger) DumpLog() (*[]byte, error) {
-	var data *[]byte
-	err := l.client.Call(dumpLogMethod, &Args{}, &data)
-	return data, err
+	var data []byte
+	err := l.client.Call(dumpLogMethod, Args{}, &data)
+	return &data, err
 }
 
 func GetLogger(server string) Logger {
@@ -161,20 +161,21 @@ func (l *LoggerRPC) writeLogs(log interface{}, userFilename string) error {
 	defer uWriter.Close()
 	toWrite, err := xml.MarshalIndent(log, "  ", "    ")
 	if err == nil {
+		toWrite = append(toWrite, '\n')
 		l.writer.Write(toWrite)
 		uWriter.Write(toWrite)
 	}
 	return err
 }
 
-func (l *LoggerRPC) readLog(filename string) *[]byte {
+func (l *LoggerRPC) readLog(filename string) []byte {
 	data := []byte("<?xml version=\"1.0\"?>\n<log>\n")
 	read, err := ioutil.ReadFile(filename)
-	if err != nil {
+	if err == nil {
 		data = append(data, read...)
 	}
 	data = append(data, []byte("\n</log>")...)
-	return &data
+	return data
 }
 
 func (l *LoggerRPC) UserCommand(args *Args, result *string) error {
@@ -257,10 +258,10 @@ func (l *LoggerRPC) DebugEvent(args *Args, result *string) error {
 
 func (l *LoggerRPC) DumpLog(args *Args, result *[]byte) error {
 	filename := "tmp.xml"
-	if len(args.FileName) == 0 {
+	if args.FileName == "" {
 		filename = args.FileName
 	}
-	result = l.readLog(filename)
+	*result = l.readLog(filename)
 	return nil
 }
 

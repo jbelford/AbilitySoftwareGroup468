@@ -2,9 +2,11 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"flag"
 	"html/template"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -651,7 +653,8 @@ func userDumplogHandler(w http.ResponseWriter, r *http.Request) *common.Response
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
 		w.Header().Set("Content-Disposition", "attachment; filename="+filename)
-		w.Header().Set("Content-Type", r.Header.Get("Content-Type"))
+		w.Header().Set("Content-Type", "application/xml")
+		io.Copy(w, bytes.NewReader(*resp.File))
 	}
 	return resp
 }
@@ -722,11 +725,13 @@ func wrapHandler(
 		t_id++
 		resp := handler(w, r)
 
-		respJSON, err := json.Marshal(resp)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		} else {
-			w.Write(respJSON)
+		if w.Header().Get("Content-Type") == "application/json" {
+			respJSON, err := json.Marshal(resp)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+			} else {
+				w.Write(respJSON)
+			}
 		}
 	}
 	return h
