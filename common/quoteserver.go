@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func getQuote(symbol string) (*QuoteData, error) {
+func GetQuote(symbol string) (*QuoteData, error) {
 	var msg string
 	if CFG.Quoteserver.Mock {
 		msg = fmt.Sprintf("12.50,%s,NA,1111111111,123198fadfa", symbol)

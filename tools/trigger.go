@@ -1,13 +1,16 @@
-package common
+package tools
 
 import (
+	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
+	"github.com/mattpaletta/AbilitySoftwareGroup468/logging"
 	"log"
 	"time"
 )
 
 type TriggerManager struct {
-	c  Cache
-	db *MongoDB
+	c      Cache
+	db     *MongoDB
+	logger logging.Logger
 }
 
 func (tm *TriggerManager) Start() {
@@ -16,7 +19,7 @@ func (tm *TriggerManager) Start() {
 			log.Println("Executing triggers...")
 			trigs, err := tm.db.Triggers.GetAll()
 			if err == nil {
-				txns := make([]*PendingTxn, 0)
+				txns := make([]*common.PendingTxn, 0)
 				for _, trig := range trigs {
 					txn := tm.processTrigger(trig)
 					if txn != nil {
@@ -44,8 +47,8 @@ func (tm *TriggerManager) Start() {
 	}()
 }
 
-func (tm *TriggerManager) processTrigger(t Trigger) *PendingTxn {
-	quote, err := tm.c.GetQuote(t.Stock)
+func (tm *TriggerManager) processTrigger(t common.Trigger) *common.PendingTxn {
+	quote, err := tm.c.GetQuote(t.Stock, t.TransactionID)
 	if err != nil {
 		return nil
 	}
@@ -54,12 +57,26 @@ func (tm *TriggerManager) processTrigger(t Trigger) *PendingTxn {
 	if !isTriggered {
 		return nil
 	}
+	commandType := common.SET_BUY_TRIGGER
+	action := "remove"
+	if t.Type == "SELL" {
+		commandType = common.SET_SELL_TRIGGER
+		action = "add"
+	}
+	go tm.logger.AccountTransaction(t.UserId, t.Amount, action, t.TransactionID)
+	go tm.logger.SystemEvent(&common.Command{
+		C_type:        commandType,
+		UserId:        t.UserId,
+		StockSymbol:   t.Stock,
+		Amount:        t.Amount,
+		TransactionID: t.TransactionID})
+
 	shares := t.Shares
 	if t.Type == "BUY" {
 		shares = int(t.Amount / quote.Quote)
 	}
 	price := int64(shares) * quote.Quote
-	return &PendingTxn{
+	return &common.PendingTxn{
 		UserId:   t.UserId,
 		Price:    price,
 		Reserved: t.Amount,
@@ -69,6 +86,6 @@ func (tm *TriggerManager) processTrigger(t Trigger) *PendingTxn {
 	}
 }
 
-func NewTrigMan(c Cache, db *MongoDB) *TriggerManager {
-	return &TriggerManager{c, db}
+func NewTrigMan(c Cache, db *MongoDB, l logging.Logger) *TriggerManager {
+	return &TriggerManager{c, db, l}
 }

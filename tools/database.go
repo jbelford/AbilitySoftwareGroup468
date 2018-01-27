@@ -1,6 +1,7 @@
-package common
+package tools
 
 import (
+	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 	"log"
 	"time"
 
@@ -25,10 +26,10 @@ type UsersCollection interface {
 	ReserveMoney(userId string, amount int64) error
 	UnreserveShares(userId string, stock string, shares int) error
 	ReserveShares(userId string, stock string, shares int) error
-	GetUser(userId string) (User, error)
-	BulkTransaction(txns []*PendingTxn) error
-	ProcessBuy(buy *PendingTxn) error
-	ProcessSell(sell *PendingTxn) error
+	GetUser(userId string) (common.User, error)
+	BulkTransaction(txns []*common.PendingTxn) error
+	ProcessBuy(buy *common.PendingTxn) error
+	ProcessSell(sell *common.PendingTxn) error
 }
 
 type users struct {
@@ -85,13 +86,13 @@ func (c *users) ReserveShares(userId string, stock string, shares int) error {
 		}})
 }
 
-func (c *users) GetUser(userId string) (User, error) {
-	var user User
+func (c *users) GetUser(userId string) (common.User, error) {
+	var user common.User
 	err := c.Find(bson.M{"_id": userId}).One(&user)
 	return user, err
 }
 
-func (c *users) BulkTransaction(txns []*PendingTxn) error {
+func (c *users) BulkTransaction(txns []*common.PendingTxn) error {
 	bulk := c.Bulk()
 	for _, txn := range txns {
 		var selector, update map[string]interface{}
@@ -114,7 +115,7 @@ func (c *users) BulkTransaction(txns []*PendingTxn) error {
 	return err
 }
 
-func (c *users) ProcessBuy(buy *PendingTxn) error {
+func (c *users) ProcessBuy(buy *common.PendingTxn) error {
 	return c.Update(
 		bson.M{"_id": buy.UserId, "reserved": bson.M{"$gte": buy.Price}},
 		bson.M{"$inc": bson.M{
@@ -123,7 +124,7 @@ func (c *users) ProcessBuy(buy *PendingTxn) error {
 		}})
 }
 
-func (c *users) ProcessSell(sell *PendingTxn) error {
+func (c *users) ProcessSell(sell *common.PendingTxn) error {
 	return c.Update(
 		bson.M{"_id": sell.UserId, "stock." + sell.Stock: bson.M{"$gte": sell.Shares}},
 		bson.M{"$inc": bson.M{
@@ -133,31 +134,31 @@ func (c *users) ProcessSell(sell *PendingTxn) error {
 }
 
 type TriggersCollection interface {
-	GetAll() ([]Trigger, error)
-	Set(t *Trigger) error
-	Cancel(userId string, stock string, trigType string) (*Trigger, error)
-	Get(userId string, stock string, trigType string) (*Trigger, error)
-	GetAllUser(userId string) ([]Trigger, error)
-	BulkClose(txn []*PendingTxn) error
+	GetAll() ([]common.Trigger, error)
+	Set(t *common.Trigger) error
+	Cancel(userId string, stock string, trigType string) (*common.Trigger, error)
+	Get(userId string, stock string, trigType string) (*common.Trigger, error)
+	GetAllUser(userId string) ([]common.Trigger, error)
+	BulkClose(txn []*common.PendingTxn) error
 }
 
 type triggers struct {
 	*mgo.Collection
 }
 
-func (c *triggers) GetAll() ([]Trigger, error) {
-	var result []Trigger
+func (c *triggers) GetAll() ([]common.Trigger, error) {
+	var result []common.Trigger
 	err := c.Find(bson.M{"when": bson.M{"$gt": 0}}).All(&result)
 	return result, err
 }
 
-func (c *triggers) GetAllUser(userId string) ([]Trigger, error) {
-	var result []Trigger
+func (c *triggers) GetAllUser(userId string) ([]common.Trigger, error) {
+	var result []common.Trigger
 	err := c.Find(bson.M{"userId": userId}).All(&result)
 	return result, err
 }
 
-func (c *triggers) Set(t *Trigger) error {
+func (c *triggers) Set(t *common.Trigger) error {
 	_, err := c.Upsert(
 		bson.M{"stock": t.Stock, "type": t.Type, "userId": t.UserId},
 		bson.M{
@@ -167,21 +168,21 @@ func (c *triggers) Set(t *Trigger) error {
 	return err
 }
 
-func (c *triggers) Get(userId string, stock string, trigType string) (*Trigger, error) {
-	var t *Trigger
+func (c *triggers) Get(userId string, stock string, trigType string) (*common.Trigger, error) {
+	var t *common.Trigger
 	err := c.Find(bson.M{"userId": userId, "stock": stock, "type": trigType}).One(&t)
 	return t, err
 }
 
-func (c *triggers) Cancel(userId string, stock string, trigType string) (*Trigger, error) {
-	var t *Trigger
+func (c *triggers) Cancel(userId string, stock string, trigType string) (*common.Trigger, error) {
+	var t *common.Trigger
 	_, err := c.Find(
 		bson.M{"userId": userId, "stock": stock, "type": trigType},
 	).Apply(mgo.Change{Remove: true}, &t)
 	return t, err
 }
 
-func (c *triggers) BulkClose(txn []*PendingTxn) error {
+func (c *triggers) BulkClose(txn []*common.PendingTxn) error {
 	bulk := c.Bulk()
 	for _, txn := range txn {
 		bulk.Remove(bson.M{"userId": txn.UserId, "stock": txn.Stock, "type": txn.Type})
@@ -191,16 +192,16 @@ func (c *triggers) BulkClose(txn []*PendingTxn) error {
 }
 
 type TransactionsCollection interface {
-	LogTxn(txn *PendingTxn, triggered bool) error
-	BulkLog(txns []*PendingTxn, triggered bool) error
-	Get(userId string) ([]Transaction, error)
+	LogTxn(txn *common.PendingTxn, triggered bool) error
+	BulkLog(txns []*common.PendingTxn, triggered bool) error
+	Get(userId string) ([]common.Transaction, error)
 }
 
 type transactions struct {
 	*mgo.Collection
 }
 
-func (c *transactions) LogTxn(txn *PendingTxn, triggered bool) error {
+func (c *transactions) LogTxn(txn *common.PendingTxn, triggered bool) error {
 	return c.Insert(bson.M{
 		"type":      txn.Type,
 		"triggered": triggered,
@@ -211,7 +212,7 @@ func (c *transactions) LogTxn(txn *PendingTxn, triggered bool) error {
 	})
 }
 
-func (c *transactions) BulkLog(txns []*PendingTxn, triggered bool) error {
+func (c *transactions) BulkLog(txns []*common.PendingTxn, triggered bool) error {
 	timestamp := time.Now().Unix()
 	bulk := c.Bulk()
 	for _, txn := range txns {
@@ -228,19 +229,19 @@ func (c *transactions) BulkLog(txns []*PendingTxn, triggered bool) error {
 	return err
 }
 
-func (c *transactions) Get(userId string) ([]Transaction, error) {
-	var txns []Transaction
+func (c *transactions) Get(userId string) ([]common.Transaction, error) {
+	var txns []common.Transaction
 	err := c.Find(bson.M{"_id": userId}).All(&txns)
 	return txns, err
 }
 
 func GetMongoDatabase() (*MongoDB, error) {
-	log.Println("Connecting to db using", CFG.Database.Url)
-	session, err := mgo.Dial(CFG.Database.Url)
+	log.Println("Connecting to db using", common.CFG.Database.Url)
+	session, err := mgo.Dial(common.CFG.Database.Url)
 	if err != nil {
 		return nil, err
 	}
-	db := session.DB(CFG.Database.Name)
+	db := session.DB(common.CFG.Database.Name)
 	return &MongoDB{
 		session:      session,
 		Users:        &users{db.C("Users")},
