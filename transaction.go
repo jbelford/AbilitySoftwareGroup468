@@ -28,7 +28,7 @@ func (ts *TransactionServer) handle_add(cmd *common.Command) *common.Response {
 	if err != nil {
 		return ts.error(cmd, "Failed to create and/or add money to account")
 	}
-	ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "add", cmd.TransactionID)
+	go ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "add", cmd.TransactionID)
 	return &common.Response{Success: true}
 }
 
@@ -45,7 +45,7 @@ func (ts *TransactionServer) handle_buy(cmd *common.Command) *common.Response {
 	if err != nil {
 		return ts.error(cmd, "The user "+user.UserId+" does not exist")
 	}
-	cacheReserve := ts.cache.GetReserved(user.UserId)
+	cacheReserve := ts.cache.GetReserved(cmd.UserId)
 	if user.Balance-cacheReserve < cmd.Amount {
 		return ts.error(cmd, "Specified amount is greater than can afford")
 	}
@@ -74,11 +74,13 @@ func (ts *TransactionServer) handle_commit_buy(cmd *common.Command) *common.Resp
 		return ts.error(cmd, "There are no pending transactions")
 	}
 
-	err := ts.db.Users.ProcessBuy(buy)
+	reserved := ts.cache.GetReserved(cmd.UserId) + buy.Reserved
+
+	err := ts.db.Users.ProcessBuy(buy, reserved, true)
 	if err != nil {
 		return ts.error(cmd, "User can no longer afford this purchase")
 	}
-	ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "remove", cmd.TransactionID)
+	go ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "remove", cmd.TransactionID)
 
 	err = ts.db.Transactions.LogTxn(buy, false)
 	if err != nil {
@@ -132,11 +134,13 @@ func (ts *TransactionServer) handle_commit_sell(cmd *common.Command) *common.Res
 		return ts.error(cmd, "There are no pending transactions")
 	}
 
-	err := ts.db.Users.ProcessSell(sell)
+	reservedShares := ts.cache.GetReservedShares(cmd.UserId, cmd.StockSymbol) + sell.Shares
+
+	err := ts.db.Users.ProcessSell(sell, reservedShares)
 	if err != nil {
 		return ts.error(cmd, "User no longer has the correct number of shares to sell")
 	}
-	ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "add", cmd.TransactionID)
+	go ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "add", cmd.TransactionID)
 
 	err = ts.db.Transactions.LogTxn(sell, false)
 	if err != nil {
@@ -157,9 +161,10 @@ func (ts *TransactionServer) handle_cancel_sell(cmd *common.Command) *common.Res
 func (ts *TransactionServer) handle_set_buy_amount(cmd *common.Command) *common.Response {
 	user, err := ts.db.Users.GetUser(cmd.UserId)
 	if err != nil {
-		ts.logger.ErrorEvent(cmd, "The user "+user.UserId+" does not exist")
 		return ts.error(cmd, "The user does not exist")
-	} else if user.Balance < cmd.Amount {
+	}
+	cachedReserve := ts.cache.GetReserved(cmd.UserId)
+	if user.Balance-cachedReserve < cmd.Amount {
 		return ts.error(cmd, "Not enough funds")
 	}
 	_, err = ts.cache.GetQuote(cmd.StockSymbol, cmd.TransactionID)
@@ -177,7 +182,7 @@ func (ts *TransactionServer) handle_set_buy_amount(cmd *common.Command) *common.
 	}
 	ts.db.Triggers.Set(trigger)
 	ts.db.Users.ReserveMoney(cmd.UserId, cmd.Amount)
-	ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "reserve", cmd.TransactionID)
+	go ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "reserve", cmd.TransactionID)
 
 	return &common.Response{Success: true}
 }
@@ -185,7 +190,6 @@ func (ts *TransactionServer) handle_set_buy_amount(cmd *common.Command) *common.
 func (ts *TransactionServer) handle_cancel_set_buy(cmd *common.Command) *common.Response {
 	_, err := ts.db.Users.GetUser(cmd.UserId)
 	if err != nil {
-		ts.logger.ErrorEvent(cmd, "The user "+cmd.UserId+" does not exist")
 		return ts.error(cmd, "The user does not exist")
 	}
 
@@ -198,7 +202,7 @@ func (ts *TransactionServer) handle_cancel_set_buy(cmd *common.Command) *common.
 		log.Println(err)
 		return ts.error(cmd, "Internal server error")
 	}
-	ts.logger.AccountTransaction(cmd.UserId, trig.Amount, "unreserve", cmd.TransactionID)
+	go ts.logger.AccountTransaction(cmd.UserId, trig.Amount, "unreserve", cmd.TransactionID)
 
 	return &common.Response{Success: true, Stock: cmd.StockSymbol}
 }
@@ -206,7 +210,6 @@ func (ts *TransactionServer) handle_cancel_set_buy(cmd *common.Command) *common.
 func (ts *TransactionServer) handle_set_buy_trigger(cmd *common.Command) *common.Response {
 	_, err := ts.db.Users.GetUser(cmd.UserId)
 	if err != nil {
-		ts.logger.ErrorEvent(cmd, "The user "+cmd.UserId+" does not exist")
 		return ts.error(cmd, "The user does not exist")
 	}
 
@@ -227,11 +230,10 @@ func (ts *TransactionServer) handle_set_buy_trigger(cmd *common.Command) *common
 func (ts *TransactionServer) handle_set_sell_amount(cmd *common.Command) *common.Response {
 	user, err := ts.db.Users.GetUser(cmd.UserId)
 	if err != nil {
-		ts.logger.ErrorEvent(cmd, "The user "+user.UserId+" does not exist")
 		return ts.error(cmd, "The user does not exist")
 	}
 	realStocks := user.Stock[cmd.StockSymbol].Real - ts.cache.GetReservedShares(cmd.UserId, cmd.StockSymbol)
-	if realStocks == 0 {
+	if realStocks <= 0 {
 		return ts.error(cmd, "The user does not have any stock")
 	}
 
@@ -261,7 +263,7 @@ func (ts *TransactionServer) handle_set_sell_amount(cmd *common.Command) *common
 		return ts.error(cmd, "Failed to set sell amount")
 	}
 	ts.db.Users.ReserveShares(cmd.UserId, cmd.StockSymbol, reservedShares)
-	ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "reserve", cmd.TransactionID)
+	go ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "reserve", cmd.TransactionID)
 
 	return &common.Response{Success: true}
 }
@@ -269,7 +271,6 @@ func (ts *TransactionServer) handle_set_sell_amount(cmd *common.Command) *common
 func (ts *TransactionServer) handle_set_sell_trigger(cmd *common.Command) *common.Response {
 	_, err := ts.db.Users.GetUser(cmd.UserId)
 	if err != nil {
-		ts.logger.ErrorEvent(cmd, "The user "+cmd.UserId+" does not exist")
 		return ts.error(cmd, "The user does not exist")
 	}
 
@@ -287,7 +288,6 @@ func (ts *TransactionServer) handle_set_sell_trigger(cmd *common.Command) *commo
 func (ts *TransactionServer) handle_cancel_set_sell(cmd *common.Command) *common.Response {
 	_, err := ts.db.Users.GetUser(cmd.UserId)
 	if err != nil {
-		ts.logger.ErrorEvent(cmd, "The user "+cmd.UserId+" does not exist")
 		return ts.error(cmd, "The user does not exist")
 	}
 
@@ -301,7 +301,7 @@ func (ts *TransactionServer) handle_cancel_set_sell(cmd *common.Command) *common
 		log.Println(err)
 		return ts.error(cmd, "Internal server error")
 	}
-	ts.logger.AccountTransaction(cmd.UserId, trig.Amount, "unreserve", cmd.TransactionID)
+	go ts.logger.AccountTransaction(cmd.UserId, trig.Amount, "unreserve", cmd.TransactionID)
 
 	return &common.Response{Success: true}
 }
@@ -344,9 +344,20 @@ func (ts *TransactionServer) handle_display_summary(cmd *common.Command) *common
 		return ts.error(cmd, "Failed to get triggers")
 	}
 
+	cacheReserve := ts.cache.GetReserved(cmd.UserId)
+	balance := user.Balance - cacheReserve
+	reserved := user.Reserved + cacheReserve
+
+	cacheStocks := ts.cache.GetReservedSharesAll(cmd.UserId)
+	for k, v := range user.Stock {
+		v.Real = v.Real - cacheStocks[k]
+		v.Reserved = v.Reserved + cacheStocks[k]
+		user.Stock[k] = v
+	}
+
 	return &common.Response{
 		Success:      true,
-		Status:       &common.UserInfo{Balance: user.Balance, Reserved: user.Reserved, Stock: user.Stock},
+		Status:       &common.UserInfo{Balance: balance, Reserved: reserved, Stock: user.Stock},
 		Transactions: &transactions,
 		Triggers:     &triggers,
 	}

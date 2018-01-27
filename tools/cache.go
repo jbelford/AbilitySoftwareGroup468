@@ -12,6 +12,7 @@ type Cache interface {
 	GetQuote(symbol string, tid int64) (*common.QuoteData, error)
 	GetReserved(userId string) int64
 	GetReservedShares(userId string, stock string) int
+	GetReservedSharesAll(userId string) map[string]int
 	PushPendingTxn(pending common.PendingTxn)
 	PopPendingTxn(userId string, txnType string) *common.PendingTxn
 }
@@ -31,7 +32,7 @@ func (c *cache) GetQuote(symbol string, tid int64) (*common.QuoteData, error) {
 		if err != nil {
 			return nil, err
 		}
-		c.logger.QuoteServer(quote, tid)
+		go c.logger.QuoteServer(quote, tid)
 		c.Set(key, quote, time.Minute)
 	}
 	return quote, nil
@@ -73,6 +74,25 @@ func (c *cache) GetReservedShares(userId string, stock string) int {
 		}
 	}
 	return total
+}
+
+func (c *cache) GetReservedSharesAll(userId string) map[string]int {
+	key := userId + ":SELL"
+	sellsI, found := c.Get(key)
+	if !found {
+		return nil
+	}
+	now := time.Now()
+	mapping := make(map[string]int)
+	sells, ok := sellsI.([]common.PendingTxn)
+	if ok {
+		for _, txn := range sells {
+			if txn.Expiry.After(now) {
+				mapping[txn.Stock] = txn.Shares
+			}
+		}
+	}
+	return mapping
 }
 
 func (c *cache) PushPendingTxn(pending common.PendingTxn) {

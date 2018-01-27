@@ -84,7 +84,7 @@ type QuoteData struct {
 }
 
 type User struct {
-	UserId   string `json:"_id"`
+	UserId   string `bson:"_id" json:"userId"`
 	Balance  int64  `json:"balance"`
 	Reserved int64  `json:"reserved"`
 	Stock    map[string]struct {
