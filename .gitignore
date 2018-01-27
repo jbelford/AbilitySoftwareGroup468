@@ -22,3 +22,7 @@
 data/
 
 **/debug
+
+*.xml
+
+*.exe~
