@@ -21,8 +21,8 @@ const (
 
 type Logger interface {
 	UserCommand(cmd *common.Command) error
-	QuoteServer(quote *common.QuoteData) error
-	AccountTransaction(userId string, funds int64, action string) error
+	QuoteServer(quote *common.QuoteData, tid int64) error
+	AccountTransaction(userId string, funds int64, action string, tid int64) error
 	SystemEvent(cmd *common.Command) error
 	ErrorEvent(cmd *common.Command, e string) error
 	DebugEvent(cmd *common.Command, debug string) error
@@ -37,20 +37,22 @@ type logger struct {
 
 func (l *logger) UserCommand(cmd *common.Command) error {
 	args := &Args{
-		Timestamp:   uint64(time.Now().Unix()),
-		Server:      l.server,
-		Command:     common.Commands[cmd.C_type],
-		Username:    cmd.UserId,
-		StockSymbol: cmd.StockSymbol,
-		FileName:    cmd.FileName,
-		Funds:       cmd.Amount,
+		TransactionNum: cmd.TransactionID,
+		Timestamp:      uint64(time.Now().Unix()),
+		Server:         l.server,
+		Command:        common.Commands[cmd.C_type],
+		Username:       cmd.UserId,
+		StockSymbol:    cmd.StockSymbol,
+		FileName:       cmd.FileName,
+		Funds:          cmd.Amount,
 	}
 	err := l.client.Call(userCommandMethod, args, nil)
 	return err
 }
 
-func (l *logger) QuoteServer(quote *common.QuoteData) error {
+func (l *logger) QuoteServer(quote *common.QuoteData, tid int64) error {
 	args := &Args{
+		TransactionNum:  tid,
 		Timestamp:       uint64(time.Now().Unix()),
 		Server:          l.server,
 		Username:        quote.UserId,
@@ -63,13 +65,14 @@ func (l *logger) QuoteServer(quote *common.QuoteData) error {
 	return err
 }
 
-func (l *logger) AccountTransaction(userId string, funds int64, action string) error {
+func (l *logger) AccountTransaction(userId string, funds int64, action string, tid int64) error {
 	args := &Args{
-		Timestamp: uint64(time.Now().Unix()),
-		Server:    l.server,
-		Action:    action,
-		Username:  userId,
-		Funds:     funds,
+		TransactionNum: tid,
+		Timestamp:      uint64(time.Now().Unix()),
+		Server:         l.server,
+		Action:         action,
+		Username:       userId,
+		Funds:          funds,
 	}
 	err := l.client.Call(accountTransactionMethod, args, nil)
 	return err
@@ -77,13 +80,14 @@ func (l *logger) AccountTransaction(userId string, funds int64, action string) e
 
 func (l *logger) SystemEvent(cmd *common.Command) error {
 	args := &Args{
-		Timestamp:   uint64(time.Now().Unix()),
-		Server:      l.server,
-		Command:     common.Commands[cmd.C_type],
-		Username:    cmd.UserId,
-		StockSymbol: cmd.StockSymbol,
-		FileName:    cmd.FileName,
-		Funds:       cmd.Amount,
+		Timestamp:      uint64(time.Now().Unix()),
+		Server:         l.server,
+		Command:        common.Commands[cmd.C_type],
+		Username:       cmd.UserId,
+		StockSymbol:    cmd.StockSymbol,
+		FileName:       cmd.FileName,
+		Funds:          cmd.Amount,
+		TransactionNum: cmd.TransactionID,
 	}
 	err := l.client.Call(systemEventMethod, args, nil)
 	return err
@@ -91,14 +95,15 @@ func (l *logger) SystemEvent(cmd *common.Command) error {
 
 func (l *logger) ErrorEvent(cmd *common.Command, e string) error {
 	args := &Args{
-		Timestamp:    uint64(time.Now().Unix()),
-		Server:       l.server,
-		Command:      common.Commands[cmd.C_type],
-		Username:     cmd.UserId,
-		StockSymbol:  cmd.StockSymbol,
-		FileName:     cmd.FileName,
-		Funds:        cmd.Amount,
-		ErrorMessage: e,
+		Timestamp:      uint64(time.Now().Unix()),
+		Server:         l.server,
+		Command:        common.Commands[cmd.C_type],
+		Username:       cmd.UserId,
+		StockSymbol:    cmd.StockSymbol,
+		FileName:       cmd.FileName,
+		Funds:          cmd.Amount,
+		TransactionNum: cmd.TransactionID,
+		ErrorMessage:   e,
 	}
 	err := l.client.Call(errorEventMethod, args, nil)
 	return err
@@ -106,14 +111,15 @@ func (l *logger) ErrorEvent(cmd *common.Command, e string) error {
 
 func (l *logger) DebugEvent(cmd *common.Command, debug string) error {
 	args := &Args{
-		Timestamp:    uint64(time.Now().Unix()),
-		Server:       l.server,
-		Command:      common.Commands[cmd.C_type],
-		Username:     cmd.UserId,
-		StockSymbol:  cmd.StockSymbol,
-		FileName:     cmd.FileName,
-		Funds:        cmd.Amount,
-		DebugMessage: debug,
+		Timestamp:      uint64(time.Now().Unix()),
+		Server:         l.server,
+		Command:        common.Commands[cmd.C_type],
+		Username:       cmd.UserId,
+		StockSymbol:    cmd.StockSymbol,
+		FileName:       cmd.FileName,
+		Funds:          cmd.Amount,
+		DebugMessage:   debug,
+		TransactionNum: cmd.TransactionID,
 	}
 	err := l.client.Call(debugEventMethod, args, nil)
 	return err

@@ -23,8 +23,7 @@ func (ts *TransactionServer) handle_add(cmd *common.Command) *common.Response {
 		ts.logger.ErrorEvent(cmd, "Failed to create and/or add money to account")
 		return &common.Response{Success: false, Message: "Failed to create and/or add money to account"}
 	}
-	err = ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "add")
-	if err != nil {
+	if err = ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "add", cmd.TransactionID); err != nil {
 		log.Println(err)
 	}
 	return &common.Response{Success: true}
@@ -299,8 +298,11 @@ func (ts *TransactionServer) handle_dumplog(cmd *common.Command) *common.Respons
 	if err != nil {
 		return &common.Response{Success: false, Message: "The user does not exist"}
 	}
-
-	return &common.Response{Success: true}
+	data, err := ts.logger.DumpLogUser(cmd.UserId)
+	if err != nil {
+		return &common.Response{Success: false, Message: "Failed to get user log"}
+	}
+	return &common.Response{Success: true, File: data}
 }
 
 func (ts *TransactionServer) handle_display_summary(cmd *common.Command) *common.Response {

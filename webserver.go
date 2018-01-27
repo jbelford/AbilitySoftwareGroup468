@@ -17,7 +17,7 @@ import (
 
 type WebServer struct{}
 
-var t_id int = 0
+var t_id int64 = 0
 
 func (ws *WebServer) Start() {
 	var dir string
@@ -77,8 +77,6 @@ Handles basic page visibility function
 returns page template
 */
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	// user_info := common.CommandConstructor(r.FormValue("data"))
-	// passInfo(user_info)
 	t := template.New("test.html")
 	t, _ = t.ParseFiles("./templates/test.html")
 	t.Execute(w, "")

@@ -24,6 +24,7 @@ type Response struct {
 	Status       *UserInfo      `json:"status,omitempty"`
 	Transactions *[]Transaction `json:"transactions,omitempty"`
 	Triggers     *[]Trigger     `json:"triggers,omitempty"`
+	File         *[]byte        `json:"-"`
 }
 
 type UserInfo struct {
