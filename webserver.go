@@ -130,7 +130,7 @@ func (ws *WebServer) userSummaryHandler(w http.ResponseWriter, r *http.Request) 
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
 	}
-	ws.logger.UserCommand(&cmd)
+	go ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -167,7 +167,7 @@ func (ws *WebServer) userAddHandler(w http.ResponseWriter, r *http.Request) *com
 		Amount:        amount,
 		Timestamp:     time.Now(),
 	}
-	ws.logger.UserCommand(&cmd)
+	go ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -203,7 +203,7 @@ func (ws *WebServer) userQuoteHandler(w http.ResponseWriter, r *http.Request) *c
 		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
 	}
-	ws.logger.UserCommand(&cmd)
+	go ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -252,7 +252,7 @@ func (ws *WebServer) userBuyHandler(w http.ResponseWriter, r *http.Request) *com
 		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
 	}
-	ws.logger.UserCommand(&cmd)
+	go ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -275,7 +275,7 @@ func (ws *WebServer) userCommitBuyHandler(w http.ResponseWriter, r *http.Request
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
 	}
-	ws.logger.UserCommand(&cmd)
+	go ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -298,7 +298,7 @@ func (ws *WebServer) userCancelBuyHandler(w http.ResponseWriter, r *http.Request
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
 	}
-	ws.logger.UserCommand(&cmd)
+	go ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -347,7 +347,7 @@ func (ws *WebServer) userSellHandler(w http.ResponseWriter, r *http.Request) *co
 		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
 	}
-	ws.logger.UserCommand(&cmd)
+	go ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -369,7 +369,7 @@ func (ws *WebServer) userCommitSellHandler(w http.ResponseWriter, r *http.Reques
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
 	}
-	ws.logger.UserCommand(&cmd)
+	go ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -391,7 +391,7 @@ func (ws *WebServer) userCancelSellHandler(w http.ResponseWriter, r *http.Reques
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
 	}
-	ws.logger.UserCommand(&cmd)
+	go ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -436,7 +436,7 @@ func (ws *WebServer) userSetBuyAmountHandler(w http.ResponseWriter, r *http.Requ
 		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
 	}
-	ws.logger.UserCommand(&cmd)
+	go ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -471,7 +471,7 @@ func (ws *WebServer) userCancelSetBuyHandler(w http.ResponseWriter, r *http.Requ
 		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
 	}
-	ws.logger.UserCommand(&cmd)
+	go ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -515,7 +515,7 @@ func (ws *WebServer) userSetBuyTriggerHandler(w http.ResponseWriter, r *http.Req
 		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
 	}
-	ws.logger.UserCommand(&cmd)
+	go ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -560,7 +560,7 @@ func (ws *WebServer) userSetSellAmountHandler(w http.ResponseWriter, r *http.Req
 		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
 	}
-	ws.logger.UserCommand(&cmd)
+	go ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -605,7 +605,7 @@ func (ws *WebServer) userSetSellTriggerHandler(w http.ResponseWriter, r *http.Re
 		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
 	}
-	ws.logger.UserCommand(&cmd)
+	go ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -640,7 +640,7 @@ func (ws *WebServer) userCancelSetSellHandler(w http.ResponseWriter, r *http.Req
 		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
 	}
-	ws.logger.UserCommand(&cmd)
+	go ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -668,7 +668,7 @@ func (ws *WebServer) userDumplogHandler(w http.ResponseWriter, r *http.Request) 
 		C_type:        common.DUMPLOG,
 		Timestamp:     time.Now(),
 	}
-	ws.logger.UserCommand(&cmd)
+	go ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {
@@ -700,7 +700,7 @@ func (ws *WebServer) adminDumplogHandler(w http.ResponseWriter, r *http.Request)
 		C_type:        common.ADMIN_DUMPLOG,
 		Timestamp:     time.Now(),
 	}
-	ws.logger.UserCommand(&cmd)
+	go ws.logger.UserCommand(&cmd)
 
 	resp := issueTransactionCommand(cmd)
 	if resp == nil {

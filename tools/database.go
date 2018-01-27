@@ -28,8 +28,8 @@ type UsersCollection interface {
 	ReserveShares(userId string, stock string, shares int) error
 	GetUser(userId string) (common.User, error)
 	BulkTransaction(txns []*common.PendingTxn) error
-	ProcessBuy(buy *common.PendingTxn) error
-	ProcessSell(sell *common.PendingTxn) error
+	ProcessBuy(buy *common.PendingTxn, cacheReserved int64, wasCached bool) error
+	ProcessSell(sell *common.PendingTxn, cacheReserved int) error
 }
 
 type users struct {
@@ -115,21 +115,26 @@ func (c *users) BulkTransaction(txns []*common.PendingTxn) error {
 	return err
 }
 
-func (c *users) ProcessBuy(buy *common.PendingTxn) error {
+func (c *users) ProcessBuy(buy *common.PendingTxn, cacheReserved int64, wasCached bool) error {
+	reserved := buy.Reserved
+	if wasCached {
+		reserved = 0
+	}
 	return c.Update(
-		bson.M{"_id": buy.UserId, "reserved": bson.M{"$gte": buy.Price}},
+		bson.M{"_id": buy.UserId, "reserved": bson.M{"$gte": buy.Price - cacheReserved}},
 		bson.M{"$inc": bson.M{
-			"reserved":                     -buy.Price,
+			"balance":                      buy.Reserved - buy.Price,
+			"reserved":                     -reserved,
 			"stock." + buy.Stock + ".real": buy.Shares,
 		}})
 }
 
-func (c *users) ProcessSell(sell *common.PendingTxn) error {
+func (c *users) ProcessSell(sell *common.PendingTxn, cacheReserved int) error {
 	return c.Update(
-		bson.M{"_id": sell.UserId, "stock." + sell.Stock: bson.M{"$gte": sell.Shares}},
+		bson.M{"_id": sell.UserId, "stock." + sell.Stock + ".reserved": bson.M{"$gte": sell.Shares - cacheReserved}},
 		bson.M{"$inc": bson.M{
-			"balance":                       sell.Price,
-			"stock." + sell.Stock + ".real": -sell.Shares,
+			"balance":                           sell.Price,
+			"stock." + sell.Stock + ".reserved": -sell.Shares,
 		}})
 }
 
