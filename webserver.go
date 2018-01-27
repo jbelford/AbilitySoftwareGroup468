@@ -143,8 +143,7 @@ func userSummaryHandler(w http.ResponseWriter, r *http.Request) *common.Response
 	```
 */
 func userAddHandler(w http.ResponseWriter, r *http.Request) *common.Response {
-	r.ParseForm()
-	amount, err := strconv.ParseInt(r.Form.Get("amount"), 10, 32)
+	amount, err := strconv.ParseInt(r.URL.Query().Get("amount"), 10, 32)
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		return &common.Response{Success: false, Message: "Could not process field: 'amount'"}
