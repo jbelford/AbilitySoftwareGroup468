@@ -652,6 +652,7 @@ func userDumplogHandler(w http.ResponseWriter, r *http.Request) *common.Response
 	} else if !resp.Success {
 		w.WriteHeader(http.StatusInternalServerError)
 	} else {
+		_, err := io.Copy(w, resp.File)
 		w.Header().Set("Content-Disposition", "attachment; filename="+filename)
 		w.Header().Set("Content-Type", "application/xml")
 		io.Copy(w, bytes.NewReader(*resp.File))
