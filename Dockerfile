@@ -10,6 +10,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -tags netgo -install
 #RUN apk add --update ca-certificates && rm -rf /var/cache/apk/*
 
 FROM alpine:latest
+RUN apk add --no-cache bash
 ENV PATH=/bin
 #COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 WORKDIR /root/
