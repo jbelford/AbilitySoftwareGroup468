@@ -54,10 +54,10 @@ func (ws *WebServer) Start() {
 	r.HandleFunc("/{user_id}/cancel_set_sell", wrapHandler(userCancelSetSellHandler)).Methods("POST")
 
 	//user log
-	r.HandleFunc("/{user_id}/dumplog", wrapHandler(userDumplogHandler)).Methods("POST")
+	r.HandleFunc("/{user_id}/dumplog", wrapHandler(userDumplogHandler)).Methods("GET")
 
 	//admin log
-	r.HandleFunc("/{admin_id}/dumplog", wrapHandler(adminDumplogHandler)).Methods("POST")
+	r.HandleFunc("/{admin_id}/dumplog", wrapHandler(adminDumplogHandler)).Methods("GET")
 
 	r.PathPrefix("/templates/").Handler(http.StripPrefix("/templates/", http.FileServer(http.Dir(dir))))
 
