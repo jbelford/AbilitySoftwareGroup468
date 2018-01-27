@@ -2,26 +2,104 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"log"
 	"net/http"
 	//"net/url"
+	"bytes"
+	"encoding/json"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-	"encoding/json"
-	"bytes"
 )
 
 const (
-	CTYPE = "C_type"
-	USER = "UserId"
-	AMOUNT = "Amount"
-	STOCK = "StockSymbol"
-	FILE = "FileName"
+	CTYPE   = "C_type"
+	USER    = "UserId"
+	AMOUNT  = "Amount"
+	STOCK   = "StockSymbol"
+	FILE    = "FileName"
 	WEB_URL = "http://webserver.prod.ability.com:44420"
 )
+
+type endpoint struct {
+	Method string
+	Query  string
+}
+
+var rest = map[string]endpoint{
+	"ADD": endpoint{
+		Method: "POST",
+		Query:  "%s/%s/add?amount=%s",
+	},
+	"QUOTE": endpoint{
+		Method: "GET",
+		Query: "%s/%s/quote?stock=%s",
+	},
+	"BUY": endpoint{
+		Method: "POST",
+		Query: "%s/%s/buy?stock=%s&amount=%s",
+	},
+	"COMMIT_BUY": endpoint{
+		Method: "POST",
+		Query: "%s/%s/commit_buy",
+	},
+	"CANCEL_BUY": endpoint{
+		Method: "POST",
+		Query: "%s/%s/cancel_buy",
+	},
+	"SELL": endpoint{
+		Method: "POST",
+		Query: "%s/%s/sell?stock=%s&amount=%s"
+	},
+	"COMMIT_SELL": endpoint{
+		Method: "POST",
+		Query: "%s/%s/commit_sell",
+	},
+	"CANCEL_SELL": endpoint{
+		Method: "POST",
+		Query: "%s/%s/cancel_sell",
+	},
+	"SET_BUY_AMOUNT": endpoint{
+		Method: "POST",
+		Query: "%s/%s/set_buy_amount?stock=%s&amount=%s"
+	},
+	"CANCEL_SET_BUY": endpoint{
+		Method: "POST",
+		Query: "%s/%s/cancel_set_buy?stock=%s"
+	},
+	"SET_BUY_TRIGGER": endpoint{
+		Method: "POST",
+		Query: "%s/%s/set_buy_trigger?stock=%s&amount=%s",
+	},
+	"SET_SELL_AMOUNT": endpoint{
+		Method: "POST",
+		Query: "%s/%s/set_sell_amount?stock=%s&amount=%s"
+	},
+	"SET_SELL_TRIGGER": endpoint{
+		Method: "POST",
+		Query: "%s/%s/set_sell_trigger?stock=%s&amount=%s"
+	},
+	"CANCEL_SET_SELL": endpoint{
+		Method: "POST",
+		Query: "%s/%s/cancel_set_sell?stock=%s"
+	},
+	"DUMPLOG": endpoint{
+		Method: "POST",
+		Query: "%s/%s/dumplog?filename=%s"
+	},
+	"DUMPLOG": endpoint{
+		Method: "POST",
+		Query: "%s/0/dumplog?filename=%s"
+	},
+	"DISPLAY_SUMMARY": endpoint{
+		Method: "GET",
+		Query: "%s/%s/display_summary"
+	}
+
+}
 
 func parseWorkloadCommand(cmdLine string) (string, string) {
 	split_cmd := strings.Split(cmdLine, ",")
@@ -32,49 +110,13 @@ func parseWorkloadCommand(cmdLine string) (string, string) {
 
 	C_type := split_cmd[0]
 
-	end_url :=  WEB_URL + "/" + split_cmd[1] + "/" + strings.ToLower(C_type)
+	mapped := rest[split_cmd[0]]
+	split := make([]interface{}, 0)
+	split = append(split, split_cmd[1:])
+	end_url := fmt.Sprintf(mapped.Query, split...)
+	//log.Println(end_url)
 
-	switch C_type {
-		case "ADD":
-			WorkResp = map[string]string{CTYPE: C_type, USER: split_cmd[1], AMOUNT: split_cmd[2]}
-		case "QUOTE":
-			WorkResp = map[string]string{CTYPE: C_type, USER: split_cmd[1], STOCK: split_cmd[2]}
-		case "BUY":
-			WorkResp = map[string]string{CTYPE: C_type, USER: split_cmd[1], STOCK: split_cmd[2], AMOUNT: split_cmd[3]}
-		case "COMMIT_BUY":
-			WorkResp = map[string]string{CTYPE: C_type, USER: split_cmd[1]}
-		case "COMMIT_SELL":
-			WorkResp = map[string]string{CTYPE: C_type, USER: split_cmd[1]}
-		case "SELL":
-			WorkResp = map[string]string{CTYPE: C_type, USER: split_cmd[1], STOCK: split_cmd[2], AMOUNT: split_cmd[3]}
-		case "CANCEL_SET_SELL":
-			WorkResp = map[string]string{CTYPE: C_type, USER: split_cmd[1], STOCK: split_cmd[2]}
-		case "CANCEL_SET_BUY":
-			WorkResp = map[string]string{CTYPE: C_type, USER: split_cmd[1], STOCK: split_cmd[2]}
-		case "SET_SELL_AMOUNT":
-			WorkResp = map[string]string{CTYPE: C_type, USER: split_cmd[1], STOCK: split_cmd[2], AMOUNT: split_cmd[3]}
-		case "CANCEL_BUY":
-			WorkResp = map[string]string{CTYPE: C_type, USER: split_cmd[1]}
-		case "CANCEL_SELL":
-			WorkResp = map[string]string{CTYPE: C_type, USER: split_cmd[1]}
-		case "DISPLAY_SUMMARY":
-			WorkResp = map[string]string{CTYPE: C_type, USER: split_cmd[1]}
-		case "SET_BUY_AMOUNT":
-			WorkResp = map[string]string{CTYPE: C_type, USER: split_cmd[1], STOCK: split_cmd[2], AMOUNT: split_cmd[3]}
-		case "SET_SELL_TRIGGER":
-			WorkResp = map[string]string{CTYPE: C_type, USER: split_cmd[1], STOCK: split_cmd[2], AMOUNT: split_cmd[3]}
-		case "DUMPLOG":
-			if len(split_cmd) == 3 {
-				// ADMIN DUMPLOG
-				WorkResp = map[string]string{CTYPE: C_type, USER: split_cmd[1], FILE: split_cmd[2]}
-				end_url = WEB_URL + "/" + "0" + "/" + strings.ToLower(C_type)
-			} else {
-				WorkResp = map[string]string{CTYPE: C_type, FILE: split_cmd[1]}
-			}
-		default:
-			panic("unrecognized command: "+  C_type)
-	}
-	return end_url, string(resp)
+	return end_url
 }
 
 func main() {
@@ -110,7 +152,6 @@ func main() {
 	var wg sync.WaitGroup
 	wg.Add(int(threadCount))
 	sentMessages := make([]int, int(threadCount))
-
 
 	log.Println("Sending Traffic to: " + WEB_URL + " using " + string(threadCount) + " threads...")
 	start := time.Now()
