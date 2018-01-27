@@ -2,11 +2,12 @@ package logging
 
 import (
 	"encoding/xml"
-	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 	"io/ioutil"
 	"net/rpc"
 	"os"
 	"time"
+
+	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 )
 
 const (
@@ -148,7 +149,7 @@ type LoggerRPC struct {
 }
 
 func (l *LoggerRPC) writeLogs(log interface{}, userFilename string) error {
-	flag := os.O_APPEND
+	flag := os.O_APPEND | os.O_WRONLY
 	if _, err := os.Stat(userFilename); os.IsNotExist(err) {
 		flag |= os.O_CREATE
 	}
@@ -159,7 +160,7 @@ func (l *LoggerRPC) writeLogs(log interface{}, userFilename string) error {
 	defer uWriter.Close()
 	toWrite, err := xml.MarshalIndent(log, "  ", "    ")
 	if err == nil {
-		toWrite = append(toWrite, '\n')
+		toWrite := append(toWrite, '\n')
 		l.writer.Write(toWrite)
 		uWriter.Write(toWrite)
 	}
@@ -270,9 +271,9 @@ func (l *LoggerRPC) DumpLog(args *Args, result *[]byte) error {
 }
 
 func GetLoggerRPC() (*LoggerRPC, *os.File) {
-	flag := os.O_APPEND
+	flag := os.O_APPEND | os.O_WRONLY
 	if _, err := os.Stat("tmp.xml"); os.IsNotExist(err) {
-		flag |= os.O_CREATE
+		flag |= os.O_CREATE | os.O_WRONLY
 	}
 	writer, err := os.OpenFile("tmp.xml", flag, 0777)
 	if err != nil {
