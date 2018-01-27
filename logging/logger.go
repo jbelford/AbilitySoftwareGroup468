@@ -152,7 +152,7 @@ func (l *LoggerRPC) writeLogs(log interface{}, userFilename string) error {
 	if _, err := os.Stat(userFilename); os.IsNotExist(err) {
 		flag |= os.O_CREATE
 	}
-	uWriter, err := os.OpenFile(userFilename, flag, 0600)
+	uWriter, err := os.OpenFile(userFilename, flag, 0777)
 	if err != nil {
 		return err
 	}
@@ -274,7 +274,7 @@ func GetLoggerRPC() (*LoggerRPC, *os.File) {
 	if _, err := os.Stat("tmp.xml"); os.IsNotExist(err) {
 		flag |= os.O_CREATE
 	}
-	writer, err := os.OpenFile("tmp.xml", flag, 0600)
+	writer, err := os.OpenFile("tmp.xml", flag, 0777)
 	if err != nil {
 		panic(err)
 	}

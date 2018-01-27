@@ -662,7 +662,7 @@ func (ws *WebServer) userDumplogHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	cmd := common.Command{
-		FileName:      mux.Vars(r)["user_id"],
+		FileName:      filename,
 		TransactionID: t_id,
 		UserId:        mux.Vars(r)["user_id"],
 		C_type:        common.DUMPLOG,
@@ -694,7 +694,8 @@ func (ws *WebServer) adminDumplogHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	cmd := common.Command{
-		FileName:      mux.Vars(r)["admin_id"],
+		UserId:        mux.Vars(r)["user_id"],
+		FileName:      filename,
 		TransactionID: t_id,
 		C_type:        common.ADMIN_DUMPLOG,
 		Timestamp:     time.Now(),
