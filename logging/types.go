@@ -15,10 +15,10 @@ type UserCommand struct {
 	Timestamp      uint64   `xml:"timestamp"`
 	TransactionNum int64    `xml:"transactionNum"`
 	Command        string   `xml:"command"`
-	Username       string   `xml:"username, omitempty"`
-	StockSymbol    string   `xml:"stockSymbol, omitempty"`
-	Filename       string   `xml:"filename, omitempty"`
-	Funds          int64    `xml:"funds, omitempty"`
+	Username       string   `xml:"username,omitempty"`
+	StockSymbol    string   `xml:"stockSymbol,omitempty"`
+	Filename       string   `xml:"filename,omitempty"`
+	Funds          int64    `xml:"funds,omitempty"`
 }
 
 type QuoteServer struct {

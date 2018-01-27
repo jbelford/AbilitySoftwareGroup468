@@ -318,7 +318,6 @@ func (ts *TransactionServer) handle_admin_dumplog(cmd *common.Command) *common.R
 func (ts *TransactionServer) handle_dumplog(cmd *common.Command) *common.Response {
 	_, err := ts.db.Users.GetUser(cmd.UserId)
 	if err != nil {
-		ts.logger.ErrorEvent(cmd, "The user "+cmd.UserId+" does not exist")
 		return ts.error(cmd, "The user does not exist")
 	}
 	data, err := ts.logger.DumpLogUser(cmd.UserId)
@@ -332,7 +331,6 @@ func (ts *TransactionServer) handle_dumplog(cmd *common.Command) *common.Respons
 func (ts *TransactionServer) handle_display_summary(cmd *common.Command) *common.Response {
 	user, err := ts.db.Users.GetUser(cmd.UserId)
 	if err != nil {
-		ts.logger.ErrorEvent(cmd, "The user "+user.UserId+" does not exist")
 		return ts.error(cmd, "The user does not exist")
 	}
 

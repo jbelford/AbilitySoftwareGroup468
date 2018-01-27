@@ -31,8 +31,16 @@ type Logger interface {
 }
 
 type logger struct {
-	client *rpc.Client
 	server string
+}
+
+func (l *logger) Call(method string, args interface{}, result interface{}) error {
+	client, err := rpc.Dial("tcp", common.CFG.AuditServer.Url)
+	if err != nil {
+		return nil
+	}
+	defer client.Close()
+	return client.Call(method, args, result)
 }
 
 func (l *logger) UserCommand(cmd *common.Command) error {
@@ -46,8 +54,7 @@ func (l *logger) UserCommand(cmd *common.Command) error {
 		FileName:       cmd.FileName,
 		Funds:          cmd.Amount,
 	}
-	err := l.client.Call(userCommandMethod, args, nil)
-	return err
+	return l.Call(userCommandMethod, args, nil)
 }
 
 func (l *logger) QuoteServer(quote *common.QuoteData, tid int64) error {
@@ -61,8 +68,7 @@ func (l *logger) QuoteServer(quote *common.QuoteData, tid int64) error {
 		QuoteServerTime: quote.Timestamp,
 		Cryptokey:       quote.Cryptokey,
 	}
-	err := l.client.Call(quoteServerMethod, args, nil)
-	return err
+	return l.Call(quoteServerMethod, args, nil)
 }
 
 func (l *logger) AccountTransaction(userId string, funds int64, action string, tid int64) error {
@@ -74,8 +80,7 @@ func (l *logger) AccountTransaction(userId string, funds int64, action string, t
 		Username:       userId,
 		Funds:          funds,
 	}
-	err := l.client.Call(accountTransactionMethod, args, nil)
-	return err
+	return l.Call(accountTransactionMethod, args, nil)
 }
 
 func (l *logger) SystemEvent(cmd *common.Command) error {
@@ -89,8 +94,7 @@ func (l *logger) SystemEvent(cmd *common.Command) error {
 		Funds:          cmd.Amount,
 		TransactionNum: cmd.TransactionID,
 	}
-	err := l.client.Call(systemEventMethod, args, nil)
-	return err
+	return l.Call(systemEventMethod, args, nil)
 }
 
 func (l *logger) ErrorEvent(cmd *common.Command, e string) error {
@@ -105,8 +109,7 @@ func (l *logger) ErrorEvent(cmd *common.Command, e string) error {
 		TransactionNum: cmd.TransactionID,
 		ErrorMessage:   e,
 	}
-	err := l.client.Call(errorEventMethod, args, nil)
-	return err
+	return l.Call(errorEventMethod, args, nil)
 }
 
 func (l *logger) DebugEvent(cmd *common.Command, debug string) error {
@@ -121,28 +124,23 @@ func (l *logger) DebugEvent(cmd *common.Command, debug string) error {
 		DebugMessage:   debug,
 		TransactionNum: cmd.TransactionID,
 	}
-	err := l.client.Call(debugEventMethod, args, nil)
-	return err
+	return l.Call(debugEventMethod, args, nil)
 }
 
 func (l *logger) DumpLogUser(userId string) (*[]byte, error) {
 	var data []byte
-	err := l.client.Call(dumpLogMethod, Args{FileName: userId + ".xml"}, &data)
+	err := l.Call(dumpLogMethod, Args{FileName: userId + ".xml"}, &data)
 	return &data, err
 }
 
 func (l *logger) DumpLog() (*[]byte, error) {
 	var data []byte
-	err := l.client.Call(dumpLogMethod, Args{}, &data)
+	err := l.Call(dumpLogMethod, Args{}, &data)
 	return &data, err
 }
 
 func GetLogger(server string) Logger {
-	client, err := rpc.Dial("tcp", common.CFG.AuditServer.Url)
-	if err != nil {
-		return nil
-	}
-	return &logger{client, server}
+	return &logger{server}
 }
 
 type LoggerRPC struct {
