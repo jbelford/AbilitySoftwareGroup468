@@ -17,7 +17,7 @@ func GetQuote(symbol string) (*QuoteData, error) {
 		if err != nil {
 			return nil, err
 		}
-		tcpConn.Write([]byte(symbol))
+		tcpConn.Write([]byte(symbol + "\n"))
 		msg, err = bufio.NewReader(tcpConn).ReadString('\n')
 		if err != nil {
 			return nil, err
