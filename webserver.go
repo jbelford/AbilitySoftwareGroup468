@@ -54,10 +54,10 @@ func (ws *WebServer) Start() {
 	r.HandleFunc("/{user_id}/cancel_set_sell", wrapHandler(userCancelSetSellHandler)).Methods("POST")
 
 	//user log
-	r.HandleFunc("/{user_id}/dumplog", wrapHandler(userDumplogHandler)).Methods("POST")
+	r.HandleFunc("/{user_id}/dumplog", wrapHandler(userDumplogHandler)).Methods("GET")
 
 	//admin log
-	r.HandleFunc("/{admin_id}/dumplog", wrapHandler(adminDumplogHandler)).Methods("POST")
+	r.HandleFunc("/{admin_id}/dumplog", wrapHandler(adminDumplogHandler)).Methods("GET")
 
 	r.PathPrefix("/templates/").Handler(http.StripPrefix("/templates/", http.FileServer(http.Dir(dir))))
 
@@ -141,8 +141,7 @@ func userSummaryHandler(w http.ResponseWriter, r *http.Request) *common.Response
 	```
 */
 func userAddHandler(w http.ResponseWriter, r *http.Request) *common.Response {
-	r.ParseForm()
-	amount, err := strconv.ParseInt(r.Form.Get("amount"), 10, 32)
+	amount, err := strconv.ParseInt(r.URL.Query().Get("amount"), 10, 32)
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		return &common.Response{Success: false, Message: "Could not process field: 'amount'"}
