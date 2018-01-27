@@ -291,7 +291,7 @@ func (ts *TransactionServer) handle_cancel_set_sell(cmd *common.Command) *common
 func (ts *TransactionServer) handle_admin_dumplog(cmd *common.Command) *common.Response {
 	log.Println("handle_admin_dumplog")
 	//success
-	return nil
+	return &common.Response{Success: true}
 }
 
 func (ts *TransactionServer) handle_dumplog(cmd *common.Command) *common.Response {

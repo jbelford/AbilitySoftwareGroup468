@@ -17,16 +17,13 @@ func NewCommandHandler() *CommandHandler {
 }
 
 type Command struct {
-	C_type      int
-	UserId      string
-	Amount      int64     `json:",omitempty"`
-	StockSymbol string    `json:",omitempty"`
-	FileName    string    `json:",omitempty"`
-	Timestamp   time.Time `json:",omitempty"`
-}
-
-func (cmd *Command) CommandObjToString() string {
-	return string(cmd.C_type) + "," + cmd.UserId + "," + string(cmd.Amount) + "," + cmd.StockSymbol + "," + cmd.FileName
+	C_type        int
+	TransactionID int
+	UserId        string
+	Amount        int64     `json:",omitempty"`
+	StockSymbol   string    `json:",omitempty"`
+	FileName      string    `json:",omitempty"`
+	Timestamp     time.Time `json:",omitempty"`
 }
 
 func (command *CommandHandler) On(command_name int, function_to_call func(args *Command) *Response) {
