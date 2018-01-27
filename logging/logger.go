@@ -179,6 +179,7 @@ func (l *LoggerRPC) readLog(filename string) []byte {
 func (l *LoggerRPC) UserCommand(args *Args, result *string) error {
 	log := &UserCommand{
 		Command:        args.Command,
+		Server:         args.Server,
 		Filename:       args.FileName,
 		Funds:          args.Funds,
 		StockSymbol:    args.StockSymbol,
@@ -192,6 +193,7 @@ func (l *LoggerRPC) UserCommand(args *Args, result *string) error {
 func (l *LoggerRPC) QuoteServer(args *Args, result *string) error {
 	log := &QuoteServer{
 		Cryptokey:       args.Cryptokey,
+		Server:          args.Server,
 		Price:           args.Price,
 		QuoteServerTime: args.QuoteServerTime,
 		StockSymbol:     args.StockSymbol,
@@ -205,6 +207,7 @@ func (l *LoggerRPC) QuoteServer(args *Args, result *string) error {
 func (l *LoggerRPC) AccountTransaction(args *Args, result *string) error {
 	log := &AccountTransaction{
 		Action:         args.Action,
+		Server:         args.Server,
 		Funds:          args.Funds,
 		Timestamp:      args.Timestamp,
 		TransactionNum: args.TransactionNum,
@@ -216,6 +219,7 @@ func (l *LoggerRPC) AccountTransaction(args *Args, result *string) error {
 func (l *LoggerRPC) SystemEvent(args *Args, result *string) error {
 	log := &SystemEvent{
 		Command:        args.Command,
+		Server:         args.Server,
 		Filename:       args.FileName,
 		Funds:          args.Funds,
 		StockSymbol:    args.StockSymbol,
@@ -229,6 +233,7 @@ func (l *LoggerRPC) SystemEvent(args *Args, result *string) error {
 func (l *LoggerRPC) ErrorEvent(args *Args, result *string) error {
 	log := &ErrorEvent{
 		Command:        args.Command,
+		Server:         args.Server,
 		ErrorMessage:   args.ErrorMessage,
 		Filename:       args.FileName,
 		Funds:          args.Funds,
@@ -243,6 +248,7 @@ func (l *LoggerRPC) ErrorEvent(args *Args, result *string) error {
 func (l *LoggerRPC) DebugEvent(args *Args, result *string) error {
 	log := &DebugEvent{
 		Command:        args.Command,
+		Server:         args.Server,
 		DebugMessage:   args.DebugMessage,
 		Filename:       args.FileName,
 		Funds:          args.Funds,

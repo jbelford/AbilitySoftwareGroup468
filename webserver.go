@@ -30,10 +30,7 @@ func (ws *WebServer) error(cmd *common.Command, msg string) *common.Response {
 var t_id int64 = 0
 
 func (ws *WebServer) Start() {
-	for ws.logger == nil {
-		ws.logger = logging.GetLogger(common.CFG.WebServer.Url)
-		time.Sleep(time.Second)
-	}
+	ws.logger = logging.GetLogger(common.CFG.WebServer.Url)
 	var dir string
 
 	flag.StringVar(&dir, "dir", ".", "the directory to serve files from. Defaults to the current dir")
