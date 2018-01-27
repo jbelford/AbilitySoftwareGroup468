@@ -74,9 +74,7 @@ func (ts *TransactionServer) handle_commit_buy(cmd *common.Command) *common.Resp
 		return ts.error(cmd, "There are no pending transactions")
 	}
 
-	reserved := ts.cache.GetReserved(cmd.UserId) + buy.Reserved
-
-	err := ts.db.Users.ProcessBuy(buy, reserved, true)
+	err := ts.db.Users.ProcessBuy(buy, true)
 	if err != nil {
 		return ts.error(cmd, "User can no longer afford this purchase")
 	}
@@ -134,9 +132,7 @@ func (ts *TransactionServer) handle_commit_sell(cmd *common.Command) *common.Res
 		return ts.error(cmd, "There are no pending transactions")
 	}
 
-	reservedShares := ts.cache.GetReservedShares(cmd.UserId, cmd.StockSymbol) + sell.Shares
-
-	err := ts.db.Users.ProcessSell(sell, reservedShares)
+	err := ts.db.Users.ProcessSell(sell, true)
 	if err != nil {
 		return ts.error(cmd, "User no longer has the correct number of shares to sell")
 	}

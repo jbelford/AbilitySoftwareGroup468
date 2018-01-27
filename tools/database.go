@@ -28,8 +28,8 @@ type UsersCollection interface {
 	ReserveShares(userId string, stock string, shares int) error
 	GetUser(userId string) (common.User, error)
 	BulkTransaction(txns []*common.PendingTxn) error
-	ProcessBuy(buy *common.PendingTxn, cacheReserved int64, wasCached bool) error
-	ProcessSell(sell *common.PendingTxn, cacheReserved int) error
+	ProcessBuy(buy *common.PendingTxn, wasCached bool) error
+	ProcessSell(sell *common.PendingTxn, wasCached bool) error
 }
 
 type users struct {
@@ -115,26 +115,35 @@ func (c *users) BulkTransaction(txns []*common.PendingTxn) error {
 	return err
 }
 
-func (c *users) ProcessBuy(buy *common.PendingTxn, cacheReserved int64, wasCached bool) error {
-	reserved := buy.Reserved
+func (c *users) ProcessBuy(buy *common.PendingTxn, wasCached bool) error {
+	var selector, update bson.M
 	if wasCached {
-		reserved = 0
-	}
-	return c.Update(
-		bson.M{"_id": buy.UserId, "reserved": bson.M{"$gte": buy.Price - cacheReserved}},
-		bson.M{"$inc": bson.M{
-			"balance":                      buy.Reserved - buy.Price,
-			"reserved":                     -reserved,
+		selector = bson.M{"_id": buy.UserId, "balance": bson.M{"$gte": buy.Price}}
+		update = bson.M{"$inc": bson.M{
+			"balance":                      -buy.Price,
 			"stock." + buy.Stock + ".real": buy.Shares,
-		}})
+		}}
+	} else {
+		selector = bson.M{"_id": buy.UserId, "reserved": bson.M{"$gte": buy.Price}}
+		update = bson.M{"$inc": bson.M{
+			"balance":                      buy.Reserved - buy.Price,
+			"reserved":                     -buy.Reserved,
+			"stock." + buy.Stock + ".real": buy.Shares,
+		}}
+	}
+	return c.Update(selector, update)
 }
 
-func (c *users) ProcessSell(sell *common.PendingTxn, cacheReserved int) error {
+func (c *users) ProcessSell(sell *common.PendingTxn, wasCached bool) error {
+	realOrReserved := "real"
+	if wasCached {
+		realOrReserved = "reserved"
+	}
 	return c.Update(
-		bson.M{"_id": sell.UserId, "stock." + sell.Stock + ".reserved": bson.M{"$gte": sell.Shares - cacheReserved}},
+		bson.M{"_id": sell.UserId, "stock." + sell.Stock + "." + realOrReserved: bson.M{"$gte": sell.Shares}},
 		bson.M{"$inc": bson.M{
-			"balance":                           sell.Price,
-			"stock." + sell.Stock + ".reserved": -sell.Shares,
+			"balance": sell.Price,
+			"stock." + sell.Stock + "." + realOrReserved: -sell.Shares,
 		}})
 }
 
