@@ -47,7 +47,7 @@ func (l *logger) Call(method string, args interface{}, result interface{}) error
 func (l *logger) UserCommand(cmd *common.Command) error {
 	args := &Args{
 		TransactionNum: cmd.TransactionID,
-		Timestamp:      uint64(time.Now().Unix()),
+		Timestamp:      uint64(time.Now().UnixNano()),
 		Server:         l.server,
 		Command:        common.Commands[cmd.C_type],
 		Username:       cmd.UserId,
@@ -61,7 +61,7 @@ func (l *logger) UserCommand(cmd *common.Command) error {
 func (l *logger) QuoteServer(quote *common.QuoteData, tid int64) error {
 	args := &Args{
 		TransactionNum:  tid,
-		Timestamp:       uint64(time.Now().Unix()),
+		Timestamp:       uint64(time.Now().UnixNano()),
 		Server:          l.server,
 		Username:        quote.UserId,
 		Price:           quote.Quote,
@@ -75,7 +75,7 @@ func (l *logger) QuoteServer(quote *common.QuoteData, tid int64) error {
 func (l *logger) AccountTransaction(userId string, funds int64, action string, tid int64) error {
 	args := &Args{
 		TransactionNum: tid,
-		Timestamp:      uint64(time.Now().Unix()),
+		Timestamp:      uint64(time.Now().UnixNano()),
 		Server:         l.server,
 		Action:         action,
 		Username:       userId,
@@ -86,7 +86,7 @@ func (l *logger) AccountTransaction(userId string, funds int64, action string, t
 
 func (l *logger) SystemEvent(cmd *common.Command) error {
 	args := &Args{
-		Timestamp:      uint64(time.Now().Unix()),
+		Timestamp:      uint64(time.Now().UnixNano()),
 		Server:         l.server,
 		Command:        common.Commands[cmd.C_type],
 		Username:       cmd.UserId,
@@ -100,7 +100,7 @@ func (l *logger) SystemEvent(cmd *common.Command) error {
 
 func (l *logger) ErrorEvent(cmd *common.Command, e string) error {
 	args := &Args{
-		Timestamp:      uint64(time.Now().Unix()),
+		Timestamp:      uint64(time.Now().UnixNano()),
 		Server:         l.server,
 		Command:        common.Commands[cmd.C_type],
 		Username:       cmd.UserId,
@@ -115,7 +115,7 @@ func (l *logger) ErrorEvent(cmd *common.Command, e string) error {
 
 func (l *logger) DebugEvent(cmd *common.Command, debug string) error {
 	args := &Args{
-		Timestamp:      uint64(time.Now().Unix()),
+		Timestamp:      uint64(time.Now().UnixNano()),
 		Server:         l.server,
 		Command:        common.Commands[cmd.C_type],
 		Username:       cmd.UserId,
@@ -168,7 +168,7 @@ func (l *LoggerRPC) writeLogs(log interface{}, userFilename string) error {
 }
 
 func (l *LoggerRPC) readLog(filename string) []byte {
-	data := []byte("<?xml version=\"1.0\"?>\n<log>\n")
+	data := []byte("<log>\n")
 	read, err := ioutil.ReadFile(filename)
 	if err == nil {
 		data = append(data, read...)
