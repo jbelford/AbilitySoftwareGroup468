@@ -150,8 +150,6 @@ func (ws *WebServer) userSummaryHandler(w http.ResponseWriter, r *http.Request) 
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
-	} else if !resp.Success {
-		w.WriteHeader(http.StatusInternalServerError)
 	}
 	return resp
 }
@@ -187,8 +185,6 @@ func (ws *WebServer) userAddHandler(w http.ResponseWriter, r *http.Request) *com
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
-	} else if !resp.Success {
-		w.WriteHeader(http.StatusInternalServerError)
 	}
 	return resp
 }
@@ -223,8 +219,6 @@ func (ws *WebServer) userQuoteHandler(w http.ResponseWriter, r *http.Request) *c
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
-	} else if !resp.Success {
-		w.WriteHeader(http.StatusInternalServerError)
 	}
 	return resp
 }
@@ -272,8 +266,6 @@ func (ws *WebServer) userBuyHandler(w http.ResponseWriter, r *http.Request) *com
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
-	} else if !resp.Success {
-		w.WriteHeader(http.StatusInternalServerError)
 	}
 	return resp
 }
@@ -295,8 +287,6 @@ func (ws *WebServer) userCommitBuyHandler(w http.ResponseWriter, r *http.Request
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
-	} else if !resp.Success {
-		w.WriteHeader(http.StatusInternalServerError)
 	}
 	return resp
 }
@@ -318,8 +308,6 @@ func (ws *WebServer) userCancelBuyHandler(w http.ResponseWriter, r *http.Request
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
-	} else if !resp.Success {
-		w.WriteHeader(http.StatusInternalServerError)
 	}
 	return resp
 }
@@ -367,8 +355,6 @@ func (ws *WebServer) userSellHandler(w http.ResponseWriter, r *http.Request) *co
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
-	} else if !resp.Success {
-		w.WriteHeader(http.StatusInternalServerError)
 	}
 	return resp
 }
@@ -389,8 +375,6 @@ func (ws *WebServer) userCommitSellHandler(w http.ResponseWriter, r *http.Reques
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
-	} else if !resp.Success {
-		w.WriteHeader(http.StatusInternalServerError)
 	}
 	return resp
 }
@@ -411,8 +395,6 @@ func (ws *WebServer) userCancelSellHandler(w http.ResponseWriter, r *http.Reques
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
-	} else if !resp.Success {
-		w.WriteHeader(http.StatusInternalServerError)
 	}
 	return resp
 }
@@ -456,8 +438,6 @@ func (ws *WebServer) userSetBuyAmountHandler(w http.ResponseWriter, r *http.Requ
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
-	} else if !resp.Success {
-		w.WriteHeader(http.StatusInternalServerError)
 	}
 	return resp
 }
@@ -491,8 +471,6 @@ func (ws *WebServer) userCancelSetBuyHandler(w http.ResponseWriter, r *http.Requ
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
-	} else if !resp.Success {
-		w.WriteHeader(http.StatusInternalServerError)
 	}
 	return resp
 }
@@ -535,8 +513,6 @@ func (ws *WebServer) userSetBuyTriggerHandler(w http.ResponseWriter, r *http.Req
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
-	} else if !resp.Success {
-		w.WriteHeader(http.StatusInternalServerError)
 	}
 	return resp
 }
@@ -580,8 +556,6 @@ func (ws *WebServer) userSetSellAmountHandler(w http.ResponseWriter, r *http.Req
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
-	} else if !resp.Success {
-		w.WriteHeader(http.StatusInternalServerError)
 	}
 	return resp
 }
@@ -625,8 +599,6 @@ func (ws *WebServer) userSetSellTriggerHandler(w http.ResponseWriter, r *http.Re
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
-	} else if !resp.Success {
-		w.WriteHeader(http.StatusInternalServerError)
 	}
 	return resp
 }
@@ -660,8 +632,6 @@ func (ws *WebServer) userCancelSetSellHandler(w http.ResponseWriter, r *http.Req
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
-	} else if !resp.Success {
-		w.WriteHeader(http.StatusInternalServerError)
 	}
 	return resp
 }
@@ -688,9 +658,7 @@ func (ws *WebServer) userDumplogHandler(w http.ResponseWriter, r *http.Request) 
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
-	} else if !resp.Success {
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
+	} else if resp.Success {
 		w.Header().Set("Content-Disposition", "attachment; filename="+filename)
 		w.Header().Set("Content-Type", "application/xml")
 		io.Copy(w, bytes.NewReader(*resp.File))
@@ -708,7 +676,7 @@ func (ws *WebServer) adminDumplogHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	cmd := common.Command{
-		UserId:        mux.Vars(r)["user_id"],
+		UserId:        mux.Vars(r)["admin_id"],
 		FileName:      filename,
 		TransactionID: t_id.Inc(),
 		C_type:        common.ADMIN_DUMPLOG,
@@ -720,9 +688,7 @@ func (ws *WebServer) adminDumplogHandler(w http.ResponseWriter, r *http.Request)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
-	} else if !resp.Success {
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
+	} else if resp.Success {
 		w.Header().Set("Content-Disposition", "attachment; filename="+filename)
 		w.Header().Set("Content-Type", "application/xml")
 		io.Copy(w, bytes.NewReader(*resp.File))

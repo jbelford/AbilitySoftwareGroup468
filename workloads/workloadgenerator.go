@@ -85,12 +85,8 @@ var rest = map[string]endpoint{
 		Query:  "%s/%s/cancel_set_sell?stock=%s",
 	},
 	"DUMPLOG": endpoint{
-		Method: "POST",
-		Query:  "%s/dumplog?filename=%s",
-	},
-	"ADMIN_DUMPLOG": endpoint{
-		Method: "POST",
-		Query:  "%s/0/dumplog?filename=%s",
+		Method: "GET",
+		Query:  "%s/%s/dumplog?filename=%s",
 	},
 	"DISPLAY_SUMMARY": endpoint{
 		Method: "GET",
@@ -98,7 +94,7 @@ var rest = map[string]endpoint{
 	},
 }
 
-func parseWorkloadCommand(cmdLine string) string {
+func parseWorkloadCommand(cmdLine string) endpoint {
 	split_cmd := strings.Split(cmdLine, ",")
 	if len(split_cmd) == 0 {
 		log.Fatal("Empty Command!")
@@ -118,10 +114,13 @@ func parseWorkloadCommand(cmdLine string) string {
 		}
 		split[i+1] = temp_val
 	}
-	end_url := fmt.Sprintf(mapped.Query, split...)
-	//log.Println(end_url)
+	if split_cmd[0] == "DUMPLOG" && len(split) < 3 {
+		mapped.Query = fmt.Sprintf(mapped.Query, split[0], "admin", split[1])
+	} else {
+		mapped.Query = fmt.Sprintf(mapped.Query, split...)
+	}
 
-	return end_url
+	return mapped
 }
 
 func main() {
@@ -137,7 +136,7 @@ func main() {
 
 	scanner := bufio.NewScanner(file)
 
-	var linesInFiles []string
+	var linesInFiles []endpoint
 	for scanner.Scan() {
 		line := scanner.Text()
 		endpoint := parseWorkloadCommand(strings.Split(line, "] ")[1])
@@ -166,11 +165,29 @@ func main() {
 			defer wg.Done()
 			json_data := linesInFiles[j]
 			log.Println(j, "Sending", json_data, json_data)
-			_, err := http.PostForm(json_data, url.Values{})
 
-			if err != nil {
-				// handle error
-				log.Println(err)
+			if json_data.Method == "POST" {
+				resp, err := http.PostForm(json_data.Query, url.Values{})
+				if err != nil {
+					// handle error
+					log.Println(err)
+					return
+				}
+
+				if resp.StatusCode != 200 {
+					log.Println(json_data, resp)
+				}
+			} else {
+				resp, err := http.Get(json_data.Query)
+				if err != nil {
+					// handle error
+					log.Println(err)
+					return
+				}
+
+				if resp.StatusCode != 200 {
+					log.Println(json_data, resp)
+				}
 			}
 
 			// sentMessages[i]++
