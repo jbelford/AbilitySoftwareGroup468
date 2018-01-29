@@ -1,10 +1,11 @@
 package tools
 
 import (
-	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
-	"github.com/mattpaletta/AbilitySoftwareGroup468/logging"
 	"log"
 	"time"
+
+	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
+	"github.com/mattpaletta/AbilitySoftwareGroup468/logging"
 )
 
 type TriggerManager struct {
@@ -28,7 +29,7 @@ func (tm *TriggerManager) Start() {
 				}
 				if len(txns) > 0 {
 					log.Printf("Resolving %d transactions\n", len(txns))
-					err = tm.db.Users.BulkTransaction(txns)
+					err = tm.db.Users.BulkTransaction(txns, false)
 					if err != nil {
 						log.Println(err)
 					}

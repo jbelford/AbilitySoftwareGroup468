@@ -1,9 +1,10 @@
 package tools
 
 import (
+	"time"
+
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 	"github.com/mattpaletta/AbilitySoftwareGroup468/logging"
-	"time"
 
 	gcache "github.com/patrickmn/go-cache"
 )
@@ -11,8 +12,7 @@ import (
 type Cache interface {
 	GetQuote(symbol string, tid int64) (*common.QuoteData, error)
 	GetReserved(userId string) int64
-	GetReservedShares(userId string, stock string) int
-	GetReservedSharesAll(userId string) map[string]int
+	GetReservedShares(userId string) map[string]int
 	PushPendingTxn(pending common.PendingTxn)
 	PopPendingTxn(userId string, txnType string) *common.PendingTxn
 }
@@ -48,35 +48,19 @@ func (c *cache) GetReserved(userId string) int64 {
 	var total int64
 	buys, ok := buysI.([]common.PendingTxn)
 	if ok {
-		for _, txn := range buys {
+		for i := len(buys) - 1; i >= 0; i-- {
+			txn := buys[i]
 			if txn.Expiry.After(now) {
 				total += txn.Reserved
+			} else {
+				break
 			}
 		}
 	}
 	return total
 }
 
-func (c *cache) GetReservedShares(userId string, stock string) int {
-	key := userId + ":SELL"
-	sellsI, found := c.Get(key)
-	if !found {
-		return 0
-	}
-	now := time.Now()
-	var total int
-	sells, ok := sellsI.([]common.PendingTxn)
-	if ok {
-		for _, txn := range sells {
-			if txn.Expiry.After(now) && txn.Stock == stock {
-				total += txn.Shares
-			}
-		}
-	}
-	return total
-}
-
-func (c *cache) GetReservedSharesAll(userId string) map[string]int {
+func (c *cache) GetReservedShares(userId string) map[string]int {
 	key := userId + ":SELL"
 	sellsI, found := c.Get(key)
 	if !found {
@@ -86,9 +70,12 @@ func (c *cache) GetReservedSharesAll(userId string) map[string]int {
 	mapping := make(map[string]int)
 	sells, ok := sellsI.([]common.PendingTxn)
 	if ok {
-		for _, txn := range sells {
+		for i := len(sells) - 1; i >= 0; i-- {
+			txn := sells[i]
 			if txn.Expiry.After(now) {
 				mapping[txn.Stock] = txn.Shares
+			} else {
+				break
 			}
 		}
 	}

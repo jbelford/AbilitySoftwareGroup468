@@ -5,14 +5,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
-	"github.com/mattpaletta/AbilitySoftwareGroup468/logging"
 	"html/template"
 	"io"
 	"log"
 	"net"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
+
+	"github.com/mattpaletta/AbilitySoftwareGroup468/logging"
 
 	"github.com/gorilla/mux"
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
@@ -27,7 +29,19 @@ func (ws *WebServer) error(cmd *common.Command, msg string) *common.Response {
 	return &common.Response{Success: false, Message: msg}
 }
 
-var t_id int64 = 0
+type Counter struct {
+	mu sync.Mutex
+	x  int64
+}
+
+func (c *Counter) Inc() int64 {
+	c.mu.Lock()
+	c.x++
+	defer c.mu.Unlock()
+	return c.x
+}
+
+var t_id Counter
 
 func (ws *WebServer) Start() {
 	ws.logger = logging.GetLogger(common.CFG.WebServer.Url)
@@ -125,7 +139,7 @@ func (ws *WebServer) indexHandler(w http.ResponseWriter, r *http.Request) {
 */
 func (ws *WebServer) userSummaryHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id,
+		TransactionID: t_id.Inc(),
 		C_type:        common.DISPLAY_SUMMARY,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -161,7 +175,7 @@ func (ws *WebServer) userAddHandler(w http.ResponseWriter, r *http.Request) *com
 		return &common.Response{Success: false, Message: "Parameter: 'amount' must be greater than 0"}
 	}
 	cmd := common.Command{
-		TransactionID: t_id,
+		TransactionID: t_id.Inc(),
 		C_type:        common.ADD,
 		UserId:        mux.Vars(r)["user_id"],
 		Amount:        amount,
@@ -197,7 +211,7 @@ func (ws *WebServer) userQuoteHandler(w http.ResponseWriter, r *http.Request) *c
 		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
 	}
 	cmd := common.Command{
-		TransactionID: t_id,
+		TransactionID: t_id.Inc(),
 		C_type:        common.QUOTE,
 		UserId:        mux.Vars(r)["user_id"],
 		StockSymbol:   quote_id,
@@ -245,7 +259,7 @@ func (ws *WebServer) userBuyHandler(w http.ResponseWriter, r *http.Request) *com
 	}
 
 	cmd := common.Command{
-		TransactionID: t_id,
+		TransactionID: t_id.Inc(),
 		C_type:        common.BUY,
 		UserId:        mux.Vars(r)["user_id"],
 		Amount:        amount,
@@ -270,7 +284,7 @@ func (ws *WebServer) userBuyHandler(w http.ResponseWriter, r *http.Request) *com
 */
 func (ws *WebServer) userCommitBuyHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id,
+		TransactionID: t_id.Inc(),
 		C_type:        common.COMMIT_BUY,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -293,7 +307,7 @@ func (ws *WebServer) userCommitBuyHandler(w http.ResponseWriter, r *http.Request
 */
 func (ws *WebServer) userCancelBuyHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id,
+		TransactionID: t_id.Inc(),
 		C_type:        common.CANCEL_BUY,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -340,7 +354,7 @@ func (ws *WebServer) userSellHandler(w http.ResponseWriter, r *http.Request) *co
 	}
 
 	cmd := common.Command{
-		TransactionID: t_id,
+		TransactionID: t_id.Inc(),
 		C_type:        common.SELL,
 		UserId:        mux.Vars(r)["user_id"],
 		Amount:        amount,
@@ -364,7 +378,7 @@ func (ws *WebServer) userSellHandler(w http.ResponseWriter, r *http.Request) *co
 */
 func (ws *WebServer) userCommitSellHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id,
+		TransactionID: t_id.Inc(),
 		C_type:        common.COMMIT_SELL,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -386,7 +400,7 @@ func (ws *WebServer) userCommitSellHandler(w http.ResponseWriter, r *http.Reques
 */
 func (ws *WebServer) userCancelSellHandler(w http.ResponseWriter, r *http.Request) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id,
+		TransactionID: t_id.Inc(),
 		C_type:        common.CANCEL_SELL,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -429,7 +443,7 @@ func (ws *WebServer) userSetBuyAmountHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	cmd := common.Command{
-		TransactionID: t_id,
+		TransactionID: t_id.Inc(),
 		C_type:        common.SET_BUY_AMOUNT,
 		UserId:        mux.Vars(r)["user_id"],
 		Amount:        amount,
@@ -465,7 +479,7 @@ func (ws *WebServer) userCancelSetBuyHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	cmd := common.Command{
-		TransactionID: t_id,
+		TransactionID: t_id.Inc(),
 		C_type:        common.CANCEL_SET_BUY,
 		UserId:        mux.Vars(r)["user_id"],
 		StockSymbol:   quote_id,
@@ -508,7 +522,7 @@ func (ws *WebServer) userSetBuyTriggerHandler(w http.ResponseWriter, r *http.Req
 	}
 
 	cmd := common.Command{
-		TransactionID: t_id,
+		TransactionID: t_id.Inc(),
 		C_type:        common.SET_BUY_TRIGGER,
 		UserId:        mux.Vars(r)["user_id"],
 		Amount:        amount,
@@ -553,7 +567,7 @@ func (ws *WebServer) userSetSellAmountHandler(w http.ResponseWriter, r *http.Req
 	}
 
 	cmd := common.Command{
-		TransactionID: t_id,
+		TransactionID: t_id.Inc(),
 		C_type:        common.SET_SELL_AMOUNT,
 		UserId:        mux.Vars(r)["user_id"],
 		Amount:        amount,
@@ -598,7 +612,7 @@ func (ws *WebServer) userSetSellTriggerHandler(w http.ResponseWriter, r *http.Re
 	}
 
 	cmd := common.Command{
-		TransactionID: t_id,
+		TransactionID: t_id.Inc(),
 		C_type:        common.SET_SELL_TRIGGER,
 		UserId:        mux.Vars(r)["user_id"],
 		Amount:        amount,
@@ -634,7 +648,7 @@ func (ws *WebServer) userCancelSetSellHandler(w http.ResponseWriter, r *http.Req
 	}
 
 	cmd := common.Command{
-		TransactionID: t_id,
+		TransactionID: t_id.Inc(),
 		C_type:        common.CANCEL_SET_SELL,
 		UserId:        mux.Vars(r)["user_id"],
 		StockSymbol:   quote_id,
@@ -663,7 +677,7 @@ func (ws *WebServer) userDumplogHandler(w http.ResponseWriter, r *http.Request) 
 
 	cmd := common.Command{
 		FileName:      filename,
-		TransactionID: t_id,
+		TransactionID: t_id.Inc(),
 		UserId:        mux.Vars(r)["user_id"],
 		C_type:        common.DUMPLOG,
 		Timestamp:     time.Now(),
@@ -696,7 +710,7 @@ func (ws *WebServer) adminDumplogHandler(w http.ResponseWriter, r *http.Request)
 	cmd := common.Command{
 		UserId:        mux.Vars(r)["user_id"],
 		FileName:      filename,
-		TransactionID: t_id,
+		TransactionID: t_id.Inc(),
 		C_type:        common.ADMIN_DUMPLOG,
 		Timestamp:     time.Now(),
 	}
@@ -753,7 +767,6 @@ func wrapHandler(
 	h := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		// test input here/validity of requester
-		t_id++
 		resp := handler(w, r)
 
 		if w.Header().Get("Content-Type") == "application/json" {

@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/mattpaletta/AbilitySoftwareGroup468/logging"
 	"log"
 	"net"
 	"net/rpc"
+
+	"github.com/mattpaletta/AbilitySoftwareGroup468/logging"
 
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 )
@@ -22,6 +23,6 @@ func (ad *AuditServer) Start() {
 	defer ln.Close()
 	for {
 		conn, _ := ln.Accept()
-		rpc.ServeConn(conn)
+		go rpc.ServeConn(conn)
 	}
 }

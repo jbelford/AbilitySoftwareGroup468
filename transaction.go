@@ -3,11 +3,12 @@ package main
 import (
 	"bufio"
 	"encoding/json"
-	"github.com/mattpaletta/AbilitySoftwareGroup468/logging"
-	"github.com/mattpaletta/AbilitySoftwareGroup468/tools"
 	"log"
 	"net"
 	"time"
+
+	"github.com/mattpaletta/AbilitySoftwareGroup468/logging"
+	"github.com/mattpaletta/AbilitySoftwareGroup468/tools"
 
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 )
@@ -228,7 +229,7 @@ func (ts *TransactionServer) handle_set_sell_amount(cmd *common.Command) *common
 	if err != nil {
 		return ts.error(cmd, "The user does not exist")
 	}
-	realStocks := user.Stock[cmd.StockSymbol].Real - ts.cache.GetReservedShares(cmd.UserId, cmd.StockSymbol)
+	realStocks := user.Stock[cmd.StockSymbol].Real - ts.cache.GetReservedShares(cmd.UserId)[cmd.StockSymbol]
 	if realStocks <= 0 {
 		return ts.error(cmd, "The user does not have any stock")
 	}
@@ -344,7 +345,7 @@ func (ts *TransactionServer) handle_display_summary(cmd *common.Command) *common
 	balance := user.Balance - cacheReserve
 	reserved := user.Reserved + cacheReserve
 
-	cacheStocks := ts.cache.GetReservedSharesAll(cmd.UserId)
+	cacheStocks := ts.cache.GetReservedShares(cmd.UserId)
 	for k, v := range user.Stock {
 		v.Real = v.Real - cacheStocks[k]
 		v.Reserved = v.Reserved + cacheStocks[k]
@@ -360,10 +361,7 @@ func (ts *TransactionServer) handle_display_summary(cmd *common.Command) *common
 }
 
 func (ts *TransactionServer) Start() {
-	for ts.logger == nil {
-		ts.logger = logging.GetLogger(common.CFG.TxnServer.Url)
-		time.Sleep(time.Second)
-	}
+	ts.logger = logging.GetLogger(common.CFG.TxnServer.Url)
 	ts.cache = tools.NewCache(ts.logger)
 	mongoDb, err := tools.GetMongoDatabase()
 	if err != nil {
@@ -402,20 +400,27 @@ func (ts *TransactionServer) Start() {
 
 	for {
 		conn, err := ln.Accept()
-		message, err := bufio.NewReader(conn).ReadString('\n')
-		if err != nil {
-			continue
-		}
-		log.Println("Received: ", string(message))
-		var resp *common.Response
-		resp, err = handler.Parse(message)
 		if err != nil {
 			log.Println(err)
-			resp = &common.Response{Success: false, Message: "Internal error parsing request"}
+			continue
 		}
-		var respByte []byte
-		respByte, err = json.Marshal(resp)
-		conn.Write(append(respByte, '\n'))
-		conn.Close()
+		go func() {
+			defer conn.Close()
+			message, err := bufio.NewReader(conn).ReadString('\n')
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			log.Println("Received: ", string(message))
+			var resp *common.Response
+			resp, err = handler.Parse(message)
+			if err != nil {
+				log.Println(err)
+				resp = &common.Response{Success: false, Message: "Internal error parsing request"}
+			}
+			var respByte []byte
+			respByte, err = json.Marshal(resp)
+			conn.Write(append(respByte, '\n'))
+		}()
 	}
 }

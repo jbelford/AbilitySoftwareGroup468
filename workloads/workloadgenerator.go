@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
-	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -30,71 +30,71 @@ type endpoint struct {
 var rest = map[string]endpoint{
 	"ADD": endpoint{
 		Method: "POST",
-		Query: "%s/%s/add?amount=%s",
+		Query:  "%s/%s/add?amount=%s",
 	},
 	"QUOTE": endpoint{
 		Method: "GET",
-		Query: "%s/%s/quote?stock=%s",
+		Query:  "%s/%s/quote?stock=%s",
 	},
 	"BUY": endpoint{
 		Method: "POST",
-		Query: "%s/%s/buy?stock=%s&amount=%s",
+		Query:  "%s/%s/buy?stock=%s&amount=%s",
 	},
 	"COMMIT_BUY": endpoint{
 		Method: "POST",
-		Query: "%s/%s/commit_buy",
+		Query:  "%s/%s/commit_buy",
 	},
 	"CANCEL_BUY": endpoint{
 		Method: "POST",
-		Query: "%s/%s/cancel_buy",
+		Query:  "%s/%s/cancel_buy",
 	},
 	"SELL": endpoint{
 		Method: "POST",
-		Query: "%s/%s/sell?stock=%s&amount=%s",
+		Query:  "%s/%s/sell?stock=%s&amount=%s",
 	},
 	"COMMIT_SELL": endpoint{
 		Method: "POST",
-		Query: "%s/%s/commit_sell",
+		Query:  "%s/%s/commit_sell",
 	},
 	"CANCEL_SELL": endpoint{
 		Method: "POST",
-		Query: "%s/%s/cancel_sell",
+		Query:  "%s/%s/cancel_sell",
 	},
 	"SET_BUY_AMOUNT": endpoint{
 		Method: "POST",
-		Query: "%s/%s/set_buy_amount?stock=%s&amount=%s",
+		Query:  "%s/%s/set_buy_amount?stock=%s&amount=%s",
 	},
 	"CANCEL_SET_BUY": endpoint{
 		Method: "POST",
-		Query: "%s/%s/cancel_set_buy?stock=%s",
+		Query:  "%s/%s/cancel_set_buy?stock=%s",
 	},
 	"SET_BUY_TRIGGER": endpoint{
 		Method: "POST",
-		Query: "%s/%s/set_buy_trigger?stock=%s&amount=%s",
+		Query:  "%s/%s/set_buy_trigger?stock=%s&amount=%s",
 	},
 	"SET_SELL_AMOUNT": endpoint{
 		Method: "POST",
-		Query: "%s/%s/set_sell_amount?stock=%s&amount=%s",
+		Query:  "%s/%s/set_sell_amount?stock=%s&amount=%s",
 	},
 	"SET_SELL_TRIGGER": endpoint{
 		Method: "POST",
-		Query: "%s/%s/set_sell_trigger?stock=%s&amount=%s",
+		Query:  "%s/%s/set_sell_trigger?stock=%s&amount=%s",
 	},
 	"CANCEL_SET_SELL": endpoint{
 		Method: "POST",
-		Query: "%s/%s/cancel_set_sell?stock=%s",
+		Query:  "%s/%s/cancel_set_sell?stock=%s",
 	},
 	"DUMPLOG": endpoint{
 		Method: "POST",
-		Query: "%s/dumplog?filename=%s",
+		Query:  "%s/dumplog?filename=%s",
 	},
 	"ADMIN_DUMPLOG": endpoint{
 		Method: "POST",
-		Query: "%s/0/dumplog?filename=%s",
+		Query:  "%s/0/dumplog?filename=%s",
 	},
 	"DISPLAY_SUMMARY": endpoint{
 		Method: "GET",
-		Query: "%s/%s/display_summary",
+		Query:  "%s/%s/display_summary",
 	},
 }
 
@@ -111,13 +111,13 @@ func parseWorkloadCommand(cmdLine string) string {
 	split := make([]interface{}, len(split_cmd))
 	split[0] = WEB_URL
 	for i, val := range split_cmd[1:] {
-			temp_val := strings.TrimSpace(val)
-			amount, err := strconv.ParseFloat(strings.TrimSpace(val), 64)
-			if err == nil { // It's a float!
-				temp_val = strconv.Itoa(int(amount * 100.0))
-			}
-			split[i+1] = temp_val
-  }
+		temp_val := strings.TrimSpace(val)
+		amount, err := strconv.ParseFloat(strings.TrimSpace(val), 64)
+		if err == nil { // It's a float!
+			temp_val = strconv.Itoa(int(amount * 100.0))
+		}
+		split[i+1] = temp_val
+	}
 	end_url := fmt.Sprintf(mapped.Query, split...)
 	//log.Println(end_url)
 
@@ -125,11 +125,10 @@ func parseWorkloadCommand(cmdLine string) string {
 }
 
 func main() {
-	if len(os.Args) < 3 {
-		panic("Missing arguments: <workLoadFile> <threadCount>")
+	if len(os.Args) < 2 {
+		panic("Missing arguments: <workLoadFile>")
 	}
 	pathToFile := os.Args[1]
-	threadCount, _ := strconv.ParseInt(os.Args[2], 10, 0)
 	file, err := os.Open(pathToFile)
 	if err != nil {
 		log.Fatal(err)
@@ -155,28 +154,30 @@ func main() {
 
 	// Start up threads to hit server...
 	var wg sync.WaitGroup
-	wg.Add(int(threadCount))
-	sentMessages := make([]int, int(threadCount))
+	// wg.Add(int(threadCount))
+	// sentMessages := make([]int, int(threadCount))
 
-	log.Println("Sending Traffic to: " + WEB_URL + " using " + string(threadCount) + " threads...")
+	log.Println("Sending Traffic to: " + WEB_URL)
 	start := time.Now()
 
-	for i := 0; i < int(threadCount); i++ {
-		go func(i int) {
+	for i := 0; i < sliceLength; i++ {
+		wg.Add(1)
+		go func(j int) {
 			defer wg.Done()
-			for j := 0; j < int(sliceLength); j++ {
-				json_data := linesInFiles[j]
-				log.Println("Sending", json_data, json_data)
-				_, err := http.PostForm(json_data, url.Values{})
+			json_data := linesInFiles[j]
+			log.Println(j, "Sending", json_data, json_data)
+			_, err := http.PostForm(json_data, url.Values{})
 
-				if err != nil {
-					// handle error
-					log.Println(err)
-				}
-
-				sentMessages[i]++
+			if err != nil {
+				// handle error
+				log.Println(err)
 			}
+
+			// sentMessages[i]++
 		}(i)
+		if (i+1)%100 == 0 {
+			wg.Wait()
+		}
 	}
 
 	wg.Wait()

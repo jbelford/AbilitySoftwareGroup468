@@ -1,9 +1,10 @@
 package tools
 
 import (
-	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 	"log"
 	"time"
+
+	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -27,7 +28,7 @@ type UsersCollection interface {
 	UnreserveShares(userId string, stock string, shares int) error
 	ReserveShares(userId string, stock string, shares int) error
 	GetUser(userId string) (common.User, error)
-	BulkTransaction(txns []*common.PendingTxn) error
+	BulkTransaction(txns []*common.PendingTxn, wasCached bool) error
 	ProcessBuy(buy *common.PendingTxn, wasCached bool) error
 	ProcessSell(sell *common.PendingTxn, wasCached bool) error
 }
@@ -52,7 +53,7 @@ func (c *users) AddUserMoney(userId string, amount int64) error {
 
 func (c *users) UnreserveMoney(userId string, amount int64) error {
 	return c.Update(
-		bson.M{"_id": userId},
+		bson.M{"_id": userId, "reserved": bson.M{"$gte": amount}},
 		bson.M{"$inc": bson.M{
 			"balance":  amount,
 			"reserved": -amount,
@@ -92,22 +93,14 @@ func (c *users) GetUser(userId string) (common.User, error) {
 	return user, err
 }
 
-func (c *users) BulkTransaction(txns []*common.PendingTxn) error {
+func (c *users) BulkTransaction(txns []*common.PendingTxn, wasCached bool) error {
 	bulk := c.Bulk()
 	for _, txn := range txns {
-		var selector, update map[string]interface{}
+		var selector, update bson.M
 		if txn.Type == "BUY" {
-			selector = bson.M{"_id": txn.UserId, "reserved": bson.M{"$gte": txn.Price}}
-			update = bson.M{"$inc": bson.M{
-				"reserved":                     -txn.Reserved,
-				"stock." + txn.Stock + ".real": txn.Shares,
-			}}
+			selector, update = buyParams(txn, wasCached)
 		} else {
-			selector = bson.M{"_id": txn.UserId, "stock." + txn.Stock + ".reserved": bson.M{"$gte": txn.Shares}}
-			update = bson.M{"$inc": bson.M{
-				"balance":                          txn.Price,
-				"stock." + txn.Stock + ".reserved": -txn.Shares,
-			}}
+			selector, update = sellParams(txn, wasCached)
 		}
 		bulk.Update(selector, update)
 	}
@@ -116,7 +109,14 @@ func (c *users) BulkTransaction(txns []*common.PendingTxn) error {
 }
 
 func (c *users) ProcessBuy(buy *common.PendingTxn, wasCached bool) error {
-	var selector, update bson.M
+	return c.Update(buyParams(buy, wasCached))
+}
+
+func (c *users) ProcessSell(sell *common.PendingTxn, wasCached bool) error {
+	return c.Update(sellParams(sell, wasCached))
+}
+
+func buyParams(buy *common.PendingTxn, wasCached bool) (selector bson.M, update bson.M) {
 	if wasCached {
 		selector = bson.M{"_id": buy.UserId, "balance": bson.M{"$gte": buy.Price}}
 		update = bson.M{"$inc": bson.M{
@@ -131,20 +131,20 @@ func (c *users) ProcessBuy(buy *common.PendingTxn, wasCached bool) error {
 			"stock." + buy.Stock + ".real": buy.Shares,
 		}}
 	}
-	return c.Update(selector, update)
+	return selector, update
 }
 
-func (c *users) ProcessSell(sell *common.PendingTxn, wasCached bool) error {
+func sellParams(sell *common.PendingTxn, wasCached bool) (selector bson.M, update bson.M) {
 	realOrReserved := "real"
-	if wasCached {
+	if !wasCached {
 		realOrReserved = "reserved"
 	}
-	return c.Update(
-		bson.M{"_id": sell.UserId, "stock." + sell.Stock + "." + realOrReserved: bson.M{"$gte": sell.Shares}},
-		bson.M{"$inc": bson.M{
-			"balance": sell.Price,
-			"stock." + sell.Stock + "." + realOrReserved: -sell.Shares,
-		}})
+	selector = bson.M{"_id": sell.UserId, "stock." + sell.Stock + "." + realOrReserved: bson.M{"$gte": sell.Shares}}
+	update = bson.M{"$inc": bson.M{
+		"balance": sell.Price,
+		"stock." + sell.Stock + "." + realOrReserved: -sell.Shares,
+	}}
+	return selector, update
 }
 
 type TriggersCollection interface {
@@ -217,6 +217,7 @@ type transactions struct {
 
 func (c *transactions) LogTxn(txn *common.PendingTxn, triggered bool) error {
 	return c.Insert(bson.M{
+		"userId":    txn.UserId,
 		"type":      txn.Type,
 		"triggered": triggered,
 		"stock":     txn.Stock,
@@ -231,6 +232,7 @@ func (c *transactions) BulkLog(txns []*common.PendingTxn, triggered bool) error 
 	bulk := c.Bulk()
 	for _, txn := range txns {
 		bulk.Insert(bson.M{
+			"userId":    txn.UserId,
 			"type":      txn.Type,
 			"triggered": triggered,
 			"stock":     txn.Stock,

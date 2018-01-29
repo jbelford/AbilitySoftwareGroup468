@@ -37,6 +37,7 @@ type UserInfo struct {
 }
 
 type Transaction struct {
+	UserId    string `bson:"userId" json:"userId"`
 	Type      string `json:"type"`
 	Triggered bool   `json:"triggered"`
 	Stock     string `json:"stock"`
