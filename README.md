@@ -12,6 +12,13 @@ docker-compose up -d
 docker-compose up -d --build
 `
 
+### To test with larger scale systems (Eg. 10 instances of workloadgen):
+`
+docker-compose up -d --scale workloadgen:10
+`
+
+
+
 ## To view running images:
 `
 docker-compose ps
