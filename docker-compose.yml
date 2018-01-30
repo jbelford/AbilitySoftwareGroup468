@@ -6,8 +6,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - 44421:44421
+    links:
+      - mongodb:db1.prod.ability.com
+      - auditserver:auditserver.prod.ability.com
+    expose:
+      - 44421
     depends_on:
       - mongodb
       - auditserver
@@ -17,31 +20,35 @@ services:
       mynetwork:
         aliases:
           - transaction.prod.ability.com
-  webserver:
-    container_name: "webserver"
+  web:
+    container_name: "web"
     image: ability:latest
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - 44420:44420
+      #- 44420
+      - "8080:44420"
+    expose:
+      - 44420
+    links:
+      - transaction:transaction.prod.ability.com
     depends_on:
       - transaction
       - auditserver
     tty: true
     command: webserver --prod
     networks:
-      mynetwork:
-        aliases:
-          - webserver.prod.ability.com
+      - scaryoutside
+      - mynetwork
   auditserver:
     container_name: "auditserver"
     image: ability:latest
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - 44422:44422
+    expose:
+      - 44422
     command: auditserver --prod
     tty: true
     networks:
@@ -56,9 +63,10 @@ services:
       dockerfile: Dockerfile
     tty: true
     #command: 1userWorkLoad.txt 1
-    #entrypoint: /bin/bash
+    links:
+      - web
     depends_on:
-      - webserver
+      - web
     networks:
       mynetwork:
         aliases:
@@ -69,8 +77,8 @@ services:
     environment:
       - MONGO_DATA_DIR=/data/db
       #- MONGO_LOG_DIR=/dev/null
-    ports:
-      - 44423:44423
+    expose:
+      - 44423
     command: mongod --smallfiles --port 44423 --bind_ip db1.prod.ability.com #--logpath=/dev/null # --quiet
     networks:
       mynetwork:
@@ -79,3 +87,4 @@ services:
 networks:
   mynetwork:
     driver: overlay
+  scaryoutside:
