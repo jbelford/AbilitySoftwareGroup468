@@ -27,4 +27,4 @@ install: true
 script:
   #- go test *.go
   - bash -x CI.sh
-  - cat pumba.json
+  - cat /pumba.json
