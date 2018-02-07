@@ -12,6 +12,13 @@ docker-compose up -d
 docker-compose up -d --build
 `
 
+### To test with larger scale systems (Eg. 10 instances of workloadgen):
+`
+docker-compose up -d --scale workloadgen:10
+`
+
+
+
 ## To view running images:
 `
 docker-compose ps
@@ -43,3 +50,8 @@ Use `docker-compose exec workloadgen bash` to start a bash prompt in the workloa
 Once inside, run `go run workloadgenerator.go <nameoftestfile> <numthreads>`.  All files from `workloads/` are included.
 Alternatively: `docker-compose down && docker-compose up -d --build && docker-compose exec workloadgen bash`
 To get out of the container `exit`
+
+
+### To delete docker images/containers
+`docker rmi $(docker images -q)`
+`docker rm $(docker ps -a -q)`
