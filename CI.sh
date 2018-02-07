@@ -4,8 +4,7 @@ GREEN='\033[0;32m'
 NC='\033[0m'
 # kill and remove any running containers
 cleanup () {
-  docker-compose -p ability kill
-  docker-compose -p ability rm -f --all
+  docker-compose down
 }
 # catch unexpected failures, do cleanup and output an error message
 trap 'cleanup ; printf "${RED}Tests Failed For Unexpected Reasons${NC}\n"'\

@@ -17,7 +17,7 @@ addons:
 
 go:
   - 1.9
-  - master
+  #- master
 
 install: true
 
