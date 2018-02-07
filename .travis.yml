@@ -24,4 +24,5 @@ before_script:
   - go get -v ./...
 
 script:
-  - go test *.go
+  #- go test *.go
+  - ./CI.sh
