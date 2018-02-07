@@ -1,0 +1,13 @@
+{
+  "go.autocompleteUnimportedPackages": true,
+    "go.liveErrors": {
+        "enabled": true,
+        "delay": 500
+    },
+    "go.lintOnSave": "workspace",
+    "[go]": {
+        "editor.insertSpaces": false,
+        "editor.formatOnSave": true,
+        "editor.tabSize": 4
+    },
+}

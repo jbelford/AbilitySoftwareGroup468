@@ -1,27 +1,26 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"flag"
 	"html/template"
 	"io"
 	"log"
-	"net"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
 
-	"github.com/mattpaletta/AbilitySoftwareGroup468/logging"
+	"github.com/mattpaletta/AbilitySoftwareGroup468/networks"
 
 	"github.com/gorilla/mux"
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 )
 
 type WebServer struct {
-	logger logging.Logger
+	logger  networks.Logger
+	txnConn networks.TxnConn
 }
 
 func (ws *WebServer) error(cmd *common.Command, msg string) *common.Response {
@@ -36,15 +35,16 @@ type Counter struct {
 
 func (c *Counter) Inc() int64 {
 	c.mu.Lock()
-	c.x++
 	defer c.mu.Unlock()
+	c.x = c.x + 1
 	return c.x
 }
 
 var t_id Counter
 
 func (ws *WebServer) Start() {
-	ws.logger = logging.GetLogger(common.CFG.WebServer.Url)
+	ws.logger = networks.GetLogger(common.CFG.WebServer.Url)
+	ws.txnConn = networks.GetTxnConn()
 	var dir string
 
 	flag.StringVar(&dir, "dir", ".", "the directory to serve files from. Defaults to the current dir")
@@ -88,10 +88,8 @@ func (ws *WebServer) Start() {
 
 	log.Println("Listening on:", common.CFG.WebServer.Url)
 	srv := &http.Server{
-		Handler:      r,
-		Addr:         common.CFG.WebServer.Url,
-		WriteTimeout: 15 * time.Second,
-		ReadTimeout:  15 * time.Second,
+		Handler: r,
+		Addr:    common.CFG.WebServer.Url,
 	}
 
 	log.Fatal(srv.ListenAndServe())
@@ -146,7 +144,7 @@ func (ws *WebServer) userSummaryHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	go ws.logger.UserCommand(&cmd)
 
-	resp := issueTransactionCommand(cmd)
+	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
@@ -181,7 +179,7 @@ func (ws *WebServer) userAddHandler(w http.ResponseWriter, r *http.Request) *com
 	}
 	go ws.logger.UserCommand(&cmd)
 
-	resp := issueTransactionCommand(cmd)
+	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
@@ -215,7 +213,7 @@ func (ws *WebServer) userQuoteHandler(w http.ResponseWriter, r *http.Request) *c
 	}
 	go ws.logger.UserCommand(&cmd)
 
-	resp := issueTransactionCommand(cmd)
+	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
@@ -262,7 +260,7 @@ func (ws *WebServer) userBuyHandler(w http.ResponseWriter, r *http.Request) *com
 	}
 	go ws.logger.UserCommand(&cmd)
 
-	resp := issueTransactionCommand(cmd)
+	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
@@ -283,7 +281,7 @@ func (ws *WebServer) userCommitBuyHandler(w http.ResponseWriter, r *http.Request
 	}
 	go ws.logger.UserCommand(&cmd)
 
-	resp := issueTransactionCommand(cmd)
+	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
@@ -304,7 +302,7 @@ func (ws *WebServer) userCancelBuyHandler(w http.ResponseWriter, r *http.Request
 	}
 	go ws.logger.UserCommand(&cmd)
 
-	resp := issueTransactionCommand(cmd)
+	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
@@ -351,7 +349,7 @@ func (ws *WebServer) userSellHandler(w http.ResponseWriter, r *http.Request) *co
 	}
 	go ws.logger.UserCommand(&cmd)
 
-	resp := issueTransactionCommand(cmd)
+	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
@@ -371,7 +369,7 @@ func (ws *WebServer) userCommitSellHandler(w http.ResponseWriter, r *http.Reques
 	}
 	go ws.logger.UserCommand(&cmd)
 
-	resp := issueTransactionCommand(cmd)
+	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
@@ -391,7 +389,7 @@ func (ws *WebServer) userCancelSellHandler(w http.ResponseWriter, r *http.Reques
 	}
 	go ws.logger.UserCommand(&cmd)
 
-	resp := issueTransactionCommand(cmd)
+	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
@@ -434,7 +432,7 @@ func (ws *WebServer) userSetBuyAmountHandler(w http.ResponseWriter, r *http.Requ
 	}
 	go ws.logger.UserCommand(&cmd)
 
-	resp := issueTransactionCommand(cmd)
+	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
@@ -467,7 +465,7 @@ func (ws *WebServer) userCancelSetBuyHandler(w http.ResponseWriter, r *http.Requ
 	}
 	go ws.logger.UserCommand(&cmd)
 
-	resp := issueTransactionCommand(cmd)
+	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
@@ -509,7 +507,7 @@ func (ws *WebServer) userSetBuyTriggerHandler(w http.ResponseWriter, r *http.Req
 	}
 	go ws.logger.UserCommand(&cmd)
 
-	resp := issueTransactionCommand(cmd)
+	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
@@ -552,7 +550,7 @@ func (ws *WebServer) userSetSellAmountHandler(w http.ResponseWriter, r *http.Req
 	}
 	go ws.logger.UserCommand(&cmd)
 
-	resp := issueTransactionCommand(cmd)
+	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
@@ -595,7 +593,7 @@ func (ws *WebServer) userSetSellTriggerHandler(w http.ResponseWriter, r *http.Re
 	}
 	go ws.logger.UserCommand(&cmd)
 
-	resp := issueTransactionCommand(cmd)
+	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
@@ -628,7 +626,7 @@ func (ws *WebServer) userCancelSetSellHandler(w http.ResponseWriter, r *http.Req
 	}
 	go ws.logger.UserCommand(&cmd)
 
-	resp := issueTransactionCommand(cmd)
+	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
@@ -654,7 +652,7 @@ func (ws *WebServer) userDumplogHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	go ws.logger.UserCommand(&cmd)
 
-	resp := issueTransactionCommand(cmd)
+	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
@@ -684,7 +682,7 @@ func (ws *WebServer) adminDumplogHandler(w http.ResponseWriter, r *http.Request)
 	}
 	go ws.logger.UserCommand(&cmd)
 
-	resp := issueTransactionCommand(cmd)
+	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return &common.Response{Success: false, Message: "Internal error prevented operation"}
@@ -694,36 +692,6 @@ func (ws *WebServer) adminDumplogHandler(w http.ResponseWriter, r *http.Request)
 		io.Copy(w, bytes.NewReader(*resp.File))
 	}
 	return resp
-}
-
-//passes command to transaction server
-func issueTransactionCommand(com common.Command) *common.Response {
-	textCmd, err := json.Marshal(com)
-	if err != nil {
-		return nil
-	}
-
-	conn, err := net.Dial("tcp", common.CFG.TxnServer.Url)
-	if err != nil {
-		return nil
-	}
-	defer conn.Close()
-
-	_, err = conn.Write(append(textCmd, '\n'))
-
-	var resp string
-	conn.SetReadDeadline(time.Now().Add(15 * time.Second))
-	resp, err = bufio.NewReader(conn).ReadString('\n')
-	if err != nil {
-		return nil
-	}
-
-	var jsonResp *common.Response
-	err = json.Unmarshal([]byte(resp), &jsonResp)
-	if err != nil {
-		return nil
-	}
-	return jsonResp
 }
 
 func wrapHandler(

@@ -1,8 +1,9 @@
-package logging
+package networks
 
 import (
 	"encoding/xml"
 	"io/ioutil"
+	"log"
 	"net/rpc"
 	"os"
 	"time"
@@ -29,19 +30,23 @@ type Logger interface {
 	DebugEvent(cmd *common.Command, debug string) error
 	DumpLogUser(userId string) (*[]byte, error)
 	DumpLog() (*[]byte, error)
+	Close() error
 }
 
 type logger struct {
+	client *rpc.Client
 	server string
 }
 
-func (l *logger) Call(method string, args interface{}, result interface{}) error {
-	client, err := rpc.Dial("tcp", common.CFG.AuditServer.Url)
-	if err != nil {
-		return nil
+func (l *logger) Call(method string, args interface{}, result interface{}) (err error) {
+	for {
+		err = l.client.Call(method, args, result)
+		if err == rpc.ErrShutdown {
+			l.client, err = rpc.Dial("tcp", common.CFG.AuditServer.Url)
+			continue
+		}
+		return err
 	}
-	defer client.Close()
-	return client.Call(method, args, result)
 }
 
 func (l *logger) UserCommand(cmd *common.Command) error {
@@ -140,8 +145,19 @@ func (l *logger) DumpLog() (*[]byte, error) {
 	return &data, err
 }
 
+func (l *logger) Close() error {
+	return l.client.Close()
+}
+
 func GetLogger(server string) Logger {
-	return &logger{server}
+	for {
+		client, err := rpc.Dial("tcp", common.CFG.AuditServer.Url)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		return &logger{client, server}
+	}
 }
 
 type LoggerRPC struct {
@@ -150,10 +166,10 @@ type LoggerRPC struct {
 
 func (l *LoggerRPC) writeLogs(log interface{}, userFilename string) error {
 	flag := os.O_APPEND | os.O_WRONLY
-	if _, err := os.Stat(userFilename); os.IsNotExist(err) {
+	if _, err := os.Stat("./logs/" + userFilename); os.IsNotExist(err) {
 		flag |= os.O_CREATE
 	}
-	uWriter, err := os.OpenFile(userFilename, flag, 0777)
+	uWriter, err := os.OpenFile("./logs/"+userFilename, flag, 0777)
 	if err != nil {
 		return err
 	}
@@ -169,7 +185,7 @@ func (l *LoggerRPC) writeLogs(log interface{}, userFilename string) error {
 
 func (l *LoggerRPC) readLog(filename string) []byte {
 	data := []byte("<log>\n")
-	read, err := ioutil.ReadFile(filename)
+	read, err := ioutil.ReadFile("./logs/" + filename)
 	if err == nil {
 		data = append(data, read...)
 	}
@@ -178,7 +194,7 @@ func (l *LoggerRPC) readLog(filename string) []byte {
 }
 
 func (l *LoggerRPC) UserCommand(args *Args, result *string) error {
-	log := &UserCommand{
+	val := &UserCommand{
 		Command:        args.Command,
 		Server:         args.Server,
 		Filename:       args.FileName,
@@ -188,11 +204,12 @@ func (l *LoggerRPC) UserCommand(args *Args, result *string) error {
 		TransactionNum: args.TransactionNum,
 		Username:       args.Username,
 	}
-	return l.writeLogs(log, args.Username+".xml")
+	log.Println("USER_COMMAND", val)
+	return l.writeLogs(val, args.Username+".xml")
 }
 
 func (l *LoggerRPC) QuoteServer(args *Args, result *string) error {
-	log := &QuoteServer{
+	val := &QuoteServer{
 		Cryptokey:       args.Cryptokey,
 		Server:          args.Server,
 		Price:           args.Price,
@@ -202,11 +219,12 @@ func (l *LoggerRPC) QuoteServer(args *Args, result *string) error {
 		TransactionNum:  args.TransactionNum,
 		Username:        args.Username,
 	}
-	return l.writeLogs(log, args.Username+".xml")
+	log.Println("QUOTE_SERVER", val)
+	return l.writeLogs(val, args.Username+".xml")
 }
 
 func (l *LoggerRPC) AccountTransaction(args *Args, result *string) error {
-	log := &AccountTransaction{
+	val := &AccountTransaction{
 		Action:         args.Action,
 		Server:         args.Server,
 		Funds:          args.Funds,
@@ -214,11 +232,12 @@ func (l *LoggerRPC) AccountTransaction(args *Args, result *string) error {
 		TransactionNum: args.TransactionNum,
 		Username:       args.Username,
 	}
-	return l.writeLogs(log, args.Username+".xml")
+	log.Println("ACCOUNT_TRANSACTION", val)
+	return l.writeLogs(val, args.Username+".xml")
 }
 
 func (l *LoggerRPC) SystemEvent(args *Args, result *string) error {
-	log := &SystemEvent{
+	val := &SystemEvent{
 		Command:        args.Command,
 		Server:         args.Server,
 		Filename:       args.FileName,
@@ -228,11 +247,12 @@ func (l *LoggerRPC) SystemEvent(args *Args, result *string) error {
 		TransactionNum: args.TransactionNum,
 		Username:       args.Username,
 	}
-	return l.writeLogs(log, args.Username+".xml")
+	log.Println("SYSTEM_EVENT", val)
+	return l.writeLogs(val, args.Username+".xml")
 }
 
 func (l *LoggerRPC) ErrorEvent(args *Args, result *string) error {
-	log := &ErrorEvent{
+	val := &ErrorEvent{
 		Command:        args.Command,
 		Server:         args.Server,
 		ErrorMessage:   args.ErrorMessage,
@@ -243,11 +263,12 @@ func (l *LoggerRPC) ErrorEvent(args *Args, result *string) error {
 		TransactionNum: args.TransactionNum,
 		Username:       args.Username,
 	}
-	return l.writeLogs(log, args.Username+".xml")
+	log.Println("ERROR_EVENT", val)
+	return l.writeLogs(val, args.Username+".xml")
 }
 
 func (l *LoggerRPC) DebugEvent(args *Args, result *string) error {
-	log := &DebugEvent{
+	val := &DebugEvent{
 		Command:        args.Command,
 		Server:         args.Server,
 		DebugMessage:   args.DebugMessage,
@@ -258,11 +279,12 @@ func (l *LoggerRPC) DebugEvent(args *Args, result *string) error {
 		TransactionNum: args.TransactionNum,
 		Username:       args.Username,
 	}
-	return l.writeLogs(log, args.Username+".xml")
+	log.Println("DEBUG_EVENT", val)
+	return l.writeLogs(val, args.Username+".xml")
 }
 
 func (l *LoggerRPC) DumpLog(args *Args, result *[]byte) error {
-	filename := "tmp.xml"
+	filename := "./logs/tmp.xml"
 	if args.FileName == "" {
 		filename = args.FileName
 	}
@@ -272,10 +294,10 @@ func (l *LoggerRPC) DumpLog(args *Args, result *[]byte) error {
 
 func GetLoggerRPC() (*LoggerRPC, *os.File) {
 	flag := os.O_APPEND | os.O_WRONLY
-	if _, err := os.Stat("tmp.xml"); os.IsNotExist(err) {
+	if _, err := os.Stat("./logs/tmp.xml"); os.IsNotExist(err) {
 		flag |= os.O_CREATE | os.O_WRONLY
 	}
-	writer, err := os.OpenFile("tmp.xml", flag, 0777)
+	writer, err := os.OpenFile("./logs/tmp.xml", flag, 0777)
 	if err != nil {
 		panic(err)
 	}

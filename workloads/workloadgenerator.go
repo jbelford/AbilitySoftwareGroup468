@@ -5,21 +5,20 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
 const (
 	//CTYPE   = "C_type"
-	USER    = "UserId"
-	AMOUNT  = "Amount"
-	STOCK   = "StockSymbol"
-	FILE    = "FileName"
-	WEB_URL = "http://webserver.prod.ability.com:44420"
+	USER        = "UserId"
+	AMOUNT      = "Amount"
+	STOCK       = "StockSymbol"
+	FILE        = "FileName"
+	WEB_URL     = "http://webserver.prod.ability.com:44420"
+	NUM_WORKERS = 10000
 )
 
 type endpoint struct {
@@ -99,9 +98,6 @@ func parseWorkloadCommand(cmdLine string) endpoint {
 	if len(split_cmd) == 0 {
 		log.Fatal("Empty Command!")
 	}
-	//var WorkResp map[string]string
-
-	//C_type := split_cmd[0]
 
 	mapped := rest[split_cmd[0]]
 	split := make([]interface{}, len(split_cmd))
@@ -151,55 +147,84 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Start up threads to hit server...
-	var wg sync.WaitGroup
-	// wg.Add(int(threadCount))
-	// sentMessages := make([]int, int(threadCount))
+	c := make(chan endpoint, 100)
+	done := make(chan bool, NUM_WORKERS)
+	for i := 0; i < NUM_WORKERS; i++ {
+		go startWorker(c, done)
+	}
 
 	log.Println("Sending Traffic to: " + WEB_URL)
 	start := time.Now()
 
-	for i := 0; i < sliceLength; i++ {
-		wg.Add(1)
-		go func(j int) {
-			defer wg.Done()
-			json_data := linesInFiles[j]
-			log.Println(j, "Sending", json_data, json_data)
-
-			if json_data.Method == "POST" {
-				resp, err := http.PostForm(json_data.Query, url.Values{})
-				if err != nil {
-					// handle error
-					log.Println(err)
-					return
-				}
-
-				if resp.StatusCode != 200 {
-					log.Println(json_data, resp)
-				}
-			} else {
-				resp, err := http.Get(json_data.Query)
-				if err != nil {
-					// handle error
-					log.Println(err)
-					return
-				}
-
-				if resp.StatusCode != 200 {
-					log.Println(json_data, resp)
-				}
-			}
-
-			// sentMessages[i]++
-		}(i)
-		if (i+1)%100 == 0 {
-			wg.Wait()
-		}
+	// Request rate per second
+	rate := 3000
+	sleepTime := time.Second.Nanoseconds() / int64(rate)
+	for _, req := range linesInFiles {
+		c <- req
+		time.Sleep(time.Duration(sleepTime))
 	}
 
-	wg.Wait()
+	close(c)
+	for i := 0; i < NUM_WORKERS; i++ {
+		<-done
+	}
+
 	now := time.Now()
 	log.Println("Finished for loop")
 	log.Println("Ran for: ", now.Sub(start))
 	//log.Println(sentMessages)
 }
+
+func startWorker(ch chan endpoint, done chan bool) {
+	for {
+		data, ok := <-ch
+		if !ok {
+			done <- true
+			return
+		}
+		log.Println("Sending", data)
+
+		client := &http.Client{}
+		req, err := http.NewRequest(data.Method, data.Query, nil)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		req.Close = true
+		req.Header.Set("Content-Type", "application/json")
+
+		success := false
+		for !success {
+			resp, err := client.Do(req)
+			if err != nil {
+				continue
+			}
+			success = true
+			if resp.StatusCode != 200 {
+				log.Println(resp.StatusCode, data.Method, data.Query, resp.Body)
+			}
+			resp.Body.Close()
+		}
+	}
+}
+
+// rate := uint64(100)
+// duration := 30 * time.Second
+// targeter := vegeta.NewStaticTargeter(vegeta.Target{
+// 	Method: "GET",
+// 	URL:    "http://127.0.0.1:8081/test/quote?stock=ABC",
+// })
+// attacker := vegeta.NewAttacker()
+// var metrics vegeta.Metrics
+// for res := range attacker.Attack(targeter, rate, duration) {
+// 	metrics.Add(res)
+// }
+// metrics.Close()
+// fmt.Printf("99th percentile: %s\n", metrics.Latencies.P99)
+// reporter := vegeta.NewJSONReporter(&metrics)
+
+// f, _ := os.OpenFile("results.json", os.O_WRONLY|os.O_CREATE, 0700)
+
+// reporter.Report(f)
+
+// f.Close()
