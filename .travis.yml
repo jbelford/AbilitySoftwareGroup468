@@ -1,8 +1,22 @@
 language: go
 
+env:
+  - DOCKER_COMPOSE_VERSION=1.18.0
+
+before_install:
+  - sudo rm /usr/local/bin/docker-compose
+  - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
+  - chmod +x docker-compose
+  - sudo mv docker-compose /usr/local/bin
+
+addons:
+  apt:
+    packages:
+      - docker-ce
+
 go:
   - 1.9
-  - master 
+  - master
 
 install: true
 
@@ -10,4 +24,4 @@ before_script:
   - go get -v ./...
 
 script:
-  - go build *.go
+  - go test *.go

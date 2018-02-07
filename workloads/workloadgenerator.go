@@ -149,6 +149,7 @@ func main() {
 
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
+                panic(err) // Used do CI will stop tests.
 	}
 
 	// Start up threads to hit server...
@@ -171,7 +172,7 @@ func main() {
 				if err != nil {
 					// handle error
 					log.Println(err)
-					return
+					panic(err) // Stop when running CI
 				}
 
 				if resp.StatusCode != 200 {
@@ -182,7 +183,7 @@ func main() {
 				if err != nil {
 					// handle error
 					log.Println(err)
-					return
+					panic(err)
 				}
 
 				if resp.StatusCode != 200 {
