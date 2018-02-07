@@ -13,20 +13,12 @@ import (
 
 const (
 	//CTYPE   = "C_type"
-<<<<<<< HEAD
 	USER        = "UserId"
 	AMOUNT      = "Amount"
 	STOCK       = "StockSymbol"
 	FILE        = "FileName"
 	WEB_URL     = "http://webserver.prod.ability.com:44420"
 	NUM_WORKERS = 10000
-=======
-	USER    = "UserId"
-	AMOUNT  = "Amount"
-	STOCK   = "StockSymbol"
-	FILE    = "FileName"
-	WEB_URL = "http://web:44420"
->>>>>>> 88af426bc82d2285c224b31fce52096be3f9e014
 )
 
 type endpoint struct {
