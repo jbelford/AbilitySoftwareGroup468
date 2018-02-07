@@ -11,7 +11,8 @@ cleanup () {
 trap 'cleanup ; printf "${RED}Tests Failed For Unexpected Reasons${NC}\n"'\
   HUP INT QUIT PIPE TERM
 # build and run the composed services
-docker-compose -p ability up --build --force-recreate -d
+docker-compose -f docker-compose.yml -f docker-compose-ci.yml -p ability up -d --build --force-recreate
+#docker-compose -p ability up --build --force-recreate -d
 if [ $? -ne 0 ] ; then
   printf "${RED}Docker Compose Failed${NC}\n"
   exit -1

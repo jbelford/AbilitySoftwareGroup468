@@ -1,0 +1,12 @@
+version: "3"  
+services:  
+  pumba: 
+    image: gaiaadm/pumba:latest
+    container_name: "PUMBA"
+    volumes:  
+        - /var/run/docker.sock:/var/run/docker.sock
+    command: ["pumba --random --interval 10s kill re2:'^ability_*' --signal SIGTERM"]
+
+networks:
+   mynetwork:
+     driver: bridge
