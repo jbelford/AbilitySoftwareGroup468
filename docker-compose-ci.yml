@@ -5,7 +5,7 @@ services:
     container_name: "PUMBA"
     volumes:  
         - /var/run/docker.sock:/var/run/docker.sock
-    command: ["pumba --random --interval 10s kill re2:'^ability_*' --signal SIGTERM"]
+    command: ["pumba --random --interval 0.5s kill re2:'^ability_*' --signal SIGTERM --json pumba.json"]
 
 networks:
    mynetwork:

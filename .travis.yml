@@ -21,9 +21,10 @@ go:
 
 install: true
 
-before_script:
-  - go get -v ./...
+#before_script:
+  #- go get -v ./...
 
 script:
   #- go test *.go
   - bash -x CI.sh
+  - cat pumba.json
