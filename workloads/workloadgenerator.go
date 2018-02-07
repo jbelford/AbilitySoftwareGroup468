@@ -19,7 +19,7 @@ const (
 	AMOUNT  = "Amount"
 	STOCK   = "StockSymbol"
 	FILE    = "FileName"
-	WEB_URL = "http://webserver.prod.ability.com:44420"
+	WEB_URL = "http://web:44420"
 )
 
 type endpoint struct {

@@ -1,6 +1,6 @@
 {
     "database": {
-        "url": "db1.prod.ability.com:44423",
+        "url": "mongodb:44423",
         "name": "seng468"
     },
     "quoteserver": {
@@ -8,12 +8,12 @@
         "mock": true
     },
     "transactionserver": {
-        "url": "transaction.prod.ability.com:44421"
+        "url": "transaction:44421"
     },
     "webserver": {
-        "url": "webserver.prod.ability.com:44420"
+        "url": "web:44420"
     },
     "auditserver": {
-        "url": "auditserver.prod.ability.com:44422"
+        "url": "auditserver:44422"
     }
 }
