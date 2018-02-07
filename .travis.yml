@@ -26,4 +26,4 @@ before_script:
 
 script:
   #- go test *.go
-  - ./CI.sh
+  - bash -x CI.sh
