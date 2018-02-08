@@ -12,9 +12,6 @@ env:
     - WORKLOAD_FILE=10User_testWorkLoad.txt
     - WORKLOAD_FILE=45User_testWorkLoad.txt
 
-env:
-  - DOCKER_COMPOSE_VERSION=1.18.0
-
 before_install:
   - sudo rm /usr/local/bin/docker-compose
   - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
