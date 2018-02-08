@@ -7,6 +7,23 @@ services:
         - /var/run/docker.sock:/var/run/docker.sock
     command: ["pumba --random --interval 0.5s kill re2:'^ability_*' --signal SIGTERM"]
 
+workloadgen:
+    #container_name: "workloadgen"
+    image: workloadgen:latest
+    build:
+      context: workloads
+      dockerfile: Dockerfile
+    tty: true
+    entrypoint: go run workloadgenerator.go $WORKLOAD_FILE
+    links:
+      - web
+    depends_on:
+      - web
+    networks:
+      mynetwork:
+        aliases:
+          - workgen.prod.ability.com
+
 networks:
    mynetwork:
      driver: bridge
