@@ -3,8 +3,9 @@ package tools
 import (
 	"time"
 
+	"github.com/mattpaletta/AbilitySoftwareGroup468/networks"
+
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
-	"github.com/mattpaletta/AbilitySoftwareGroup468/logging"
 
 	gcache "github.com/patrickmn/go-cache"
 )
@@ -19,7 +20,7 @@ type Cache interface {
 
 type cache struct {
 	*gcache.Cache
-	logger logging.Logger
+	logger networks.Logger
 }
 
 func (c *cache) GetQuote(symbol string, tid int64) (*common.QuoteData, error) {
@@ -118,6 +119,6 @@ func (c *cache) PopPendingTxn(userId string, txnType string) *common.PendingTxn 
 	return &recent
 }
 
-func NewCache(l logging.Logger) Cache {
+func NewCache(l networks.Logger) Cache {
 	return &cache{gcache.New(time.Minute, 10*time.Minute), l}
 }

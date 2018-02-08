@@ -5,15 +5,14 @@ import (
 	"net"
 	"net/rpc"
 
-	"github.com/mattpaletta/AbilitySoftwareGroup468/logging"
-
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
+	"github.com/mattpaletta/AbilitySoftwareGroup468/networks"
 )
 
 type AuditServer struct{}
 
 func (ad *AuditServer) Start() {
-	logger, writer := logging.GetLoggerRPC()
+	logger, writer := networks.GetLoggerRPC()
 	defer writer.Close()
 	rpc.Register(logger)
 	ln, err := net.Listen("tcp", common.CFG.AuditServer.Url)
