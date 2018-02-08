@@ -145,7 +145,7 @@ func main() {
 
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
-                panic(err) // Used do CI will stop tests.
+		panic(err) // Used do CI will stop tests.
 	}
 
 	c := make(chan endpoint, 100)
