@@ -1,63 +1,69 @@
 package main
 
 import (
-	"bufio"
-	"encoding/json"
 	"log"
 	"net"
+	"net/rpc"
 	"time"
 
-	"github.com/mattpaletta/AbilitySoftwareGroup468/logging"
+	"github.com/mattpaletta/AbilitySoftwareGroup468/jobs"
+
+	"github.com/mattpaletta/AbilitySoftwareGroup468/networks"
+
 	"github.com/mattpaletta/AbilitySoftwareGroup468/tools"
 
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 )
 
-type TransactionServer struct {
+type TxnRPC struct {
 	cache  tools.Cache
 	db     *tools.MongoDB
-	logger logging.Logger
+	logger networks.Logger
 }
 
-func (ts *TransactionServer) error(cmd *common.Command, msg string) *common.Response {
+func (ts *TxnRPC) error(cmd *common.Command, msg string, resp *common.Response) error {
+	log.Println("ERROR", msg, msg)
 	go ts.logger.ErrorEvent(cmd, msg)
-	return &common.Response{Success: false, Message: msg}
+	*resp = common.Response{Success: false, Message: msg}
+	return nil
 }
 
-func (ts *TransactionServer) handle_add(cmd *common.Command) *common.Response {
+func (ts *TxnRPC) ADD(cmd *common.Command, resp *common.Response) error {
 	err := ts.db.Users.AddUserMoney(cmd.UserId, cmd.Amount)
 	if err != nil {
-		return ts.error(cmd, "Failed to create and/or add money to account")
+		return ts.error(cmd, "Failed to create and/or add money to account", resp)
 	}
 	go ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "add", cmd.TransactionID)
-	return &common.Response{Success: true}
+	*resp = common.Response{Success: true}
+	return nil
 }
 
-func (ts *TransactionServer) handle_quote(cmd *common.Command) *common.Response {
+func (ts *TxnRPC) QUOTE(cmd *common.Command, resp *common.Response) error {
 	data, err := ts.cache.GetQuote(cmd.StockSymbol, cmd.TransactionID)
 	if err != nil {
-		return ts.error(cmd, "Quote server failed to respond with quote")
+		return ts.error(cmd, "Quote server failed to respond with quote", resp)
 	}
-	return &common.Response{Success: true, Quote: data.Quote, Stock: data.Symbol}
+	*resp = common.Response{Success: true, Quote: data.Quote, Stock: data.Symbol}
+	return nil
 }
 
-func (ts *TransactionServer) handle_buy(cmd *common.Command) *common.Response {
+func (ts *TxnRPC) BUY(cmd *common.Command, resp *common.Response) error {
 	user, err := ts.db.Users.GetUser(cmd.UserId)
 	if err != nil {
-		return ts.error(cmd, "The user "+user.UserId+" does not exist")
+		return ts.error(cmd, "The user "+user.UserId+" does not exist", resp)
 	}
 	cacheReserve := ts.cache.GetReserved(cmd.UserId)
 	if user.Balance-cacheReserve < cmd.Amount {
-		return ts.error(cmd, "Specified amount is greater than can afford")
+		return ts.error(cmd, "Specified amount is greater than can afford", resp)
 	}
 	quote, err := ts.cache.GetQuote(cmd.StockSymbol, cmd.TransactionID)
 	if err != nil {
-		return ts.error(cmd, "Failed to get quote for that stock")
+		return ts.error(cmd, "Failed to get quote for that stock", resp)
 	}
 
 	shares := int(cmd.Amount / quote.Quote)
 	if shares <= 0 {
-		return ts.error(cmd, "Specified amount is not enough to purchase any shares")
+		return ts.error(cmd, "Specified amount is not enough to purchase any shares", resp)
 	}
 	cost := int64(shares) * quote.Quote
 	expiry := time.Now().Add(time.Minute)
@@ -66,53 +72,56 @@ func (ts *TransactionServer) handle_buy(cmd *common.Command) *common.Response {
 		Reserved: cmd.Amount, Stock: quote.Symbol, Expiry: expiry}
 	ts.cache.PushPendingTxn(pending)
 
-	return &common.Response{Success: true, ReqAmount: cmd.Amount, RealAmount: cost, Shares: shares, Expiration: expiry.Unix()}
+	*resp = common.Response{Success: true, ReqAmount: cmd.Amount, RealAmount: cost, Shares: shares, Expiration: expiry.Unix()}
+	return nil
 }
 
-func (ts *TransactionServer) handle_commit_buy(cmd *common.Command) *common.Response {
+func (ts *TxnRPC) COMMIT_BUY(cmd *common.Command, resp *common.Response) error {
 	buy := ts.cache.PopPendingTxn(cmd.UserId, "BUY")
 	if buy == nil {
-		return ts.error(cmd, "There are no pending transactions")
+		return ts.error(cmd, "There are no pending transactions", resp)
 	}
 
-	err := ts.db.Users.ProcessBuy(buy, true)
+	err := ts.db.Users.ProcessTxn(buy, true)
 	if err != nil {
-		return ts.error(cmd, "User can no longer afford this purchase")
+		return ts.error(cmd, "User can no longer afford this purchase", resp)
 	}
 	go ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "remove", cmd.TransactionID)
 
 	err = ts.db.Transactions.LogTxn(buy, false)
 	if err != nil {
-		return ts.error(cmd, "Failed to store transaction log in database")
+		return ts.error(cmd, "Failed to store transaction log in database", resp)
 	}
 
-	return &common.Response{Success: true, Stock: buy.Stock, Shares: buy.Shares, Paid: buy.Price}
+	*resp = common.Response{Success: true, Stock: buy.Stock, Shares: buy.Shares, Paid: buy.Price}
+	return nil
 }
 
-func (ts *TransactionServer) handle_cancel_buy(cmd *common.Command) *common.Response {
+func (ts *TxnRPC) CANCEL_BUY(cmd *common.Command, resp *common.Response) error {
 	buy := ts.cache.PopPendingTxn(cmd.UserId, "BUY")
 	if buy == nil {
-		return ts.error(cmd, "There is no buy to cancel")
+		return ts.error(cmd, "There is no buy to cancel", resp)
 	}
-	return &common.Response{Success: true, Stock: buy.Stock, Shares: buy.Shares}
+	*resp = common.Response{Success: true, Stock: buy.Stock, Shares: buy.Shares}
+	return nil
 }
 
-func (ts *TransactionServer) handle_sell(cmd *common.Command) *common.Response {
+func (ts *TxnRPC) SELL(cmd *common.Command, resp *common.Response) error {
 	user, err := ts.db.Users.GetUser(cmd.UserId)
 	if err != nil {
-		return ts.error(cmd, "The user "+user.UserId+" does not exist")
+		return ts.error(cmd, "The user "+user.UserId+" does not exist", resp)
 	} else if user.Stock[cmd.StockSymbol].Real == 0 {
-		return ts.error(cmd, "User does not own any shares for that stock")
+		return ts.error(cmd, "User does not own any shares for that stock", resp)
 	}
 
 	quote, err := ts.cache.GetQuote(cmd.StockSymbol, cmd.TransactionID)
 	if err != nil {
-		return ts.error(cmd, "Failed to get quote for that stock")
+		return ts.error(cmd, "Failed to get quote for that stock", resp)
 	}
 	actualShares := int(cmd.Amount / quote.Quote)
 	shares := actualShares
 	if shares <= 0 {
-		return ts.error(cmd, "A single share is worth more than specified amount")
+		return ts.error(cmd, "A single share is worth more than specified amount", resp)
 	} else if user.Stock[cmd.StockSymbol].Real < shares {
 		shares = user.Stock[cmd.StockSymbol].Real
 	}
@@ -123,50 +132,53 @@ func (ts *TransactionServer) handle_sell(cmd *common.Command) *common.Response {
 	pending := common.PendingTxn{UserId: cmd.UserId, Type: "SELL", Price: sellFor, Shares: shares, Stock: quote.Symbol, Expiry: expiry}
 	ts.cache.PushPendingTxn(pending)
 
-	return &common.Response{Success: true, ReqAmount: cmd.Amount, RealAmount: int64(actualShares) * quote.Quote,
+	*resp = common.Response{Success: true, ReqAmount: cmd.Amount, RealAmount: int64(actualShares) * quote.Quote,
 		Shares: actualShares, SharesAfford: shares, AffordAmount: sellFor, Expiration: expiry.Unix()}
+	return nil
 }
 
-func (ts *TransactionServer) handle_commit_sell(cmd *common.Command) *common.Response {
+func (ts *TxnRPC) COMMIT_SELL(cmd *common.Command, resp *common.Response) error {
 	sell := ts.cache.PopPendingTxn(cmd.UserId, "SELL")
 	if sell == nil {
-		return ts.error(cmd, "There are no pending transactions")
+		return ts.error(cmd, "There are no pending transactions", resp)
 	}
 
-	err := ts.db.Users.ProcessSell(sell, true)
+	err := ts.db.Users.ProcessTxn(sell, true)
 	if err != nil {
-		return ts.error(cmd, "User no longer has the correct number of shares to sell")
+		return ts.error(cmd, "User no longer has the correct number of shares to sell", resp)
 	}
 	go ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "add", cmd.TransactionID)
 
 	err = ts.db.Transactions.LogTxn(sell, false)
 	if err != nil {
-		log.Println("Failed to log sell")
+		log.Println("!!IMPORTANT!! Failed to log sell")
 	}
 
-	return &common.Response{Success: true, Stock: sell.Stock, Shares: sell.Shares, Received: sell.Price}
+	*resp = common.Response{Success: true, Stock: sell.Stock, Shares: sell.Shares, Received: sell.Price}
+	return nil
 }
 
-func (ts *TransactionServer) handle_cancel_sell(cmd *common.Command) *common.Response {
+func (ts *TxnRPC) CANCEL_SELL(cmd *common.Command, resp *common.Response) error {
 	sell := ts.cache.PopPendingTxn(cmd.UserId, "SELL")
 	if sell == nil {
-		return ts.error(cmd, "There is no sell to cancel")
+		return ts.error(cmd, "There is no sell to cancel", resp)
 	}
-	return &common.Response{Success: true, Stock: sell.Stock, Shares: sell.Shares}
+	*resp = common.Response{Success: true, Stock: sell.Stock, Shares: sell.Shares}
+	return nil
 }
 
-func (ts *TransactionServer) handle_set_buy_amount(cmd *common.Command) *common.Response {
+func (ts *TxnRPC) SET_BUY_AMOUNT(cmd *common.Command, resp *common.Response) error {
 	user, err := ts.db.Users.GetUser(cmd.UserId)
 	if err != nil {
-		return ts.error(cmd, "The user does not exist")
+		return ts.error(cmd, "The user does not exist", resp)
 	}
 	cachedReserve := ts.cache.GetReserved(cmd.UserId)
 	if user.Balance-cachedReserve < cmd.Amount {
-		return ts.error(cmd, "Not enough funds")
+		return ts.error(cmd, "Not enough funds", resp)
 	}
 	_, err = ts.cache.GetQuote(cmd.StockSymbol, cmd.TransactionID)
 	if err != nil {
-		return ts.error(cmd, "Failed to get quote for that stock")
+		return ts.error(cmd, "Failed to get quote for that stock", resp)
 	}
 
 	trigger := &common.Trigger{
@@ -177,66 +189,74 @@ func (ts *TransactionServer) handle_set_buy_amount(cmd *common.Command) *common.
 		Amount:        cmd.Amount,
 		When:          0,
 	}
-	ts.db.Triggers.Set(trigger)
-	ts.db.Users.ReserveMoney(cmd.UserId, cmd.Amount)
+	// Reserve the money and then set the trigger
+	if err = ts.db.Users.ReserveMoney(cmd.UserId, cmd.Amount); err != nil {
+		return ts.error(cmd, "Failed to reserve even though should have", resp)
+	} else if err = ts.db.Triggers.Set(trigger); err != nil {
+		go ts.db.Users.UnreserveMoney(cmd.UserId, cmd.Amount)
+		return ts.error(cmd, "Failed to set trigger even though should have", resp)
+	}
 	go ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "reserve", cmd.TransactionID)
 
-	return &common.Response{Success: true}
+	*resp = common.Response{Success: true}
+	return nil
 }
 
-func (ts *TransactionServer) handle_cancel_set_buy(cmd *common.Command) *common.Response {
+func (ts *TxnRPC) CANCEL_SET_BUY(cmd *common.Command, resp *common.Response) error {
 	_, err := ts.db.Users.GetUser(cmd.UserId)
 	if err != nil {
-		return ts.error(cmd, "The user does not exist")
+		return ts.error(cmd, "The user does not exist", resp)
 	}
 
 	trig, err := ts.db.Triggers.Cancel(cmd.UserId, cmd.StockSymbol, "BUY")
 	if err != nil {
-		return ts.error(cmd, "No buy trigger to cancel")
+		return ts.error(cmd, "No buy trigger to cancel", resp)
 	}
 	err = ts.db.Users.UnreserveMoney(cmd.UserId, trig.Amount)
 	if err != nil {
 		log.Println(err)
-		return ts.error(cmd, "Internal server error")
+		return ts.error(cmd, "Internal server error", resp)
 	}
 	go ts.logger.AccountTransaction(cmd.UserId, trig.Amount, "unreserve", cmd.TransactionID)
 
-	return &common.Response{Success: true, Stock: cmd.StockSymbol}
+	*resp = common.Response{Success: true, Stock: cmd.StockSymbol}
+	return nil
 }
 
-func (ts *TransactionServer) handle_set_buy_trigger(cmd *common.Command) *common.Response {
+func (ts *TxnRPC) SET_BUY_TRIGGER(cmd *common.Command, resp *common.Response) error {
 	_, err := ts.db.Users.GetUser(cmd.UserId)
 	if err != nil {
-		return ts.error(cmd, "The user does not exist")
+		return ts.error(cmd, "The user does not exist", resp)
 	}
 
 	trig, err := ts.db.Triggers.Get(cmd.UserId, cmd.StockSymbol, "BUY")
 	if err != nil {
-		return ts.error(cmd, "User must set buy amount first")
+		return ts.error(cmd, "User must set buy amount first", resp)
 	}
 
 	trig.When = cmd.Amount
 	err = ts.db.Triggers.Set(trig)
 	if err != nil {
-		return ts.error(cmd, "Internal error during operation")
+		return ts.error(cmd, "Internal error during operation", resp)
 	}
 
-	return &common.Response{Success: true}
+	*resp = common.Response{Success: true}
+	return nil
 }
 
-func (ts *TransactionServer) handle_set_sell_amount(cmd *common.Command) *common.Response {
+func (ts *TxnRPC) SET_SELL_AMOUNT(cmd *common.Command, resp *common.Response) error {
 	user, err := ts.db.Users.GetUser(cmd.UserId)
 	if err != nil {
-		return ts.error(cmd, "The user does not exist")
+		return ts.error(cmd, "The user does not exist", resp)
 	}
 	realStocks := user.Stock[cmd.StockSymbol].Real - ts.cache.GetReservedShares(cmd.UserId)[cmd.StockSymbol]
 	if realStocks <= 0 {
-		return ts.error(cmd, "The user does not have any stock")
+		return ts.error(cmd, "The user does not have any stock", resp)
 	}
 
 	quote, err := ts.cache.GetQuote(cmd.StockSymbol, cmd.TransactionID)
 	if err != nil {
-		return ts.error(cmd, "Failed to get quote for that stock")
+		return ts.error(cmd, "Failed to get quote for that stock", resp)
 	}
 
 	// Get reserved shares
@@ -257,88 +277,93 @@ func (ts *TransactionServer) handle_set_sell_amount(cmd *common.Command) *common
 
 	err = ts.db.Triggers.Set(trigger)
 	if err != nil {
-		return ts.error(cmd, "Failed to set sell amount")
+		return ts.error(cmd, "Failed to set sell amount", resp)
 	}
 	ts.db.Users.ReserveShares(cmd.UserId, cmd.StockSymbol, reservedShares)
 	go ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "reserve", cmd.TransactionID)
 
-	return &common.Response{Success: true}
+	*resp = common.Response{Success: true}
+	return nil
 }
 
-func (ts *TransactionServer) handle_set_sell_trigger(cmd *common.Command) *common.Response {
+func (ts *TxnRPC) SET_SELL_TRIGGER(cmd *common.Command, resp *common.Response) error {
 	_, err := ts.db.Users.GetUser(cmd.UserId)
 	if err != nil {
-		return ts.error(cmd, "The user does not exist")
+		return ts.error(cmd, "The user does not exist", resp)
 	}
 
 	trig, err := ts.db.Triggers.Get(cmd.UserId, cmd.StockSymbol, "SELL")
 	if err != nil {
-		return ts.error(cmd, "User must set sell amount first")
+		return ts.error(cmd, "User must set sell amount first", resp)
 	}
 
 	trig.When = cmd.Amount
 	ts.db.Triggers.Set(trig)
 
-	return &common.Response{Success: true}
+	*resp = common.Response{Success: true}
+	return nil
 }
 
-func (ts *TransactionServer) handle_cancel_set_sell(cmd *common.Command) *common.Response {
+func (ts *TxnRPC) CANCEL_SET_SELL(cmd *common.Command, resp *common.Response) error {
 	_, err := ts.db.Users.GetUser(cmd.UserId)
 	if err != nil {
-		return ts.error(cmd, "The user does not exist")
+		return ts.error(cmd, "The user does not exist", resp)
 	}
 
 	trig, err := ts.db.Triggers.Cancel(cmd.UserId, cmd.StockSymbol, "SELL")
 	if err != nil {
-		return ts.error(cmd, "No sell trigger to cancel")
+		return ts.error(cmd, "No sell trigger to cancel", resp)
 	}
 
 	err = ts.db.Users.UnreserveShares(cmd.UserId, cmd.StockSymbol, trig.Shares)
 	if err != nil {
 		log.Println(err)
-		return ts.error(cmd, "Internal server error")
+		return ts.error(cmd, "Internal server error", resp)
 	}
 	go ts.logger.AccountTransaction(cmd.UserId, trig.Amount, "unreserve", cmd.TransactionID)
 
-	return &common.Response{Success: true}
+	*resp = common.Response{Success: true}
+	return nil
 }
 
-func (ts *TransactionServer) handle_admin_dumplog(cmd *common.Command) *common.Response {
+func (ts *TxnRPC) ADMIN_DUMPLOG(cmd *common.Command, resp *common.Response) error {
 	// TODO validation of admin user
 	data, err := ts.logger.DumpLog()
 	if err != nil {
-		return ts.error(cmd, "Failed to get log")
+		return ts.error(cmd, "Failed to get log", resp)
 	}
-	return &common.Response{Success: true, File: data}
+	*resp = common.Response{Success: true, File: data}
+	return nil
 }
 
-func (ts *TransactionServer) handle_dumplog(cmd *common.Command) *common.Response {
+func (ts *TxnRPC) DUMPLOG(cmd *common.Command, resp *common.Response) error {
 	_, err := ts.db.Users.GetUser(cmd.UserId)
 	if err != nil {
-		return ts.error(cmd, "The user does not exist")
+		return ts.error(cmd, "The user does not exist", resp)
 	}
 	data, err := ts.logger.DumpLogUser(cmd.UserId)
 	if err != nil {
 		log.Println(err)
-		return ts.error(cmd, "Failed to get user log")
+		return ts.error(cmd, "Failed to get user log", resp)
 	}
-	return &common.Response{Success: true, File: data}
+	*resp = common.Response{Success: true, File: data}
+	return nil
 }
 
-func (ts *TransactionServer) handle_display_summary(cmd *common.Command) *common.Response {
+func (ts *TxnRPC) DISPLAY_SUMMARY(cmd *common.Command, resp *common.Response) error {
 	user, err := ts.db.Users.GetUser(cmd.UserId)
 	if err != nil {
-		return ts.error(cmd, "The user does not exist")
+		return ts.error(cmd, "The user does not exist", resp)
 	}
 
 	transactions, err := ts.db.Transactions.Get(cmd.UserId)
 	if err != nil {
-		return ts.error(cmd, "Failed to get transactions")
+		return ts.error(cmd, "Failed to get transactions", resp)
 	}
 
 	triggers, err := ts.db.Triggers.GetAllUser(cmd.UserId)
 	if err != nil {
-		return ts.error(cmd, "Failed to get triggers")
+		return ts.error(cmd, "Failed to get triggers", resp)
 	}
 
 	cacheReserve := ts.cache.GetReserved(cmd.UserId)
@@ -352,51 +377,39 @@ func (ts *TransactionServer) handle_display_summary(cmd *common.Command) *common
 		user.Stock[k] = v
 	}
 
-	return &common.Response{
+	*resp = common.Response{
 		Success:      true,
 		Status:       &common.UserInfo{Balance: balance, Reserved: reserved, Stock: user.Stock},
 		Transactions: &transactions,
 		Triggers:     &triggers,
 	}
+	return nil
 }
 
-func (ts *TransactionServer) Start() {
-	ts.logger = logging.GetLogger(common.CFG.TxnServer.Url)
-	ts.cache = tools.NewCache(ts.logger)
-	mongoDb, err := tools.GetMongoDatabase()
-	if err != nil {
-		log.Fatal(err)
-	}
-	ts.db = mongoDb
+type TransactionServer struct{}
 
-	tm := tools.NewTrigMan(ts.cache, ts.db, ts.logger)
+func (ts *TransactionServer) Start() {
+	logger := networks.GetLogger(common.CFG.TxnServer.Url)
+	cache := tools.NewCache(logger)
+	db := tools.GetMongoDatabase()
+	defer db.Close()
+
+	// Start trigger manager
+	tm := tools.NewTrigMan(cache, db, logger)
 	tm.Start()
 
-	defer ts.db.Close()
+	txn := &TxnRPC{cache: cache, db: db, logger: logger}
+	rpc.Register(txn)
+
 	ln, err := net.Listen("tcp", common.CFG.TxnServer.Url)
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer ln.Close()
 
-	handler := common.NewCommandHandler()
-
-	handler.On(common.ADD, ts.handle_add)
-	handler.On(common.QUOTE, ts.handle_quote)
-	handler.On(common.BUY, ts.handle_buy)
-	handler.On(common.COMMIT_BUY, ts.handle_commit_buy)
-	handler.On(common.CANCEL_BUY, ts.handle_cancel_buy)
-	handler.On(common.SELL, ts.handle_sell)
-	handler.On(common.COMMIT_SELL, ts.handle_commit_sell)
-	handler.On(common.CANCEL_SELL, ts.handle_cancel_sell)
-	handler.On(common.SET_BUY_AMOUNT, ts.handle_set_buy_amount)
-	handler.On(common.CANCEL_SET_BUY, ts.handle_cancel_set_buy)
-	handler.On(common.SET_BUY_TRIGGER, ts.handle_set_buy_trigger)
-	handler.On(common.SET_SELL_AMOUNT, ts.handle_set_sell_amount)
-	handler.On(common.SET_SELL_TRIGGER, ts.handle_set_sell_trigger)
-	handler.On(common.CANCEL_SET_SELL, ts.handle_cancel_set_sell)
-	handler.On(common.DUMPLOG, ts.handle_dumplog)
-	handler.On(common.ADMIN_DUMPLOG, ts.handle_admin_dumplog)
-	handler.On(common.DISPLAY_SUMMARY, ts.handle_display_summary)
+	jobQueue := make(chan jobs.Job, jobs.MAXQUEUE)
+	dispatch := jobs.NewDispatcher(jobQueue, jobs.MAX_WORKER)
+	dispatch.Run()
 
 	for {
 		conn, err := ln.Accept()
@@ -404,23 +417,7 @@ func (ts *TransactionServer) Start() {
 			log.Println(err)
 			continue
 		}
-		go func() {
-			defer conn.Close()
-			message, err := bufio.NewReader(conn).ReadString('\n')
-			if err != nil {
-				log.Println(err)
-				return
-			}
-			log.Println("Received: ", string(message))
-			var resp *common.Response
-			resp, err = handler.Parse(message)
-			if err != nil {
-				log.Println(err)
-				resp = &common.Response{Success: false, Message: "Internal error parsing request"}
-			}
-			var respByte []byte
-			respByte, err = json.Marshal(resp)
-			conn.Write(append(respByte, '\n'))
-		}()
+		work := jobs.TransactionJob{conn}
+		jobQueue <- work
 	}
 }

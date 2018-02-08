@@ -22,19 +22,41 @@ func (db *MongoDB) Close() {
 }
 
 type UsersCollection interface {
+	// Add specified amount to a user's account
+	// If the user does not exist they will also be created
 	AddUserMoney(userId string, amount int64) error
+
+	// Place the amount of money reserved back into users balance
+	// Returns error if user does not have the amount reserved
 	UnreserveMoney(userId string, amount int64) error
+
+	// Place the amount of money from balance into reserved
+	// Returns error if user does not have amount in balance
 	ReserveMoney(userId string, amount int64) error
+
+	// Place number of shares from reserved for specific stock back into account
+	// Returns error if user does not have that amount of shares reserved
 	UnreserveShares(userId string, stock string, shares int) error
+
+	// Reserve the number of shares for a specific stock
+	// Returns error if user does not have the amount of shares
 	ReserveShares(userId string, stock string, shares int) error
+
+	// Returns a user or an error if not found
 	GetUser(userId string) (common.User, error)
+
+	// Processes several pending transaction updates
+	// If the transactions were cached then users' reserved fields won't be updated
 	BulkTransaction(txns []*common.PendingTxn, wasCached bool) error
-	ProcessBuy(buy *common.PendingTxn, wasCached bool) error
-	ProcessSell(sell *common.PendingTxn, wasCached bool) error
+
+	// Processes one pending transaction
+	// If the transaction was cached then the user's reserved fields won't be updated
+	ProcessTxn(txn *common.PendingTxn, wasCached bool) error
 }
 
 type users struct {
 	*mgo.Collection
+	s *mgo.Session
 }
 
 func (c *users) AddUserMoney(userId string, amount int64) error {
@@ -108,12 +130,14 @@ func (c *users) BulkTransaction(txns []*common.PendingTxn, wasCached bool) error
 	return err
 }
 
-func (c *users) ProcessBuy(buy *common.PendingTxn, wasCached bool) error {
-	return c.Update(buyParams(buy, wasCached))
-}
-
-func (c *users) ProcessSell(sell *common.PendingTxn, wasCached bool) error {
-	return c.Update(sellParams(sell, wasCached))
+func (c *users) ProcessTxn(txn *common.PendingTxn, wasCached bool) error {
+	var selector, update bson.M
+	if txn.Type == "BUY" {
+		selector, update = buyParams(txn, wasCached)
+	} else {
+		selector, update = sellParams(txn, wasCached)
+	}
+	return c.Update(selector, update)
 }
 
 func buyParams(buy *common.PendingTxn, wasCached bool) (selector bson.M, update bson.M) {
@@ -148,16 +172,32 @@ func sellParams(sell *common.PendingTxn, wasCached bool) (selector bson.M, updat
 }
 
 type TriggersCollection interface {
+	// Returns all the configured triggers
 	GetAll() ([]common.Trigger, error)
+
+	// Sets a trigger. If a trigger for the stock & type (buy or sell)
+	// is already configured then the trigger's t.Amount will be updated.
+	// t.When will be updated if the value is greater than 0
 	Set(t *common.Trigger) error
+
+	// Removes a trigger from the database
+	// Returns an error if no trigger exists
 	Cancel(userId string, stock string, trigType string) (*common.Trigger, error)
+
+	// Gets a trigger for the user, stock, and type (buy or sell)
+	// Returns error is none exists
 	Get(userId string, stock string, trigType string) (*common.Trigger, error)
+
+	// Gets all triggers of a specified user
 	GetAllUser(userId string) ([]common.Trigger, error)
+
+	// Removes several triggers corresponding to the transactions that executed
 	BulkClose(txn []*common.PendingTxn) error
 }
 
 type triggers struct {
 	*mgo.Collection
+	s *mgo.Session
 }
 
 func (c *triggers) GetAll() ([]common.Trigger, error) {
@@ -173,11 +213,15 @@ func (c *triggers) GetAllUser(userId string) ([]common.Trigger, error) {
 }
 
 func (c *triggers) Set(t *common.Trigger) error {
+	set := bson.M{"amount": t.Amount}
+	if t.When > 0 {
+		set["when"] = t.When
+	}
 	_, err := c.Upsert(
 		bson.M{"stock": t.Stock, "type": t.Type, "userId": t.UserId},
 		bson.M{
 			"$setOnInsert": bson.M{"stock": t.Stock, "type": t.Type, "userId": t.UserId, "shares": t.Shares},
-			"$set":         bson.M{"amount": t.Amount, "when": t.When},
+			"$set":         set,
 		})
 	return err
 }
@@ -206,13 +250,19 @@ func (c *triggers) BulkClose(txn []*common.PendingTxn) error {
 }
 
 type TransactionsCollection interface {
+	// Store transaction information in the database
 	LogTxn(txn *common.PendingTxn, triggered bool) error
+
+	// Store bulk of transaction info in the database
 	BulkLog(txns []*common.PendingTxn, triggered bool) error
+
+	// Gets a list of transactions for a users account
 	Get(userId string) ([]common.Transaction, error)
 }
 
 type transactions struct {
 	*mgo.Collection
+	s *mgo.Session
 }
 
 func (c *transactions) LogTxn(txn *common.PendingTxn, triggered bool) error {
@@ -251,17 +301,20 @@ func (c *transactions) Get(userId string) ([]common.Transaction, error) {
 	return txns, err
 }
 
-func GetMongoDatabase() (*MongoDB, error) {
+func GetMongoDatabase() *MongoDB {
 	log.Println("Connecting to db using", common.CFG.Database.Url)
-	session, err := mgo.Dial(common.CFG.Database.Url)
-	if err != nil {
-		return nil, err
+	for {
+		session, err := mgo.Dial(common.CFG.Database.Url)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		db := session.DB(common.CFG.Database.Name)
+		return &MongoDB{
+			session:      session,
+			Users:        &users{db.C("Users"), session},
+			Triggers:     &triggers{db.C("Triggers"), session},
+			Transactions: &transactions{db.C("Transactions"), session},
+		}
 	}
-	db := session.DB(common.CFG.Database.Name)
-	return &MongoDB{
-		session:      session,
-		Users:        &users{db.C("Users")},
-		Triggers:     &triggers{db.C("Triggers")},
-		Transactions: &transactions{db.C("Transactions")},
-	}, nil
 }

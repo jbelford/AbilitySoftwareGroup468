@@ -2,7 +2,6 @@ package common
 
 import (
 	"encoding/json"
-	"log"
 	"time"
 )
 
@@ -31,13 +30,10 @@ func (command *CommandHandler) On(command_name int, function_to_call func(args *
 }
 
 func (command *CommandHandler) Parse(commandStr string) (*Response, error) {
-	log.Println("Received!:", string(commandStr))
-
 	var cmd *Command
 	err := json.Unmarshal([]byte(commandStr), &cmd)
 	if err != nil {
 		return nil, err
 	}
-
 	return command.commands[cmd.C_type](cmd), nil
 }
