@@ -300,10 +300,11 @@ func (l *LoggerRPC) DumpLog(args *Args, result *[]byte) error {
 }
 
 func GetLoggerRPC() (*LoggerRPC, *os.File) {
-	err := os.Mkdir("./logs", 0777)
-	if os.IsPermission(err) {
+	err := os.Mkdir("logs", 0777)
+	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println("log folder made")
 
 	flag := os.O_APPEND | os.O_WRONLY
 	if _, err := os.Stat("./logs/tmp.xml"); os.IsNotExist(err) {

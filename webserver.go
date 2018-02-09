@@ -43,8 +43,8 @@ func (c *Counter) Inc() int64 {
 var t_id Counter
 
 func (ws *WebServer) Start() {
-	ws.logger = networks.GetLogger(common.CFG.WebServer.Url)
 	ws.txnConn = networks.GetTxnConn()
+	ws.logger = networks.GetLogger(common.CFG.WebServer.Url)
 	var dir string
 
 	flag.StringVar(&dir, "dir", ".", "the directory to serve files from. Defaults to the current dir")
