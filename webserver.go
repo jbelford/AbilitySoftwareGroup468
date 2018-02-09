@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/mattpaletta/AbilitySoftwareGroup468/networks"
@@ -24,23 +23,10 @@ type WebServer struct {
 }
 
 func (ws *WebServer) error(cmd *common.Command, msg string) *common.Response {
+	log.Println(msg)
 	go ws.logger.ErrorEvent(cmd, msg)
 	return &common.Response{Success: false, Message: msg}
 }
-
-type Counter struct {
-	mu sync.Mutex
-	x  int64
-}
-
-func (c *Counter) Inc() int64 {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.x = c.x + 1
-	return c.x
-}
-
-var t_id Counter
 
 func (ws *WebServer) Start() {
 	ws.txnConn = networks.GetTxnConn()
@@ -53,33 +39,33 @@ func (ws *WebServer) Start() {
 	r := mux.NewRouter()
 	r.HandleFunc("/", ws.indexHandler).Methods("GET")
 
-	r.HandleFunc("/{user_id}/display_summary", wrapHandler(ws.userSummaryHandler)).Methods("GET")
+	r.HandleFunc("/{t_id}/{user_id}/display_summary", wrapHandler(ws.userSummaryHandler)).Methods("GET")
 
-	r.HandleFunc("/{user_id}/add", wrapHandler(ws.userAddHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/quote", wrapHandler(ws.userQuoteHandler)).Methods("GET")
+	r.HandleFunc("/{t_id}/{user_id}/add", wrapHandler(ws.userAddHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/quote", wrapHandler(ws.userQuoteHandler)).Methods("GET")
 
 	//buying stocks
-	r.HandleFunc("/{user_id}/buy", wrapHandler(ws.userBuyHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/commit_buy", wrapHandler(ws.userCommitBuyHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/cancel_buy", wrapHandler(ws.userCancelBuyHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/buy", wrapHandler(ws.userBuyHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/commit_buy", wrapHandler(ws.userCommitBuyHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/cancel_buy", wrapHandler(ws.userCancelBuyHandler)).Methods("POST")
 
 	//selling stocks
-	r.HandleFunc("/{user_id}/sell", wrapHandler(ws.userSellHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/commit_sell", wrapHandler(ws.userCommitSellHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/cancel_sell", wrapHandler(ws.userCancelSellHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/sell", wrapHandler(ws.userSellHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/commit_sell", wrapHandler(ws.userCommitSellHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/cancel_sell", wrapHandler(ws.userCancelSellHandler)).Methods("POST")
 
 	//buy triggers
-	r.HandleFunc("/{user_id}/set_buy_amount", wrapHandler(ws.userSetBuyAmountHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/cancel_set_buy", wrapHandler(ws.userCancelSetBuyHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/set_buy_trigger", wrapHandler(ws.userSetBuyTriggerHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/set_buy_amount", wrapHandler(ws.userSetBuyAmountHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/cancel_set_buy", wrapHandler(ws.userCancelSetBuyHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/set_buy_trigger", wrapHandler(ws.userSetBuyTriggerHandler)).Methods("POST")
 
 	//sell triggers
-	r.HandleFunc("/{user_id}/set_sell_amount", wrapHandler(ws.userSetSellAmountHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/set_sell_trigger", wrapHandler(ws.userSetSellTriggerHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/cancel_set_sell", wrapHandler(ws.userCancelSetSellHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/set_sell_amount", wrapHandler(ws.userSetSellAmountHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/set_sell_trigger", wrapHandler(ws.userSetSellTriggerHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/cancel_set_sell", wrapHandler(ws.userCancelSetSellHandler)).Methods("POST")
 
 	//user log
-	r.HandleFunc("/{user_id}/dumplog", wrapHandler(ws.userDumplogHandler)).Methods("GET")
+	r.HandleFunc("/{t_id}/{user_id}/dumplog", wrapHandler(ws.userDumplogHandler)).Methods("GET")
 
 	r.PathPrefix("/templates/").Handler(http.StripPrefix("/templates/", http.FileServer(http.Dir(dir))))
 
@@ -132,9 +118,9 @@ func (ws *WebServer) indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	```
 */
-func (ws *WebServer) userSummaryHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userSummaryHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.DISPLAY_SUMMARY,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -144,7 +130,7 @@ func (ws *WebServer) userSummaryHandler(w http.ResponseWriter, r *http.Request) 
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return &common.Response{Success: false, Message: "Internal error prevented operation"}
+		return ws.error(&cmd, "Internal error prevented operation")
 	}
 	return resp
 }
@@ -159,27 +145,27 @@ func (ws *WebServer) userSummaryHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	```
 */
-func (ws *WebServer) userAddHandler(w http.ResponseWriter, r *http.Request) *common.Response {
-	amount, err := strconv.ParseInt(r.URL.Query().Get("amount"), 10, 32)
-	if err != nil {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return &common.Response{Success: false, Message: "Could not process field: 'amount'"}
-	} else if amount <= 0 {
-		return &common.Response{Success: false, Message: "Parameter: 'amount' must be greater than 0"}
-	}
+func (ws *WebServer) userAddHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.ADD,
 		UserId:        mux.Vars(r)["user_id"],
-		Amount:        amount,
 		Timestamp:     time.Now(),
+	}
+	var err error
+	cmd.Amount, err = strconv.ParseInt(r.URL.Query().Get("amount"), 10, 32)
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return ws.error(&cmd, "Count not process field: 'amount'")
+	} else if cmd.Amount <= 0 {
+		return ws.error(&cmd, "Parameter: 'amount' must be greater than 0")
 	}
 	go ws.logger.UserCommand(&cmd)
 
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return &common.Response{Success: false, Message: "Internal error prevented operation"}
+		return ws.error(&cmd, "Internal error prevented operation")
 	}
 	return resp
 }
@@ -196,24 +182,24 @@ func (ws *WebServer) userAddHandler(w http.ResponseWriter, r *http.Request) *com
 	}
 	```
 */
-func (ws *WebServer) userQuoteHandler(w http.ResponseWriter, r *http.Request) *common.Response {
-	quote_id := r.URL.Query().Get("stock")
-	if quote_id == "" { //should maybe do is alpha numeric check here
-		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
-	}
+func (ws *WebServer) userQuoteHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.QUOTE,
 		UserId:        mux.Vars(r)["user_id"],
-		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
 	}
+	cmd.StockSymbol = r.URL.Query().Get("stock")
+	if cmd.StockSymbol == "" { //should maybe do is alpha numeric check here
+		return ws.error(&cmd, "Parameter: 'stock' cannot be an empty string")
+	}
+
 	go ws.logger.UserCommand(&cmd)
 
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return &common.Response{Success: false, Message: "Internal error prevented operation"}
+		return ws.error(&cmd, "Internal error prevented operation")
 	}
 	return resp
 }
@@ -232,35 +218,34 @@ func (ws *WebServer) userQuoteHandler(w http.ResponseWriter, r *http.Request) *c
 	}
 	```
 */
-func (ws *WebServer) userBuyHandler(w http.ResponseWriter, r *http.Request) *common.Response {
-	quote_id := r.URL.Query().Get("stock")
-	if quote_id == "" { //should maybe do is alpha numeric check here
-		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
+func (ws *WebServer) userBuyHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
+	cmd := common.Command{
+		TransactionID: t_id,
+		C_type:        common.BUY,
+		UserId:        mux.Vars(r)["user_id"],
+		Timestamp:     time.Now(),
+	}
+	cmd.StockSymbol = r.URL.Query().Get("stock")
+	if cmd.StockSymbol == "" { //should maybe do is alpha numeric check here
+		return ws.error(&cmd, "Parameter: 'stock' cannot be an empty string")
 	}
 
 	// amounts will be passed to the web server as a long to prevent any floating point conversion issues of any kind
-	amount, err := strconv.ParseInt(r.URL.Query().Get("amount"), 10, 0)
+	var err error
+	cmd.Amount, err = strconv.ParseInt(r.URL.Query().Get("amount"), 10, 0)
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		return &common.Response{Success: false, Message: "Could not process field: 'amount'"}
-	} else if amount <= 0 {
-		return &common.Response{Success: false, Message: "Parameter: 'amount' must be greater than 0"}
+		return ws.error(&cmd, "Could not process field: 'amount'")
+	} else if cmd.Amount <= 0 {
+		return ws.error(&cmd, "Parameter: 'amount' must be greater than 0")
 	}
 
-	cmd := common.Command{
-		TransactionID: t_id.Inc(),
-		C_type:        common.BUY,
-		UserId:        mux.Vars(r)["user_id"],
-		Amount:        amount,
-		StockSymbol:   quote_id,
-		Timestamp:     time.Now(),
-	}
 	go ws.logger.UserCommand(&cmd)
 
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return &common.Response{Success: false, Message: "Internal error prevented operation"}
+		return ws.error(&cmd, "Internal error prevented operation")
 	}
 	return resp
 }
@@ -269,9 +254,9 @@ func (ws *WebServer) userBuyHandler(w http.ResponseWriter, r *http.Request) *com
 	Default handler, for any url that does not require validity testing
 	commit buy, cancel buy, commit sell, cancel sell,
 */
-func (ws *WebServer) userCommitBuyHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userCommitBuyHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.COMMIT_BUY,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -281,7 +266,7 @@ func (ws *WebServer) userCommitBuyHandler(w http.ResponseWriter, r *http.Request
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return &common.Response{Success: false, Message: "Internal error prevented operation"}
+		return ws.error(&cmd, "Internal error prevented operation")
 	}
 	return resp
 }
@@ -290,9 +275,9 @@ func (ws *WebServer) userCommitBuyHandler(w http.ResponseWriter, r *http.Request
 
 	cancel buy
 */
-func (ws *WebServer) userCancelBuyHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userCancelBuyHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.CANCEL_BUY,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -302,7 +287,7 @@ func (ws *WebServer) userCancelBuyHandler(w http.ResponseWriter, r *http.Request
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return &common.Response{Success: false, Message: "Internal error prevented operation"}
+		return ws.error(&cmd, "Internal error prevented operation")
 	}
 	return resp
 }
@@ -321,35 +306,34 @@ JSON response
 }
 ```
 */
-func (ws *WebServer) userSellHandler(w http.ResponseWriter, r *http.Request) *common.Response {
-	quote_id := r.URL.Query().Get("stock")
-	if quote_id == "" { //should maybe do is alpha numeric check here
-		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
+func (ws *WebServer) userSellHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
+	cmd := common.Command{
+		TransactionID: t_id,
+		C_type:        common.SELL,
+		UserId:        mux.Vars(r)["user_id"],
+		Timestamp:     time.Now(),
+	}
+	cmd.StockSymbol = r.URL.Query().Get("stock")
+	if cmd.StockSymbol == "" { //should maybe do is alpha numeric check here
+		return ws.error(&cmd, "Parameter: 'stock' cannot be an empty string")
 	}
 
 	// amounts will be passed to the web server as a long to prevent any floating point conversion issues of any kind
-	amount, err := strconv.ParseInt(r.URL.Query().Get("amount"), 10, 0)
+	var err error
+	cmd.Amount, err = strconv.ParseInt(r.URL.Query().Get("amount"), 10, 0)
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		return &common.Response{Success: false, Message: "Could not process field: 'amount'"}
-	} else if amount <= 0 {
-		return &common.Response{Success: false, Message: "Parameter: 'amount' must be greater than 0"}
+		return ws.error(&cmd, "Could not process field: 'amount'")
+	} else if cmd.Amount <= 0 {
+		return ws.error(&cmd, "Parameter: 'amount' must be greater than 0")
 	}
 
-	cmd := common.Command{
-		TransactionID: t_id.Inc(),
-		C_type:        common.SELL,
-		UserId:        mux.Vars(r)["user_id"],
-		Amount:        amount,
-		StockSymbol:   quote_id,
-		Timestamp:     time.Now(),
-	}
 	go ws.logger.UserCommand(&cmd)
 
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return &common.Response{Success: false, Message: "Internal error prevented operation"}
+		return ws.error(&cmd, "Internal error prevented operation")
 	}
 	return resp
 }
@@ -357,9 +341,9 @@ func (ws *WebServer) userSellHandler(w http.ResponseWriter, r *http.Request) *co
 /*
 	commit sell
 */
-func (ws *WebServer) userCommitSellHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userCommitSellHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.COMMIT_SELL,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -369,7 +353,7 @@ func (ws *WebServer) userCommitSellHandler(w http.ResponseWriter, r *http.Reques
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return &common.Response{Success: false, Message: "Internal error prevented operation"}
+		return ws.error(&cmd, "Internal error prevented operation")
 	}
 	return resp
 }
@@ -377,9 +361,9 @@ func (ws *WebServer) userCommitSellHandler(w http.ResponseWriter, r *http.Reques
 /*
 	cancel sell
 */
-func (ws *WebServer) userCancelSellHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userCancelSellHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.CANCEL_SELL,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -389,7 +373,7 @@ func (ws *WebServer) userCancelSellHandler(w http.ResponseWriter, r *http.Reques
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return &common.Response{Success: false, Message: "Internal error prevented operation"}
+		return ws.error(&cmd, "Internal error prevented operation")
 	}
 	return resp
 }
@@ -404,35 +388,34 @@ json response
 }
 ```
 */
-func (ws *WebServer) userSetBuyAmountHandler(w http.ResponseWriter, r *http.Request) *common.Response {
-	quote_id := r.URL.Query().Get("stock")
-	if quote_id == "" { //should maybe do is alpha numeric check here
-		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
+func (ws *WebServer) userSetBuyAmountHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
+	cmd := common.Command{
+		TransactionID: t_id,
+		C_type:        common.SET_BUY_AMOUNT,
+		UserId:        mux.Vars(r)["user_id"],
+		Timestamp:     time.Now(),
+	}
+	cmd.StockSymbol = r.URL.Query().Get("stock")
+	if cmd.StockSymbol == "" { //should maybe do is alpha numeric check here
+		return ws.error(&cmd, "Parameter: 'stock' cannot be an empty string")
 	}
 
 	// amounts will be passed to the web server as a long to prevent any floating point conversion issues of any kind
-	amount, err := strconv.ParseInt(r.URL.Query().Get("amount"), 10, 0)
+	var err error
+	cmd.Amount, err = strconv.ParseInt(r.URL.Query().Get("amount"), 10, 0)
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		return &common.Response{Success: false, Message: "Could not process field: 'amount'"}
-	} else if amount <= 0 {
-		return &common.Response{Success: false, Message: "Parameter: 'amount' must be greater than 0"}
+		return ws.error(&cmd, "Could not process field: 'amount'")
+	} else if cmd.Amount <= 0 {
+		return ws.error(&cmd, "Parameter: 'amount' must be greater than 0")
 	}
 
-	cmd := common.Command{
-		TransactionID: t_id.Inc(),
-		C_type:        common.SET_BUY_AMOUNT,
-		UserId:        mux.Vars(r)["user_id"],
-		Amount:        amount,
-		StockSymbol:   quote_id,
-		Timestamp:     time.Now(),
-	}
 	go ws.logger.UserCommand(&cmd)
 
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return &common.Response{Success: false, Message: "Internal error prevented operation"}
+		return ws.error(&cmd, "Internal error prevented operation")
 	}
 	return resp
 }
@@ -447,25 +430,24 @@ cancels previous set buys
 }
 ```
 */
-func (ws *WebServer) userCancelSetBuyHandler(w http.ResponseWriter, r *http.Request) *common.Response {
-	quote_id := r.URL.Query().Get("stock")
-	if quote_id == "" { //should maybe do is alpha numeric check here
-		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
-	}
-
+func (ws *WebServer) userCancelSetBuyHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.CANCEL_SET_BUY,
 		UserId:        mux.Vars(r)["user_id"],
-		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
 	}
+	cmd.StockSymbol = r.URL.Query().Get("stock")
+	if cmd.StockSymbol == "" { //should maybe do is alpha numeric check here
+		return ws.error(&cmd, "Parameter: 'stock' cannot be an empty string")
+	}
+
 	go ws.logger.UserCommand(&cmd)
 
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return &common.Response{Success: false, Message: "Internal error prevented operation"}
+		return ws.error(&cmd, "Internal error prevented operation")
 	}
 	return resp
 }
@@ -479,35 +461,34 @@ sets buy triggers
 }
 ```
 */
-func (ws *WebServer) userSetBuyTriggerHandler(w http.ResponseWriter, r *http.Request) *common.Response {
-	quote_id := r.URL.Query().Get("stock")
-	if quote_id == "" { //should maybe do is alpha numeric check here
-		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
-	}
-
-	// amounts will be passed to the web server as a long to prevent any floating point conversion issues of any kind
-	amount, err := strconv.ParseInt(r.URL.Query().Get("amount"), 10, 0)
-	if err != nil {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return &common.Response{Success: false, Message: "Could not process field: 'amount'"}
-	} else if amount <= 0 {
-		return &common.Response{Success: false, Message: "Parameter: 'amount' must be greater than 0"}
-	}
-
+func (ws *WebServer) userSetBuyTriggerHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.SET_BUY_TRIGGER,
 		UserId:        mux.Vars(r)["user_id"],
-		Amount:        amount,
-		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
 	}
+	cmd.StockSymbol = r.URL.Query().Get("stock")
+	if cmd.StockSymbol == "" { //should maybe do is alpha numeric check here
+		return ws.error(&cmd, "Parameter: 'stock' cannot be an empty string")
+	}
+
+	// amounts will be passed to the web server as a long to prevent any floating point conversion issues of any kind
+	var err error
+	cmd.Amount, err = strconv.ParseInt(r.URL.Query().Get("amount"), 10, 0)
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return ws.error(&cmd, "Could not process field: 'amount'")
+	} else if cmd.Amount <= 0 {
+		return ws.error(&cmd, "Parameter: 'amount' must be greater than 0")
+	}
+
 	go ws.logger.UserCommand(&cmd)
 
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return &common.Response{Success: false, Message: "Internal error prevented operation"}
+		return ws.error(&cmd, "Internal error prevented operation")
 	}
 	return resp
 }
@@ -522,78 +503,34 @@ JSON response
 }
 ```
 */
-func (ws *WebServer) userSetSellAmountHandler(w http.ResponseWriter, r *http.Request) *common.Response {
-	quote_id := r.URL.Query().Get("stock")
-	if quote_id == "" { //should maybe do is alpha numeric check here
-		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
-	}
-
-	// amounts will be passed to the web server as a long to prevent any floating point conversion issues of any kind
-	amount, err := strconv.ParseInt(r.URL.Query().Get("amount"), 10, 0)
-	if err != nil {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		return &common.Response{Success: false, Message: "Could not process field: 'amount'"}
-	} else if amount <= 0 {
-		return &common.Response{Success: false, Message: "Parameter: 'amount' must be greater than 0"}
-	}
-
+func (ws *WebServer) userSetSellAmountHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.SET_SELL_AMOUNT,
 		UserId:        mux.Vars(r)["user_id"],
-		Amount:        amount,
-		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
 	}
-	go ws.logger.UserCommand(&cmd)
-
-	resp := ws.txnConn.Send(cmd)
-	if resp == nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return &common.Response{Success: false, Message: "Internal error prevented operation"}
-	}
-	return resp
-}
-
-/*
-sell
-JSON response
-
-```json
-{
-  "success": true
-}
-```
-*/
-func (ws *WebServer) userSetSellTriggerHandler(w http.ResponseWriter, r *http.Request) *common.Response {
-	quote_id := r.URL.Query().Get("stock")
-	if quote_id == "" { //should maybe do is alpha numeric check here
-		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
+	cmd.StockSymbol = r.URL.Query().Get("stock")
+	if cmd.StockSymbol == "" { //should maybe do is alpha numeric check here
+		return ws.error(&cmd, "Parameter: 'stock' cannot be an empty string")
 	}
 
 	// amounts will be passed to the web server as a long to prevent any floating point conversion issues of any kind
-	amount, err := strconv.ParseInt(r.URL.Query().Get("amount"), 10, 0)
+	var err error
+	cmd.Amount, err = strconv.ParseInt(r.URL.Query().Get("amount"), 10, 0)
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		return &common.Response{Success: false, Message: "Could not process field: 'amount'"}
-	} else if amount <= 0 {
-		return &common.Response{Success: false, Message: "Parameter: 'amount' must be greater than 0"}
+		return ws.error(&cmd, "Could not process field: 'amount'")
+	} else if cmd.Amount <= 0 {
+		return ws.error(&cmd, "Parameter: 'amount' must be greater than 0")
 	}
 
-	cmd := common.Command{
-		TransactionID: t_id.Inc(),
-		C_type:        common.SET_SELL_TRIGGER,
-		UserId:        mux.Vars(r)["user_id"],
-		Amount:        amount,
-		StockSymbol:   quote_id,
-		Timestamp:     time.Now(),
-	}
 	go ws.logger.UserCommand(&cmd)
 
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return &common.Response{Success: false, Message: "Internal error prevented operation"}
+		return ws.error(&cmd, "Internal error prevented operation")
 	}
 	return resp
 }
@@ -608,25 +545,65 @@ JSON response
 }
 ```
 */
-func (ws *WebServer) userCancelSetSellHandler(w http.ResponseWriter, r *http.Request) *common.Response {
-	quote_id := r.URL.Query().Get("stock")
-	if quote_id == "" { //should maybe do is alpha numeric check here
-		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
+func (ws *WebServer) userSetSellTriggerHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
+	cmd := common.Command{
+		TransactionID: t_id,
+		C_type:        common.SET_SELL_TRIGGER,
+		UserId:        mux.Vars(r)["user_id"],
+		Timestamp:     time.Now(),
+	}
+	cmd.StockSymbol = r.URL.Query().Get("stock")
+	if cmd.StockSymbol == "" { //should maybe do is alpha numeric check here
+		return ws.error(&cmd, "Parameter: 'stock' cannot be an empty string")
 	}
 
+	// amounts will be passed to the web server as a long to prevent any floating point conversion issues of any kind
+	var err error
+	cmd.Amount, err = strconv.ParseInt(r.URL.Query().Get("amount"), 10, 0)
+	if err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return ws.error(&cmd, "Could not process field: 'amount'")
+	} else if cmd.Amount <= 0 {
+		return ws.error(&cmd, "Parameter: 'amount' must be greater than 0")
+	}
+
+	go ws.logger.UserCommand(&cmd)
+
+	resp := ws.txnConn.Send(cmd)
+	if resp == nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return ws.error(&cmd, "Internal error prevented operation")
+	}
+	return resp
+}
+
+/*
+sell
+JSON response
+
+```json
+{
+  "success": true
+}
+```
+*/
+func (ws *WebServer) userCancelSetSellHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.CANCEL_SET_SELL,
 		UserId:        mux.Vars(r)["user_id"],
-		StockSymbol:   quote_id,
 		Timestamp:     time.Now(),
+	}
+	cmd.StockSymbol = r.URL.Query().Get("stock")
+	if cmd.StockSymbol == "" { //should maybe do is alpha numeric check here
+		return ws.error(&cmd, "Parameter: 'stock' cannot be an empty string")
 	}
 	go ws.logger.UserCommand(&cmd)
 
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return &common.Response{Success: false, Message: "Internal error prevented operation"}
+		return ws.error(&cmd, "Internal error prevented operation")
 	}
 	return resp
 }
@@ -634,19 +611,16 @@ func (ws *WebServer) userCancelSetSellHandler(w http.ResponseWriter, r *http.Req
 /*
 dumps a log
 */
-func (ws *WebServer) userDumplogHandler(w http.ResponseWriter, r *http.Request) *common.Response {
-	userId := mux.Vars(r)["user_id"]
-	filename := r.URL.Query().Get("filename")
-	if filename == "" && userId != "admin" { //should maybe do is alpha numeric check here
-		return &common.Response{Success: false, Message: "Parameter: 'filename' cannot be an empty string"}
-	}
-
+func (ws *WebServer) userDumplogHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		FileName:      filename,
-		TransactionID: t_id.Inc(),
+		FileName:      r.URL.Query().Get("filename"),
+		TransactionID: t_id,
 		UserId:        mux.Vars(r)["user_id"],
 		C_type:        common.DUMPLOG,
 		Timestamp:     time.Now(),
+	}
+	if cmd.FileName == "" && cmd.UserId != "admin" { //should maybe do is alpha numeric check here
+		return ws.error(&cmd, "Parameter: 'filename' cannot be an empty string")
 	}
 
 	go ws.logger.UserCommand(&cmd)
@@ -654,9 +628,9 @@ func (ws *WebServer) userDumplogHandler(w http.ResponseWriter, r *http.Request) 
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return &common.Response{Success: false, Message: "Internal error prevented operation"}
+		return ws.error(&cmd, "Internal error prevented operation")
 	} else if resp.Success {
-		w.Header().Set("Content-Disposition", "attachment; filename="+filename)
+		w.Header().Set("Content-Disposition", "attachment; filename="+cmd.FileName)
 		w.Header().Set("Content-Type", "application/xml")
 		io.Copy(w, bytes.NewReader(*resp.File))
 	}
@@ -664,13 +638,19 @@ func (ws *WebServer) userDumplogHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func wrapHandler(
-	handler func(w http.ResponseWriter, r *http.Request) *common.Response,
+	handler func(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response,
 ) func(w http.ResponseWriter, r *http.Request) {
 
 	h := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		// test input here/validity of requester
-		resp := handler(w, r)
+		t_id, err := strconv.ParseInt(mux.Vars(r)["t_id"], 10, 64)
+		if err != nil {
+			log.Print(err)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		resp := handler(w, r, t_id)
 
 		if w.Header().Get("Content-Type") == "application/json" {
 			respJSON, err := json.Marshal(resp)

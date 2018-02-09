@@ -308,14 +308,20 @@ func (l *LoggerRPC) DumpLog(args *Args, result *[]byte) error {
 }
 
 func GetLoggerRPC() (*LoggerRPC, *os.File) {
-	createDirectory("./logs")
+	if _, err := os.Stat("./logs"); os.IsNotExist(err) {
+		if err = os.Mkdir("logs", 0777); err != nil {
+			log.Fatal(err)
+		}
+	}
+	log.Println("log folder made")
+
 	flag := os.O_APPEND | os.O_WRONLY
 	if _, err := os.Stat("./logs/tmp.xml"); os.IsNotExist(err) {
-		flag |= os.O_CREATE | os.O_WRONLY
+		flag |= os.O_CREATE
 	}
 	writer, err := os.OpenFile("./logs/tmp.xml", flag, 0777)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	return &LoggerRPC{writer}, writer
 }

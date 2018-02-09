@@ -29,89 +29,90 @@ type endpoint struct {
 var rest = map[string]endpoint{
 	"ADD": endpoint{
 		Method: "POST",
-		Query:  "%s/%s/add?amount=%s",
+		Query:  "%s/%d/%s/add?amount=%s",
 	},
 	"QUOTE": endpoint{
 		Method: "GET",
-		Query:  "%s/%s/quote?stock=%s",
+		Query:  "%s/%d/%s/quote?stock=%s",
 	},
 	"BUY": endpoint{
 		Method: "POST",
-		Query:  "%s/%s/buy?stock=%s&amount=%s",
+		Query:  "%s/%d/%s/buy?stock=%s&amount=%s",
 	},
 	"COMMIT_BUY": endpoint{
 		Method: "POST",
-		Query:  "%s/%s/commit_buy",
+		Query:  "%s/%d/%s/commit_buy",
 	},
 	"CANCEL_BUY": endpoint{
 		Method: "POST",
-		Query:  "%s/%s/cancel_buy",
+		Query:  "%s/%d/%s/cancel_buy",
 	},
 	"SELL": endpoint{
 		Method: "POST",
-		Query:  "%s/%s/sell?stock=%s&amount=%s",
+		Query:  "%s/%d/%s/sell?stock=%s&amount=%s",
 	},
 	"COMMIT_SELL": endpoint{
 		Method: "POST",
-		Query:  "%s/%s/commit_sell",
+		Query:  "%s/%d/%s/commit_sell",
 	},
 	"CANCEL_SELL": endpoint{
 		Method: "POST",
-		Query:  "%s/%s/cancel_sell",
+		Query:  "%s/%d/%s/cancel_sell",
 	},
 	"SET_BUY_AMOUNT": endpoint{
 		Method: "POST",
-		Query:  "%s/%s/set_buy_amount?stock=%s&amount=%s",
+		Query:  "%s/%d/%s/set_buy_amount?stock=%s&amount=%s",
 	},
 	"CANCEL_SET_BUY": endpoint{
 		Method: "POST",
-		Query:  "%s/%s/cancel_set_buy?stock=%s",
+		Query:  "%s/%d/%s/cancel_set_buy?stock=%s",
 	},
 	"SET_BUY_TRIGGER": endpoint{
 		Method: "POST",
-		Query:  "%s/%s/set_buy_trigger?stock=%s&amount=%s",
+		Query:  "%s/%d/%s/set_buy_trigger?stock=%s&amount=%s",
 	},
 	"SET_SELL_AMOUNT": endpoint{
 		Method: "POST",
-		Query:  "%s/%s/set_sell_amount?stock=%s&amount=%s",
+		Query:  "%s/%d/%s/set_sell_amount?stock=%s&amount=%s",
 	},
 	"SET_SELL_TRIGGER": endpoint{
 		Method: "POST",
-		Query:  "%s/%s/set_sell_trigger?stock=%s&amount=%s",
+		Query:  "%s/%d/%s/set_sell_trigger?stock=%s&amount=%s",
 	},
 	"CANCEL_SET_SELL": endpoint{
 		Method: "POST",
-		Query:  "%s/%s/cancel_set_sell?stock=%s",
+		Query:  "%s/%d/%s/cancel_set_sell?stock=%s",
 	},
 	"DUMPLOG": endpoint{
 		Method: "GET",
-		Query:  "%s/%s/dumplog?filename=%s",
+		Query:  "%s/%d/%s/dumplog?filename=%s",
 	},
 	"DISPLAY_SUMMARY": endpoint{
 		Method: "GET",
-		Query:  "%s/%s/display_summary",
+		Query:  "%s/%d/%s/display_summary",
 	},
 }
 
-func parseWorkloadCommand(cmdLine string) endpoint {
+func parseWorkloadCommand(cmdLine string, i int64) endpoint {
 	split_cmd := strings.Split(cmdLine, ",")
 	if len(split_cmd) == 0 {
 		log.Fatal("Empty Command!")
 	}
 
 	mapped := rest[split_cmd[0]]
-	split := make([]interface{}, len(split_cmd))
+	split := make([]interface{}, len(split_cmd)+1)
 	split[0] = WEB_URL
+	split[1] = i
 	for i, val := range split_cmd[1:] {
 		temp_val := strings.TrimSpace(val)
 		amount, err := strconv.ParseFloat(strings.TrimSpace(val), 64)
 		if err == nil { // It's a float!
 			temp_val = strconv.Itoa(int(amount * 100.0))
 		}
-		split[i+1] = temp_val
+		split[i+2] = temp_val
 	}
-	if split_cmd[0] == "DUMPLOG" && len(split) < 3 {
-		mapped.Query = fmt.Sprintf(mapped.Query, split[0], "admin", split[1])
+	if split_cmd[0] == "DUMPLOG" && len(split) < 4 {
+		mapped.Query = fmt.Sprintf(mapped.Query, split[0], i, "admin", split[2])
 	} else {
 		mapped.Query = fmt.Sprintf(mapped.Query, split...)
 	}
@@ -129,13 +130,14 @@ func main() {
 		log.Fatal(err)
 	}
 	defer file.Close()
-
+	i := 1
 	scanner := bufio.NewScanner(file)
 
 	var linesInFiles []endpoint
 	for scanner.Scan() {
 		line := scanner.Text()
-		endpoint := parseWorkloadCommand(strings.Split(line, "] ")[1])
+		endpoint := parseWorkloadCommand(strings.Split(line, "] ")[1], int64(i))
+		i++
 		linesInFiles = append(linesInFiles, endpoint)
 	}
 
