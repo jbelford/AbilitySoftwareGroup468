@@ -2,13 +2,15 @@ version: '3'
 services:
   transaction:
     image: ability:latest
-    #container_name: "transaction"
+    container_name: "transaction"
     build:
       context: .
       dockerfile: Dockerfile
     links:
       - mongodb:db1.prod.ability.com
       - auditserver:auditserver.prod.ability.com
+    ports:
+      - 44421
     expose:
       - 44421
     depends_on:
@@ -21,7 +23,7 @@ services:
         aliases:
           - transaction.prod.ability.com
   web:
-    #container_name: "web"
+    container_name: "web"
     image: ability:latest
     build:
       context: .
@@ -42,13 +44,15 @@ services:
       - scaryoutside
       - mynetwork
   auditserver:
-    #container_name: "auditserver"
+    container_name: "auditserver"
     image: ability:latest
     build:
       context: .
       dockerfile: Dockerfile
     expose:
       - 44422
+    ports:
+      - 44422:44422
     command: auditserver --prod
     tty: true
     networks:
@@ -56,7 +60,7 @@ services:
         aliases:
           - auditserver.prod.ability.com
   workloadgen:
-    #container_name: "workloadgen"
+    container_name: "workloadgen"
     image: workloadgen:latest
     build:
       context: workloads
@@ -73,11 +77,13 @@ services:
           - workgen.prod.ability.com
   mongodb:
     image: mongo:latest
-    #container_name: "mongodb"
+    container_name: "mongodb"
     environment:
       - MONGO_DATA_DIR=/data/db
       #- MONGO_LOG_DIR=/dev/null
     expose:
+      - 44423
+    ports:
       - 44423
     command: mongod --smallfiles --port 44423 --bind_ip db1.prod.ability.com #--logpath=/dev/null # --quiet
     networks:
@@ -87,4 +93,8 @@ services:
 networks:
   mynetwork:
     driver: overlay
+    #ipam:
+      #driver: default
+      #config:
+        #- subnet: 10.0.1.0/24
   scaryoutside:
