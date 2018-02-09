@@ -12,6 +12,7 @@ import (
 type AuditServer struct{}
 
 func (ad *AuditServer) Start() {
+	log.Println("Requesting RPC")
 	logger, writer := networks.GetLoggerRPC()
 	defer writer.Close()
 	rpc.Register(logger)
@@ -25,8 +26,7 @@ func (ad *AuditServer) Start() {
 	defer ln.Close()
 	for {
 		conn, _ := ln.Accept()
-		log.Println("Accepted connection:", conn)
-		rpc.ServeConn(conn)
-		conn.Close()
+		log.Println("Accepted connection")
+		go rpc.ServeConn(conn)
 	}
 }

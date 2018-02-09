@@ -1,8 +1,9 @@
 package main
 
 import (
-	"os"
 	"log"
+	"os"
+
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 )
 

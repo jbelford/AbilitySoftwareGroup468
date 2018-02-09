@@ -308,6 +308,7 @@ func (l *LoggerRPC) DumpLog(args *Args, result *[]byte) error {
 }
 
 func GetLoggerRPC() (*LoggerRPC, *os.File) {
+	log.Println("Attempting to initiate RPC")
 	if _, err := os.Stat("./logs"); os.IsNotExist(err) {
 		if err = os.Mkdir("logs", 0777); err != nil {
 			log.Fatal(err)
