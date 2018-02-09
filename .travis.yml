@@ -2,7 +2,15 @@ sudo: required
 language: go
 
 env:
-  - DOCKER_COMPOSE_VERSION=1.18.0
+  global:
+    - DOCKER_COMPOSE_VERSION=1.18.0
+  matrix:
+    #- WORKLOAD_FILE=1000User_testWorkLoad.txt
+    - WORKLOAD_FILE=1userWorkLoad.txt
+    #- WORKLOAD_FILE=100User_testWorkLoad.txt
+    - WORKLOAD_FILE=2userWorkLoad.txt
+    - WORKLOAD_FILE=10User_testWorkLoad.txt
+    - WORKLOAD_FILE=45User_testWorkLoad.txt
 
 before_install:
   - sudo rm /usr/local/bin/docker-compose
