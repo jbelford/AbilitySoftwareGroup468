@@ -97,7 +97,7 @@ type User struct {
 type Trigger struct {
 	UserId        string `bson:"userId" json:"userId"`
 	Stock         string `json:"stock"`
-	TransactionID int64  `json:"transactionId"`
+	TransactionID int64  `bson:"transactionId" json:"transactionId"`
 	Type          string `json:"type"`
 	Shares        int    `json:"shares"`
 	Amount        int64  `json:"amount"`
