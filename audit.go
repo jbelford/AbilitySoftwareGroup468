@@ -12,10 +12,11 @@ import (
 type AuditServer struct{}
 
 func (ad *AuditServer) Start() {
+	logger, writer := networks.GetLoggerRPC()
 	defer writer.Close()
 	rpc.Register(logger)
 	ln, err := net.Listen("tcp", common.CFG.AuditServer.Url)
-	logger, writer := networks.GetLoggerRPC()
+	logger, writer = networks.GetLoggerRPC()
 	log.Println("connected to:", common.CFG.AuditServer.Url)
 
 	if err != nil {
