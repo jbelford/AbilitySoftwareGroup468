@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/mattpaletta/AbilitySoftwareGroup468/networks"
@@ -29,24 +28,9 @@ func (ws *WebServer) error(cmd *common.Command, msg string) *common.Response {
 	return &common.Response{Success: false, Message: msg}
 }
 
-type Counter struct {
-	mu sync.Mutex
-	x  int64
-}
-
-func (c *Counter) Inc() (val int64) {
-	c.mu.Lock()
-	c.x++
-	val = c.x
-	c.mu.Unlock()
-	return
-}
-
-var t_id Counter
-
 func (ws *WebServer) Start() {
-	ws.logger = networks.GetLogger(common.CFG.WebServer.Url)
 	ws.txnConn = networks.GetTxnConn()
+	ws.logger = networks.GetLogger(common.CFG.WebServer.Url)
 	var dir string
 
 	flag.StringVar(&dir, "dir", ".", "the directory to serve files from. Defaults to the current dir")
@@ -55,33 +39,33 @@ func (ws *WebServer) Start() {
 	r := mux.NewRouter()
 	r.HandleFunc("/", ws.indexHandler).Methods("GET")
 
-	r.HandleFunc("/{user_id}/display_summary", wrapHandler(ws.userSummaryHandler)).Methods("GET")
+	r.HandleFunc("/{t_id}/{user_id}/display_summary", wrapHandler(ws.userSummaryHandler)).Methods("GET")
 
-	r.HandleFunc("/{user_id}/add", wrapHandler(ws.userAddHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/quote", wrapHandler(ws.userQuoteHandler)).Methods("GET")
+	r.HandleFunc("/{t_id}/{user_id}/add", wrapHandler(ws.userAddHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/quote", wrapHandler(ws.userQuoteHandler)).Methods("GET")
 
 	//buying stocks
-	r.HandleFunc("/{user_id}/buy", wrapHandler(ws.userBuyHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/commit_buy", wrapHandler(ws.userCommitBuyHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/cancel_buy", wrapHandler(ws.userCancelBuyHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/buy", wrapHandler(ws.userBuyHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/commit_buy", wrapHandler(ws.userCommitBuyHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/cancel_buy", wrapHandler(ws.userCancelBuyHandler)).Methods("POST")
 
 	//selling stocks
-	r.HandleFunc("/{user_id}/sell", wrapHandler(ws.userSellHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/commit_sell", wrapHandler(ws.userCommitSellHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/cancel_sell", wrapHandler(ws.userCancelSellHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/sell", wrapHandler(ws.userSellHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/commit_sell", wrapHandler(ws.userCommitSellHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/cancel_sell", wrapHandler(ws.userCancelSellHandler)).Methods("POST")
 
 	//buy triggers
-	r.HandleFunc("/{user_id}/set_buy_amount", wrapHandler(ws.userSetBuyAmountHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/cancel_set_buy", wrapHandler(ws.userCancelSetBuyHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/set_buy_trigger", wrapHandler(ws.userSetBuyTriggerHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/set_buy_amount", wrapHandler(ws.userSetBuyAmountHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/cancel_set_buy", wrapHandler(ws.userCancelSetBuyHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/set_buy_trigger", wrapHandler(ws.userSetBuyTriggerHandler)).Methods("POST")
 
 	//sell triggers
-	r.HandleFunc("/{user_id}/set_sell_amount", wrapHandler(ws.userSetSellAmountHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/set_sell_trigger", wrapHandler(ws.userSetSellTriggerHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/cancel_set_sell", wrapHandler(ws.userCancelSetSellHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/set_sell_amount", wrapHandler(ws.userSetSellAmountHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/set_sell_trigger", wrapHandler(ws.userSetSellTriggerHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/cancel_set_sell", wrapHandler(ws.userCancelSetSellHandler)).Methods("POST")
 
 	//user log
-	r.HandleFunc("/{user_id}/dumplog", wrapHandler(ws.userDumplogHandler)).Methods("GET")
+	r.HandleFunc("/{t_id}/{user_id}/dumplog", wrapHandler(ws.userDumplogHandler)).Methods("GET")
 
 	r.PathPrefix("/templates/").Handler(http.StripPrefix("/templates/", http.FileServer(http.Dir(dir))))
 
@@ -134,9 +118,9 @@ func (ws *WebServer) indexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	```
 */
-func (ws *WebServer) userSummaryHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userSummaryHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.DISPLAY_SUMMARY,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -161,9 +145,9 @@ func (ws *WebServer) userSummaryHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	```
 */
-func (ws *WebServer) userAddHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userAddHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.ADD,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -198,9 +182,9 @@ func (ws *WebServer) userAddHandler(w http.ResponseWriter, r *http.Request) *com
 	}
 	```
 */
-func (ws *WebServer) userQuoteHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userQuoteHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.QUOTE,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -234,9 +218,9 @@ func (ws *WebServer) userQuoteHandler(w http.ResponseWriter, r *http.Request) *c
 	}
 	```
 */
-func (ws *WebServer) userBuyHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userBuyHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.BUY,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -270,9 +254,9 @@ func (ws *WebServer) userBuyHandler(w http.ResponseWriter, r *http.Request) *com
 	Default handler, for any url that does not require validity testing
 	commit buy, cancel buy, commit sell, cancel sell,
 */
-func (ws *WebServer) userCommitBuyHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userCommitBuyHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.COMMIT_BUY,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -291,9 +275,9 @@ func (ws *WebServer) userCommitBuyHandler(w http.ResponseWriter, r *http.Request
 
 	cancel buy
 */
-func (ws *WebServer) userCancelBuyHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userCancelBuyHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.CANCEL_BUY,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -322,9 +306,9 @@ JSON response
 }
 ```
 */
-func (ws *WebServer) userSellHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userSellHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.SELL,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -357,9 +341,9 @@ func (ws *WebServer) userSellHandler(w http.ResponseWriter, r *http.Request) *co
 /*
 	commit sell
 */
-func (ws *WebServer) userCommitSellHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userCommitSellHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.COMMIT_SELL,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -377,9 +361,9 @@ func (ws *WebServer) userCommitSellHandler(w http.ResponseWriter, r *http.Reques
 /*
 	cancel sell
 */
-func (ws *WebServer) userCancelSellHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userCancelSellHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.CANCEL_SELL,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -404,9 +388,9 @@ json response
 }
 ```
 */
-func (ws *WebServer) userSetBuyAmountHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userSetBuyAmountHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.SET_BUY_AMOUNT,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -446,9 +430,9 @@ cancels previous set buys
 }
 ```
 */
-func (ws *WebServer) userCancelSetBuyHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userCancelSetBuyHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.CANCEL_SET_BUY,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -477,9 +461,9 @@ sets buy triggers
 }
 ```
 */
-func (ws *WebServer) userSetBuyTriggerHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userSetBuyTriggerHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.SET_BUY_TRIGGER,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -519,9 +503,9 @@ JSON response
 }
 ```
 */
-func (ws *WebServer) userSetSellAmountHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userSetSellAmountHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.SET_SELL_AMOUNT,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -561,9 +545,9 @@ JSON response
 }
 ```
 */
-func (ws *WebServer) userSetSellTriggerHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userSetSellTriggerHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.SET_SELL_TRIGGER,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -603,9 +587,9 @@ JSON response
 }
 ```
 */
-func (ws *WebServer) userCancelSetSellHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userCancelSetSellHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.CANCEL_SET_SELL,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -627,10 +611,10 @@ func (ws *WebServer) userCancelSetSellHandler(w http.ResponseWriter, r *http.Req
 /*
 dumps a log
 */
-func (ws *WebServer) userDumplogHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+func (ws *WebServer) userDumplogHandler(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response {
 	cmd := common.Command{
 		FileName:      r.URL.Query().Get("filename"),
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		UserId:        mux.Vars(r)["user_id"],
 		C_type:        common.DUMPLOG,
 		Timestamp:     time.Now(),
@@ -654,13 +638,19 @@ func (ws *WebServer) userDumplogHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func wrapHandler(
-	handler func(w http.ResponseWriter, r *http.Request) *common.Response,
+	handler func(w http.ResponseWriter, r *http.Request, t_id int64) *common.Response,
 ) func(w http.ResponseWriter, r *http.Request) {
 
 	h := func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		// test input here/validity of requester
-		resp := handler(w, r)
+		t_id, err := strconv.ParseInt(mux.Vars(r)["t_id"], 10, 64)
+		if err != nil {
+			log.Print(err)
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		resp := handler(w, r, t_id)
 
 		if w.Header().Get("Content-Type") == "application/json" {
 			respJSON, err := json.Marshal(resp)

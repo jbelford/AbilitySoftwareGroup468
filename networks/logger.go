@@ -305,6 +305,7 @@ func GetLoggerRPC() (*LoggerRPC, *os.File) {
 			log.Fatal(err)
 		}
 	}
+	log.Println("log folder made")
 
 	flag := os.O_APPEND | os.O_WRONLY
 	if _, err := os.Stat("./logs/tmp.xml"); os.IsNotExist(err) {
