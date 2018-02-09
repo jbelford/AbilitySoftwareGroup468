@@ -220,8 +220,9 @@ func (c *triggers) Set(t *common.Trigger) error {
 	_, err := c.Upsert(
 		bson.M{"stock": t.Stock, "type": t.Type, "userId": t.UserId},
 		bson.M{
-			"$setOnInsert": bson.M{"stock": t.Stock, "type": t.Type, "userId": t.UserId, "shares": t.Shares},
-			"$set":         set,
+			"$setOnInsert": bson.M{"stock": t.Stock, "type": t.Type, "userId": t.UserId,
+				"shares": t.Shares, "transactionId": t.TransactionID},
+			"$set": set,
 		})
 	return err
 }
