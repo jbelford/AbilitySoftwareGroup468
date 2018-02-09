@@ -16,6 +16,18 @@ type txnServe struct {
 	client *rpc.Client
 }
 
+func (t *txnServe) connect() {
+	var err error
+	for {
+		t.client, err = rpc.Dial("tcp", common.CFG.TxnServer.Url)
+		if err != nil {
+			log.Println("FAILED TO CONNECT TO TRANSACTION SERVER")
+			continue
+		}
+		break
+	}
+}
+
 func (t *txnServe) Send(cmd common.Command) *common.Response {
 	for {
 		var resp common.Response
@@ -33,12 +45,7 @@ func (t *txnServe) Close() error {
 }
 
 func GetTxnConn() TxnConn {
-	for {
-		client, err := rpc.Dial("tcp", common.CFG.TxnServer.Url)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		return &txnServe{client}
-	}
+	t := &txnServe{}
+	t.connect()
+	return t
 }

@@ -2,7 +2,6 @@ package networks
 
 import (
 	"encoding/xml"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/rpc"
@@ -39,21 +38,23 @@ type logger struct {
 	server string
 }
 
-func createDirectory(directoryPath string) {
-	//choose your permissions well
-	pathErr := os.MkdirAll(directoryPath, 0777)
-
-	//check if you need to panic, fallback or report
-	if pathErr != nil {
-		fmt.Println(pathErr)
+func (l *logger) connect() {
+	var err error
+	for {
+		l.client, err = rpc.Dial("tcp", common.CFG.AuditServer.Url)
+		if err != nil {
+			log.Println("FAILED TO CONNECT TO AUDITSERVER")
+			continue
+		}
+		break
 	}
 }
 
 func (l *logger) Call(method string, args interface{}, result interface{}) (err error) {
 	for {
 		err = l.client.Call(method, args, result)
-		if err == rpc.ErrShutdown {
-			l.client, err = rpc.Dial("tcp", common.CFG.AuditServer.Url)
+		if err != nil {
+			l.connect()
 			continue
 		}
 		return err
@@ -161,14 +162,9 @@ func (l *logger) Close() error {
 }
 
 func GetLogger(server string) Logger {
-	for {
-		client, err := rpc.Dial("tcp", common.CFG.AuditServer.Url)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		return &logger{client, server}
-	}
+	l := &logger{server: server}
+	l.connect()
+	return l
 }
 
 type LoggerRPC struct {
@@ -176,8 +172,6 @@ type LoggerRPC struct {
 }
 
 func (l *LoggerRPC) writeLogs(log interface{}, userFilename string) error {
-	createDirectory("./logs")
-
 	flag := os.O_APPEND | os.O_WRONLY
 	if _, err := os.Stat("./logs/" + userFilename); os.IsNotExist(err) {
 		flag |= os.O_CREATE
@@ -197,7 +191,6 @@ func (l *LoggerRPC) writeLogs(log interface{}, userFilename string) error {
 }
 
 func (l *LoggerRPC) readLog(filename string) []byte {
-	createDirectory("./logs")
 	data := []byte("<log>\n")
 	read, err := ioutil.ReadFile("./logs/" + filename)
 	if err == nil {
@@ -298,7 +291,6 @@ func (l *LoggerRPC) DebugEvent(args *Args, result *string) error {
 }
 
 func (l *LoggerRPC) DumpLog(args *Args, result *[]byte) error {
-	createDirectory("./logs")
 	filename := "./logs/tmp.xml"
 	if args.FileName == "" {
 		filename = args.FileName
@@ -308,7 +300,11 @@ func (l *LoggerRPC) DumpLog(args *Args, result *[]byte) error {
 }
 
 func GetLoggerRPC() (*LoggerRPC, *os.File) {
-	createDirectory("./logs")
+	err := os.Mkdir("./logs", 0777)
+	if os.IsPermission(err) {
+		log.Fatal(err)
+	}
+
 	flag := os.O_APPEND | os.O_WRONLY
 	if _, err := os.Stat("./logs/tmp.xml"); os.IsNotExist(err) {
 		flag |= os.O_CREATE | os.O_WRONLY

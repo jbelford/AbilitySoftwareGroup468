@@ -81,9 +81,6 @@ func (ws *WebServer) Start() {
 	//user log
 	r.HandleFunc("/{user_id}/dumplog", wrapHandler(ws.userDumplogHandler)).Methods("GET")
 
-	//admin log
-	r.HandleFunc("/{admin_id}/dumplog", wrapHandler(ws.adminDumplogHandler)).Methods("GET")
-
 	r.PathPrefix("/templates/").Handler(http.StripPrefix("/templates/", http.FileServer(http.Dir(dir))))
 
 	log.Println("Listening on:", common.CFG.WebServer.Url)
@@ -638,8 +635,9 @@ func (ws *WebServer) userCancelSetSellHandler(w http.ResponseWriter, r *http.Req
 dumps a log
 */
 func (ws *WebServer) userDumplogHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+	userId := mux.Vars(r)["user_id"]
 	filename := r.URL.Query().Get("filename")
-	if filename == "" { //should maybe do is alpha numeric check here
+	if filename == "" && userId != "admin" { //should maybe do is alpha numeric check here
 		return &common.Response{Success: false, Message: "Parameter: 'filename' cannot be an empty string"}
 	}
 
@@ -650,36 +648,7 @@ func (ws *WebServer) userDumplogHandler(w http.ResponseWriter, r *http.Request) 
 		C_type:        common.DUMPLOG,
 		Timestamp:     time.Now(),
 	}
-	go ws.logger.UserCommand(&cmd)
 
-	resp := ws.txnConn.Send(cmd)
-	if resp == nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return &common.Response{Success: false, Message: "Internal error prevented operation"}
-	} else if resp.Success {
-		w.Header().Set("Content-Disposition", "attachment; filename="+filename)
-		w.Header().Set("Content-Type", "application/xml")
-		io.Copy(w, bytes.NewReader(*resp.File))
-	}
-	return resp
-}
-
-/*
-dumps the big log
-*/
-func (ws *WebServer) adminDumplogHandler(w http.ResponseWriter, r *http.Request) *common.Response {
-	filename := r.URL.Query().Get("filename")
-	if filename == "" { //should maybe do is alpha numeric check here
-		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
-	}
-
-	cmd := common.Command{
-		UserId:        mux.Vars(r)["admin_id"],
-		FileName:      filename,
-		TransactionID: t_id.Inc(),
-		C_type:        common.ADMIN_DUMPLOG,
-		Timestamp:     time.Now(),
-	}
 	go ws.logger.UserCommand(&cmd)
 
 	resp := ws.txnConn.Send(cmd)
