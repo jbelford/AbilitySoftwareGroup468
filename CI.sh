@@ -19,7 +19,7 @@ fi
 # wait for the test service to complete and grab the exit code
 TEST_EXIT_CODE=`docker wait ability_workloadgen_1`
 # output the logs for the test (for clarity)
-docker logs ability_workloadgen_1
+docker logs ability_workloadgen_1 | tail -n 50
 # inspect the output of the test and display respective message
 if [ -z ${TEST_EXIT_CODE+x} ] || [ "$TEST_EXIT_CODE" -ne 0 ] ; then
   printf "${RED}Tests Failed${NC} - Exit Code: $TEST_EXIT_CODE\n"
