@@ -1,10 +1,5 @@
 package jobs
 
-import (
-	"net"
-	"net/rpc"
-)
-
 const (
 	MAX_WORKER = 1000
 	MAXQUEUE   = 1000
@@ -50,12 +45,4 @@ func (w *Worker) Stop() {
 	go func() {
 		w.quit <- true
 	}()
-}
-
-type TransactionJob struct {
-	Conn net.Conn
-}
-
-func (j TransactionJob) Execute() {
-	rpc.ServeConn(j.Conn)
 }

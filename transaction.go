@@ -6,8 +6,6 @@ import (
 	"net/rpc"
 	"time"
 
-	"github.com/mattpaletta/AbilitySoftwareGroup468/jobs"
-
 	"github.com/mattpaletta/AbilitySoftwareGroup468/networks"
 
 	"github.com/mattpaletta/AbilitySoftwareGroup468/tools"
@@ -326,25 +324,24 @@ func (ts *TxnRPC) CANCEL_SET_SELL(cmd *common.Command, resp *common.Response) er
 	return nil
 }
 
-func (ts *TxnRPC) ADMIN_DUMPLOG(cmd *common.Command, resp *common.Response) error {
-	// TODO validation of admin user
-	data, err := ts.logger.DumpLog()
-	if err != nil {
-		return ts.error(cmd, "Failed to get log", resp)
-	}
-	*resp = common.Response{Success: true, File: data}
-	return nil
-}
-
 func (ts *TxnRPC) DUMPLOG(cmd *common.Command, resp *common.Response) error {
-	_, err := ts.db.Users.GetUser(cmd.UserId)
-	if err != nil {
-		return ts.error(cmd, "The user does not exist", resp)
-	}
-	data, err := ts.logger.DumpLogUser(cmd.UserId)
-	if err != nil {
-		log.Println(err)
-		return ts.error(cmd, "Failed to get user log", resp)
+	var data *[]byte
+	var err error
+	if cmd.UserId != "admin" {
+		_, err = ts.db.Users.GetUser(cmd.UserId)
+		if err != nil {
+			return ts.error(cmd, "The user does not exist", resp)
+		}
+		data, err = ts.logger.DumpLogUser(cmd.UserId)
+		if err != nil {
+			log.Println(err)
+			return ts.error(cmd, "Failed to get user log", resp)
+		}
+	} else {
+		data, err = ts.logger.DumpLog()
+		if err != nil {
+			return ts.error(cmd, "Failed to get log", resp)
+		}
 	}
 	*resp = common.Response{Success: true, File: data}
 	return nil
@@ -407,17 +404,12 @@ func (ts *TransactionServer) Start() {
 	}
 	defer ln.Close()
 
-	jobQueue := make(chan jobs.Job, jobs.MAXQUEUE)
-	dispatch := jobs.NewDispatcher(jobQueue, jobs.MAX_WORKER)
-	dispatch.Run()
-
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		work := jobs.TransactionJob{conn}
-		jobQueue <- work
+		go rpc.ServeConn(conn)
 	}
 }
