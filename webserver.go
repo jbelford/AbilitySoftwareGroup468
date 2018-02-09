@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/mattpaletta/AbilitySoftwareGroup468/networks"
@@ -28,20 +27,6 @@ func (ws *WebServer) error(cmd *common.Command, msg string) *common.Response {
 	return &common.Response{Success: false, Message: msg}
 }
 
-type Counter struct {
-	mu sync.Mutex
-	x  int64
-}
-
-func (c *Counter) Inc() int64 {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.x = c.x + 1
-	return c.x
-}
-
-var t_id Counter
-
 func (ws *WebServer) Start() {
 	ws.txnConn = networks.GetTxnConn()
 	ws.logger = networks.GetLogger(common.CFG.WebServer.Url)
@@ -53,33 +38,33 @@ func (ws *WebServer) Start() {
 	r := mux.NewRouter()
 	r.HandleFunc("/", ws.indexHandler).Methods("GET")
 
-	r.HandleFunc("/{user_id}/display_summary", wrapHandler(ws.userSummaryHandler)).Methods("GET")
+	r.HandleFunc("/{t_id}/{user_id}/display_summary", wrapHandler(ws.userSummaryHandler)).Methods("GET")
 
-	r.HandleFunc("/{user_id}/add", wrapHandler(ws.userAddHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/quote", wrapHandler(ws.userQuoteHandler)).Methods("GET")
+	r.HandleFunc("/{t_id}/{user_id}/add", wrapHandler(ws.userAddHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/quote", wrapHandler(ws.userQuoteHandler)).Methods("GET")
 
 	//buying stocks
-	r.HandleFunc("/{user_id}/buy", wrapHandler(ws.userBuyHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/commit_buy", wrapHandler(ws.userCommitBuyHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/cancel_buy", wrapHandler(ws.userCancelBuyHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/buy", wrapHandler(ws.userBuyHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/commit_buy", wrapHandler(ws.userCommitBuyHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/cancel_buy", wrapHandler(ws.userCancelBuyHandler)).Methods("POST")
 
 	//selling stocks
-	r.HandleFunc("/{user_id}/sell", wrapHandler(ws.userSellHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/commit_sell", wrapHandler(ws.userCommitSellHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/cancel_sell", wrapHandler(ws.userCancelSellHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/sell", wrapHandler(ws.userSellHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/commit_sell", wrapHandler(ws.userCommitSellHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/cancel_sell", wrapHandler(ws.userCancelSellHandler)).Methods("POST")
 
 	//buy triggers
-	r.HandleFunc("/{user_id}/set_buy_amount", wrapHandler(ws.userSetBuyAmountHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/cancel_set_buy", wrapHandler(ws.userCancelSetBuyHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/set_buy_trigger", wrapHandler(ws.userSetBuyTriggerHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/set_buy_amount", wrapHandler(ws.userSetBuyAmountHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/cancel_set_buy", wrapHandler(ws.userCancelSetBuyHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/set_buy_trigger", wrapHandler(ws.userSetBuyTriggerHandler)).Methods("POST")
 
 	//sell triggers
-	r.HandleFunc("/{user_id}/set_sell_amount", wrapHandler(ws.userSetSellAmountHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/set_sell_trigger", wrapHandler(ws.userSetSellTriggerHandler)).Methods("POST")
-	r.HandleFunc("/{user_id}/cancel_set_sell", wrapHandler(ws.userCancelSetSellHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/set_sell_amount", wrapHandler(ws.userSetSellAmountHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/set_sell_trigger", wrapHandler(ws.userSetSellTriggerHandler)).Methods("POST")
+	r.HandleFunc("/{t_id}/{user_id}/cancel_set_sell", wrapHandler(ws.userCancelSetSellHandler)).Methods("POST")
 
 	//user log
-	r.HandleFunc("/{user_id}/dumplog", wrapHandler(ws.userDumplogHandler)).Methods("GET")
+	r.HandleFunc("/{t_id}/{user_id}/dumplog", wrapHandler(ws.userDumplogHandler)).Methods("GET")
 
 	r.PathPrefix("/templates/").Handler(http.StripPrefix("/templates/", http.FileServer(http.Dir(dir))))
 
@@ -133,8 +118,12 @@ func (ws *WebServer) indexHandler(w http.ResponseWriter, r *http.Request) {
 	```
 */
 func (ws *WebServer) userSummaryHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+	t_id, err := strconv.ParseInt(mux.Vars(r)["t_id"], 10, 64)
+	if err != nil {
+		log.Print(err)
+	}
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.DISPLAY_SUMMARY,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -167,8 +156,12 @@ func (ws *WebServer) userAddHandler(w http.ResponseWriter, r *http.Request) *com
 	} else if amount <= 0 {
 		return &common.Response{Success: false, Message: "Parameter: 'amount' must be greater than 0"}
 	}
+	t_id, err := strconv.ParseInt(mux.Vars(r)["t_id"], 10, 64)
+	if err != nil {
+		log.Print(err)
+	}
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.ADD,
 		UserId:        mux.Vars(r)["user_id"],
 		Amount:        amount,
@@ -201,8 +194,12 @@ func (ws *WebServer) userQuoteHandler(w http.ResponseWriter, r *http.Request) *c
 	if quote_id == "" { //should maybe do is alpha numeric check here
 		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
 	}
+	t_id, err := strconv.ParseInt(mux.Vars(r)["t_id"], 10, 64)
+	if err != nil {
+		log.Print(err)
+	}
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.QUOTE,
 		UserId:        mux.Vars(r)["user_id"],
 		StockSymbol:   quote_id,
@@ -247,8 +244,12 @@ func (ws *WebServer) userBuyHandler(w http.ResponseWriter, r *http.Request) *com
 		return &common.Response{Success: false, Message: "Parameter: 'amount' must be greater than 0"}
 	}
 
+	t_id, err := strconv.ParseInt(mux.Vars(r)["t_id"], 10, 64)
+	if err != nil {
+		log.Print(err)
+	}
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.BUY,
 		UserId:        mux.Vars(r)["user_id"],
 		Amount:        amount,
@@ -270,8 +271,12 @@ func (ws *WebServer) userBuyHandler(w http.ResponseWriter, r *http.Request) *com
 	commit buy, cancel buy, commit sell, cancel sell,
 */
 func (ws *WebServer) userCommitBuyHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+	t_id, err := strconv.ParseInt(mux.Vars(r)["t_id"], 10, 64)
+	if err != nil {
+		log.Print(err)
+	}
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.COMMIT_BUY,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -291,8 +296,12 @@ func (ws *WebServer) userCommitBuyHandler(w http.ResponseWriter, r *http.Request
 	cancel buy
 */
 func (ws *WebServer) userCancelBuyHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+	t_id, err := strconv.ParseInt(mux.Vars(r)["t_id"], 10, 64)
+	if err != nil {
+		log.Print(err)
+	}
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.CANCEL_BUY,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -336,8 +345,12 @@ func (ws *WebServer) userSellHandler(w http.ResponseWriter, r *http.Request) *co
 		return &common.Response{Success: false, Message: "Parameter: 'amount' must be greater than 0"}
 	}
 
+	t_id, err := strconv.ParseInt(mux.Vars(r)["t_id"], 10, 64)
+	if err != nil {
+		log.Print(err)
+	}
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.SELL,
 		UserId:        mux.Vars(r)["user_id"],
 		Amount:        amount,
@@ -358,8 +371,12 @@ func (ws *WebServer) userSellHandler(w http.ResponseWriter, r *http.Request) *co
 	commit sell
 */
 func (ws *WebServer) userCommitSellHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+	t_id, err := strconv.ParseInt(mux.Vars(r)["t_id"], 10, 64)
+	if err != nil {
+		log.Print(err)
+	}
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.COMMIT_SELL,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -378,8 +395,12 @@ func (ws *WebServer) userCommitSellHandler(w http.ResponseWriter, r *http.Reques
 	cancel sell
 */
 func (ws *WebServer) userCancelSellHandler(w http.ResponseWriter, r *http.Request) *common.Response {
+	t_id, err := strconv.ParseInt(mux.Vars(r)["t_id"], 10, 64)
+	if err != nil {
+		log.Print(err)
+	}
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.CANCEL_SELL,
 		UserId:        mux.Vars(r)["user_id"],
 		Timestamp:     time.Now(),
@@ -419,8 +440,12 @@ func (ws *WebServer) userSetBuyAmountHandler(w http.ResponseWriter, r *http.Requ
 		return &common.Response{Success: false, Message: "Parameter: 'amount' must be greater than 0"}
 	}
 
+	t_id, err := strconv.ParseInt(mux.Vars(r)["t_id"], 10, 64)
+	if err != nil {
+		log.Print(err)
+	}
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.SET_BUY_AMOUNT,
 		UserId:        mux.Vars(r)["user_id"],
 		Amount:        amount,
@@ -453,8 +478,12 @@ func (ws *WebServer) userCancelSetBuyHandler(w http.ResponseWriter, r *http.Requ
 		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
 	}
 
+	t_id, err := strconv.ParseInt(mux.Vars(r)["t_id"], 10, 64)
+	if err != nil {
+		log.Print(err)
+	}
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.CANCEL_SET_BUY,
 		UserId:        mux.Vars(r)["user_id"],
 		StockSymbol:   quote_id,
@@ -494,8 +523,12 @@ func (ws *WebServer) userSetBuyTriggerHandler(w http.ResponseWriter, r *http.Req
 		return &common.Response{Success: false, Message: "Parameter: 'amount' must be greater than 0"}
 	}
 
+	t_id, err := strconv.ParseInt(mux.Vars(r)["t_id"], 10, 64)
+	if err != nil {
+		log.Print(err)
+	}
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.SET_BUY_TRIGGER,
 		UserId:        mux.Vars(r)["user_id"],
 		Amount:        amount,
@@ -537,8 +570,12 @@ func (ws *WebServer) userSetSellAmountHandler(w http.ResponseWriter, r *http.Req
 		return &common.Response{Success: false, Message: "Parameter: 'amount' must be greater than 0"}
 	}
 
+	t_id, err := strconv.ParseInt(mux.Vars(r)["t_id"], 10, 64)
+	if err != nil {
+		log.Print(err)
+	}
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.SET_SELL_AMOUNT,
 		UserId:        mux.Vars(r)["user_id"],
 		Amount:        amount,
@@ -580,8 +617,12 @@ func (ws *WebServer) userSetSellTriggerHandler(w http.ResponseWriter, r *http.Re
 		return &common.Response{Success: false, Message: "Parameter: 'amount' must be greater than 0"}
 	}
 
+	t_id, err := strconv.ParseInt(mux.Vars(r)["t_id"], 10, 64)
+	if err != nil {
+		log.Print(err)
+	}
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.SET_SELL_TRIGGER,
 		UserId:        mux.Vars(r)["user_id"],
 		Amount:        amount,
@@ -614,8 +655,12 @@ func (ws *WebServer) userCancelSetSellHandler(w http.ResponseWriter, r *http.Req
 		return &common.Response{Success: false, Message: "Parameter: 'stock' cannot be an empty string"}
 	}
 
+	t_id, err := strconv.ParseInt(mux.Vars(r)["t_id"], 10, 64)
+	if err != nil {
+		log.Print(err)
+	}
 	cmd := common.Command{
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		C_type:        common.CANCEL_SET_SELL,
 		UserId:        mux.Vars(r)["user_id"],
 		StockSymbol:   quote_id,
@@ -641,9 +686,13 @@ func (ws *WebServer) userDumplogHandler(w http.ResponseWriter, r *http.Request) 
 		return &common.Response{Success: false, Message: "Parameter: 'filename' cannot be an empty string"}
 	}
 
+	t_id, err := strconv.ParseInt(mux.Vars(r)["t_id"], 10, 64)
+	if err != nil {
+		log.Print(err)
+	}
 	cmd := common.Command{
 		FileName:      filename,
-		TransactionID: t_id.Inc(),
+		TransactionID: t_id,
 		UserId:        mux.Vars(r)["user_id"],
 		C_type:        common.DUMPLOG,
 		Timestamp:     time.Now(),
