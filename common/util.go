@@ -9,7 +9,7 @@ import (
 var CFG Config
 
 func init() {
-	var configPath = "./config/config.local.json"
+	var configPath = "./config/config.prod.json"
 	if len(os.Args) > 2 && os.Args[2] == "--prod" {
 		configPath = "./config/config.prod.json"
 	}

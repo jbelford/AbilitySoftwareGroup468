@@ -2,7 +2,6 @@ package common
 
 import (
 	"bufio"
-	"fmt"
 	"net"
 	"strconv"
 	"strings"
@@ -10,19 +9,17 @@ import (
 
 func GetQuote(symbol string) (*QuoteData, error) {
 	var msg string
-	if CFG.Quoteserver.Mock {
-		msg = fmt.Sprintf("12.50,%s,NA,1111111111,123198fadfa", symbol)
-	} else {
-		tcpConn, err := net.Dial("tcp", CFG.Quoteserver.Address)
-		if err != nil {
-			return nil, err
-		}
-		tcpConn.Write([]byte(symbol + "\n"))
-		msg, err = bufio.NewReader(tcpConn).ReadString('\n')
-		if err != nil {
-			return nil, err
-		}
+
+	tcpConn, err := net.Dial("tcp", CFG.Quoteserver.Address)
+	if err != nil {
+		return nil, err
 	}
+	tcpConn.Write([]byte(symbol + "\n"))
+	msg, err = bufio.NewReader(tcpConn).ReadString('\n')
+	if err != nil {
+		return nil, err
+	}
+
 	args := strings.Split(msg, ",")
 	quote, _ := strconv.ParseFloat(args[0], 64)
 	timestamp, _ := strconv.ParseUint(args[3], 10, 64)
