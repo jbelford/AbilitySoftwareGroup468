@@ -5,7 +5,7 @@
     },
     "quoteserver": {
         "address": "quoteserve.seng:4443",
-        "mock": true
+        "mock": false
     },
     "transactionserver": {
         "url": "transaction:44421"
