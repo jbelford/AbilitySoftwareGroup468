@@ -2,24 +2,21 @@ package networks
 
 import (
 	"encoding/xml"
-	"fmt"
-	"io/ioutil"
 	"log"
 	"net/rpc"
-	"os"
 	"time"
 
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 )
 
 const (
-	userCommandMethod        = "LoggerRPC.UserCommand"
-	quoteServerMethod        = "LoggerRPC.QuoteServer"
-	accountTransactionMethod = "LoggerRPC.AccountTransaction"
-	systemEventMethod        = "LoggerRPC.SystemEvent"
-	errorEventMethod         = "LoggerRPC.ErrorEvent"
-	debugEventMethod         = "LoggerRPC.DebugEvent"
-	dumpLogMethod            = "LoggerRPC.DumpLog"
+	userCommandMethod = "LoggerRPC.UserCommand"
+	quoteServerMethod = "LoggerRPC.QuoteServer"
+	accountTxnMethod  = "LoggerRPC.AccountTransaction"
+	systemEventMethod = "LoggerRPC.SystemEvent"
+	errorEventMethod  = "LoggerRPC.ErrorEvent"
+	debugEventMethod  = "LoggerRPC.DebugEvent"
+	dumpLogMethod     = "LoggerRPC.DumpLog"
 )
 
 type Logger interface {
@@ -39,16 +36,6 @@ type logger struct {
 	server string
 }
 
-func createDirectory(directoryPath string) {
-	//choose your permissions well
-	pathErr := os.MkdirAll(directoryPath, 0777)
-
-	//check if you need to panic, fallback or report
-	if pathErr != nil {
-		fmt.Println(pathErr)
-	}
-}
-
 func (l *logger) Call(method string, args interface{}, result interface{}) (err error) {
 	for {
 		err = l.client.Call(method, args, result)
@@ -61,21 +48,20 @@ func (l *logger) Call(method string, args interface{}, result interface{}) (err 
 }
 
 func (l *logger) UserCommand(cmd *common.Command) error {
-	args := &Args{
+	args := &UserCommand{
 		TransactionNum: cmd.TransactionID,
 		Timestamp:      uint64(time.Now().Unix() * 1000),
 		Server:         l.server,
 		Command:        common.Commands[cmd.C_type],
 		Username:       cmd.UserId,
 		StockSymbol:    cmd.StockSymbol,
-		FileName:       cmd.FileName,
 		Funds:          cmd.Amount,
 	}
 	return l.Call(userCommandMethod, args, nil)
 }
 
 func (l *logger) QuoteServer(quote *common.QuoteData, tid int64) error {
-	args := &Args{
+	args := &QuoteServer{
 		TransactionNum:  tid,
 		Timestamp:       uint64(time.Now().Unix() * 1000),
 		Server:          l.server,
@@ -89,7 +75,7 @@ func (l *logger) QuoteServer(quote *common.QuoteData, tid int64) error {
 }
 
 func (l *logger) AccountTransaction(userId string, funds int64, action string, tid int64) error {
-	args := &Args{
+	args := &AccountTransaction{
 		TransactionNum: tid,
 		Timestamp:      uint64(time.Now().Unix() * 1000),
 		Server:         l.server,
@@ -97,17 +83,16 @@ func (l *logger) AccountTransaction(userId string, funds int64, action string, t
 		Username:       userId,
 		Funds:          funds,
 	}
-	return l.Call(accountTransactionMethod, args, nil)
+	return l.Call(accountTxnMethod, args, nil)
 }
 
 func (l *logger) SystemEvent(cmd *common.Command) error {
-	args := &Args{
+	args := &SystemEvent{
 		Timestamp:      uint64(time.Now().Unix() * 1000),
 		Server:         l.server,
 		Command:        common.Commands[cmd.C_type],
 		Username:       cmd.UserId,
 		StockSymbol:    cmd.StockSymbol,
-		FileName:       cmd.FileName,
 		Funds:          cmd.Amount,
 		TransactionNum: cmd.TransactionID,
 	}
@@ -115,13 +100,12 @@ func (l *logger) SystemEvent(cmd *common.Command) error {
 }
 
 func (l *logger) ErrorEvent(cmd *common.Command, e string) error {
-	args := &Args{
+	args := &ErrorEvent{
 		Timestamp:      uint64(time.Now().Unix() * 1000),
 		Server:         l.server,
 		Command:        common.Commands[cmd.C_type],
 		Username:       cmd.UserId,
 		StockSymbol:    cmd.StockSymbol,
-		FileName:       cmd.FileName,
 		Funds:          cmd.Amount,
 		TransactionNum: cmd.TransactionID,
 		ErrorMessage:   e,
@@ -130,13 +114,12 @@ func (l *logger) ErrorEvent(cmd *common.Command, e string) error {
 }
 
 func (l *logger) DebugEvent(cmd *common.Command, debug string) error {
-	args := &Args{
+	args := &DebugEvent{
 		Timestamp:      uint64(time.Now().Unix() * 1000),
 		Server:         l.server,
 		Command:        common.Commands[cmd.C_type],
 		Username:       cmd.UserId,
 		StockSymbol:    cmd.StockSymbol,
-		FileName:       cmd.FileName,
 		Funds:          cmd.Amount,
 		DebugMessage:   debug,
 		TransactionNum: cmd.TransactionID,
@@ -146,13 +129,13 @@ func (l *logger) DebugEvent(cmd *common.Command, debug string) error {
 
 func (l *logger) DumpLogUser(userId string) (*[]byte, error) {
 	var data []byte
-	err := l.Call(dumpLogMethod, Args{FileName: userId + ".xml"}, &data)
+	err := l.Call(dumpLogMethod, DumpLogArgs{UserId: userId}, &data)
 	return &data, err
 }
 
 func (l *logger) DumpLog() (*[]byte, error) {
 	var data []byte
-	err := l.Call(dumpLogMethod, Args{}, &data)
+	err := l.Call(dumpLogMethod, DumpLogArgs{UserId: "admin"}, &data)
 	return &data, err
 }
 
@@ -172,157 +155,66 @@ func GetLogger(server string) Logger {
 }
 
 type LoggerRPC struct {
-	writer *os.File
+	db *MongoDB
 }
 
-func (l *LoggerRPC) writeLogs(log interface{}, userFilename string) error {
-	createDirectory("./logs")
-
-	flag := os.O_APPEND | os.O_WRONLY
-	if _, err := os.Stat("./logs/" + userFilename); os.IsNotExist(err) {
-		flag |= os.O_CREATE
+func (l *LoggerRPC) readLog(userid string) ([]byte, error) {
+	data := []byte("<log>\n")
+	logs, err := l.db.Logs.GetLogs(userid)
+	if err != nil {
+		log.Println(err)
+		return nil, err
 	}
-	uWriter, err := os.OpenFile("./logs/"+userFilename, flag, 0777)
+	for _, val := range logs {
+		toWrite := append(val.Xml, byte('\n'))
+		data = append(data, toWrite...)
+	}
+	data = append(data, []byte("\n</log>")...)
+	return data, nil
+}
+
+func (l *LoggerRPC) writeLog(e interface{}, userid string) error {
+	data, err := xml.MarshalIndent(e, "  ", "    ")
 	if err != nil {
 		return err
 	}
-	defer uWriter.Close()
-	toWrite, err := xml.MarshalIndent(log, "  ", "    ")
-	if err == nil {
-		toWrite := append(toWrite, '\n')
-		l.writer.Write(toWrite)
-		uWriter.Write(toWrite)
-	}
-	return err
-}
-
-func (l *LoggerRPC) readLog(filename string) []byte {
-	createDirectory("./logs")
-	data := []byte("<log>\n")
-	read, err := ioutil.ReadFile("./logs/" + filename)
-	if err == nil {
-		data = append(data, read...)
-	}
-	data = append(data, []byte("\n</log>")...)
-	return data
-}
-
-func (l *LoggerRPC) UserCommand(args *Args, result *string) error {
-	val := &UserCommand{
-		Command:        args.Command,
-		Server:         args.Server,
-		Filename:       args.FileName,
-		Funds:          args.Funds,
-		StockSymbol:    args.StockSymbol,
-		Timestamp:      args.Timestamp,
-		TransactionNum: args.TransactionNum,
-		Username:       args.Username,
-	}
-	log.Println("USER_COMMAND", val)
-	return l.writeLogs(val, args.Username+".xml")
-}
-
-func (l *LoggerRPC) QuoteServer(args *Args, result *string) error {
-	val := &QuoteServer{
-		Cryptokey:       args.Cryptokey,
-		Server:          args.Server,
-		Price:           args.Price,
-		QuoteServerTime: args.QuoteServerTime,
-		StockSymbol:     args.StockSymbol,
-		Timestamp:       args.Timestamp,
-		TransactionNum:  args.TransactionNum,
-		Username:        args.Username,
-	}
-	log.Println("QUOTE_SERVER", val)
-	return l.writeLogs(val, args.Username+".xml")
-}
-
-func (l *LoggerRPC) AccountTransaction(args *Args, result *string) error {
-	val := &AccountTransaction{
-		Action:         args.Action,
-		Server:         args.Server,
-		Funds:          args.Funds,
-		Timestamp:      args.Timestamp,
-		TransactionNum: args.TransactionNum,
-		Username:       args.Username,
-	}
-	log.Println("ACCOUNT_TRANSACTION", val)
-	return l.writeLogs(val, args.Username+".xml")
-}
-
-func (l *LoggerRPC) SystemEvent(args *Args, result *string) error {
-	val := &SystemEvent{
-		Command:        args.Command,
-		Server:         args.Server,
-		Filename:       args.FileName,
-		Funds:          args.Funds,
-		StockSymbol:    args.StockSymbol,
-		Timestamp:      args.Timestamp,
-		TransactionNum: args.TransactionNum,
-		Username:       args.Username,
-	}
-	log.Println("SYSTEM_EVENT", val)
-	return l.writeLogs(val, args.Username+".xml")
-}
-
-func (l *LoggerRPC) ErrorEvent(args *Args, result *string) error {
-	val := &ErrorEvent{
-		Command:        args.Command,
-		Server:         args.Server,
-		ErrorMessage:   args.ErrorMessage,
-		Filename:       args.FileName,
-		Funds:          args.Funds,
-		StockSymbol:    args.StockSymbol,
-		Timestamp:      args.Timestamp,
-		TransactionNum: args.TransactionNum,
-		Username:       args.Username,
-	}
-	log.Println("ERROR_EVENT", val)
-	return l.writeLogs(val, args.Username+".xml")
-}
-
-func (l *LoggerRPC) DebugEvent(args *Args, result *string) error {
-	val := &DebugEvent{
-		Command:        args.Command,
-		Server:         args.Server,
-		DebugMessage:   args.DebugMessage,
-		Filename:       args.FileName,
-		Funds:          args.Funds,
-		StockSymbol:    args.StockSymbol,
-		Timestamp:      args.Timestamp,
-		TransactionNum: args.TransactionNum,
-		Username:       args.Username,
-	}
-	log.Println("DEBUG_EVENT", val)
-	return l.writeLogs(val, args.Username+".xml")
-}
-
-func (l *LoggerRPC) DumpLog(args *Args, result *[]byte) error {
-	createDirectory("./logs")
-	filename := "./logs/tmp.xml"
-	if args.FileName == "" {
-		filename = args.FileName
-	}
-	*result = l.readLog(filename)
+	eLog := &common.EventLog{UserId: userid, Xml: data}
+	l.db.Logs.LogEvent(eLog)
 	return nil
 }
 
-func GetLoggerRPC() (*LoggerRPC, *os.File) {
-	log.Println("Attempting to initiate RPC")
-	if _, err := os.Stat("./logs"); os.IsNotExist(err) {
-		if err = os.Mkdir("logs", 0777); err != nil {
-			log.Fatal(err)
-		}
-	}
-	log.Println("log folder made")
+func (l *LoggerRPC) UserCommand(cmd *UserCommand, result *string) error {
+	return l.writeLog(cmd, cmd.Username)
+}
 
-	flag := os.O_APPEND | os.O_WRONLY
-	if _, err := os.Stat("./logs/tmp.xml"); os.IsNotExist(err) {
-		flag |= os.O_CREATE
-	}
-	writer, err := os.OpenFile("./logs/tmp.xml", flag, 0777)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return &LoggerRPC{writer}, writer
+func (l *LoggerRPC) QuoteServer(qs *QuoteServer, result *string) error {
+	return l.writeLog(qs, qs.Username)
+}
+
+func (l *LoggerRPC) AccountTransaction(txn *AccountTransaction, result *string) error {
+	return l.writeLog(txn, txn.Username)
+}
+
+func (l *LoggerRPC) SystemEvent(e *SystemEvent, result *string) error {
+	return l.writeLog(e, e.Username)
+}
+
+func (l *LoggerRPC) ErrorEvent(e *ErrorEvent, result *string) error {
+	return l.writeLog(e, e.Username)
+}
+
+func (l *LoggerRPC) DebugEvent(e *DebugEvent, result *string) error {
+	return l.writeLog(e, e.Username)
+}
+
+func (l *LoggerRPC) DumpLog(args *DumpLogArgs, result *[]byte) error {
+	var err error
+	*result, err = l.readLog(args.UserId)
+	return err
+}
+
+func GetLoggerRPC() (*LoggerRPC, *MongoDB) {
+	log.Println("Attempting to initiate RPC")
+	db := GetMongoDatabase()
+	return &LoggerRPC{db}, db
 }

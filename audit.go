@@ -13,8 +13,8 @@ type AuditServer struct{}
 
 func (ad *AuditServer) Start() {
 	log.Println("Requesting RPC")
-	logger, writer := networks.GetLoggerRPC()
-	defer writer.Close()
+	logger, db := networks.GetLoggerRPC()
+	defer db.Close()
 	rpc.Register(logger)
 	ln, err := net.Listen("tcp", common.CFG.AuditServer.Url)
 	log.Println("connected to:", common.CFG.AuditServer.Url)

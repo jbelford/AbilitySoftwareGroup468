@@ -15,19 +15,19 @@ import (
 
 type TxnRPC struct {
 	cache  tools.Cache
-	db     *tools.MongoDB
+	db     *tools.CacheDB
 	logger networks.Logger
 }
 
 func (ts *TxnRPC) error(cmd *common.Command, msg string, resp *common.Response) error {
-	log.Println("ERROR", msg, msg)
+	log.Println("ERROR", msg)
 	go ts.logger.ErrorEvent(cmd, msg)
 	*resp = common.Response{Success: false, Message: msg}
 	return nil
 }
 
 func (ts *TxnRPC) ADD(cmd *common.Command, resp *common.Response) error {
-	err := ts.db.Users.AddUserMoney(cmd.UserId, cmd.Amount)
+	_, err := ts.db.Users.AddUserMoney(cmd.UserId, cmd.Amount)
 	if err != nil {
 		return ts.error(cmd, "Failed to create and/or add money to account", resp)
 	}
@@ -37,7 +37,7 @@ func (ts *TxnRPC) ADD(cmd *common.Command, resp *common.Response) error {
 }
 
 func (ts *TxnRPC) QUOTE(cmd *common.Command, resp *common.Response) error {
-	data, err := ts.cache.GetQuote(cmd.StockSymbol, cmd.TransactionID)
+	data, err := ts.cache.GetQuote(cmd.StockSymbol, cmd.UserId, cmd.TransactionID)
 	if err != nil {
 		return ts.error(cmd, "Quote server failed to respond with quote", resp)
 	}
@@ -48,13 +48,13 @@ func (ts *TxnRPC) QUOTE(cmd *common.Command, resp *common.Response) error {
 func (ts *TxnRPC) BUY(cmd *common.Command, resp *common.Response) error {
 	user, err := ts.db.Users.GetUser(cmd.UserId)
 	if err != nil {
-		return ts.error(cmd, "The user "+user.UserId+" does not exist", resp)
+		return ts.error(cmd, "The user "+cmd.UserId+" does not exist", resp)
 	}
 	cacheReserve := ts.cache.GetReserved(cmd.UserId)
 	if user.Balance-cacheReserve < cmd.Amount {
 		return ts.error(cmd, "Specified amount is greater than can afford", resp)
 	}
-	quote, err := ts.cache.GetQuote(cmd.StockSymbol, cmd.TransactionID)
+	quote, err := ts.cache.GetQuote(cmd.StockSymbol, cmd.UserId, cmd.TransactionID)
 	if err != nil {
 		return ts.error(cmd, "Failed to get quote for that stock", resp)
 	}
@@ -80,13 +80,13 @@ func (ts *TxnRPC) COMMIT_BUY(cmd *common.Command, resp *common.Response) error {
 		return ts.error(cmd, "There are no pending transactions", resp)
 	}
 
-	err := ts.db.Users.ProcessTxn(buy, true)
+	_, err := ts.db.Users.ProcessTxn(buy, true)
 	if err != nil {
 		return ts.error(cmd, "User can no longer afford this purchase", resp)
 	}
 	go ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "remove", cmd.TransactionID)
 
-	err = ts.db.Transactions.LogTxn(buy, false)
+	_, err = ts.db.Transactions.LogTxn(buy, false)
 	if err != nil {
 		return ts.error(cmd, "Failed to store transaction log in database", resp)
 	}
@@ -107,12 +107,12 @@ func (ts *TxnRPC) CANCEL_BUY(cmd *common.Command, resp *common.Response) error {
 func (ts *TxnRPC) SELL(cmd *common.Command, resp *common.Response) error {
 	user, err := ts.db.Users.GetUser(cmd.UserId)
 	if err != nil {
-		return ts.error(cmd, "The user "+user.UserId+" does not exist", resp)
+		return ts.error(cmd, "The user "+cmd.UserId+" does not exist", resp)
 	} else if user.Stock[cmd.StockSymbol].Real == 0 {
 		return ts.error(cmd, "User does not own any shares for that stock", resp)
 	}
 
-	quote, err := ts.cache.GetQuote(cmd.StockSymbol, cmd.TransactionID)
+	quote, err := ts.cache.GetQuote(cmd.StockSymbol, cmd.UserId, cmd.TransactionID)
 	if err != nil {
 		return ts.error(cmd, "Failed to get quote for that stock", resp)
 	}
@@ -141,13 +141,13 @@ func (ts *TxnRPC) COMMIT_SELL(cmd *common.Command, resp *common.Response) error 
 		return ts.error(cmd, "There are no pending transactions", resp)
 	}
 
-	err := ts.db.Users.ProcessTxn(sell, true)
+	_, err := ts.db.Users.ProcessTxn(sell, true)
 	if err != nil {
 		return ts.error(cmd, "User no longer has the correct number of shares to sell", resp)
 	}
 	go ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "add", cmd.TransactionID)
 
-	err = ts.db.Transactions.LogTxn(sell, false)
+	_, err = ts.db.Transactions.LogTxn(sell, false)
 	if err != nil {
 		log.Println("!!IMPORTANT!! Failed to log sell")
 	}
@@ -174,7 +174,7 @@ func (ts *TxnRPC) SET_BUY_AMOUNT(cmd *common.Command, resp *common.Response) err
 	if user.Balance-cachedReserve < cmd.Amount {
 		return ts.error(cmd, "Not enough funds", resp)
 	}
-	_, err = ts.cache.GetQuote(cmd.StockSymbol, cmd.TransactionID)
+	_, err = ts.cache.GetQuote(cmd.StockSymbol, cmd.UserId, cmd.TransactionID)
 	if err != nil {
 		return ts.error(cmd, "Failed to get quote for that stock", resp)
 	}
@@ -188,9 +188,9 @@ func (ts *TxnRPC) SET_BUY_AMOUNT(cmd *common.Command, resp *common.Response) err
 		When:          0,
 	}
 	// Reserve the money and then set the trigger
-	if err = ts.db.Users.ReserveMoney(cmd.UserId, cmd.Amount); err != nil {
+	if _, err = ts.db.Users.ReserveMoney(cmd.UserId, cmd.Amount); err != nil {
 		return ts.error(cmd, "Failed to reserve even though should have", resp)
-	} else if err = ts.db.Triggers.Set(trigger); err != nil {
+	} else if _, err = ts.db.Triggers.Set(trigger); err != nil {
 		go ts.db.Users.UnreserveMoney(cmd.UserId, cmd.Amount)
 		return ts.error(cmd, "Failed to set trigger even though should have", resp)
 	}
@@ -210,7 +210,7 @@ func (ts *TxnRPC) CANCEL_SET_BUY(cmd *common.Command, resp *common.Response) err
 	if err != nil {
 		return ts.error(cmd, "No buy trigger to cancel", resp)
 	}
-	err = ts.db.Users.UnreserveMoney(cmd.UserId, trig.Amount)
+	_, err = ts.db.Users.UnreserveMoney(cmd.UserId, trig.Amount)
 	if err != nil {
 		log.Println(err)
 		return ts.error(cmd, "Internal server error", resp)
@@ -233,7 +233,7 @@ func (ts *TxnRPC) SET_BUY_TRIGGER(cmd *common.Command, resp *common.Response) er
 	}
 
 	trig.When = cmd.Amount
-	err = ts.db.Triggers.Set(trig)
+	_, err = ts.db.Triggers.Set(trig)
 	if err != nil {
 		return ts.error(cmd, "Internal error during operation", resp)
 	}
@@ -252,7 +252,7 @@ func (ts *TxnRPC) SET_SELL_AMOUNT(cmd *common.Command, resp *common.Response) er
 		return ts.error(cmd, "The user does not have any stock", resp)
 	}
 
-	quote, err := ts.cache.GetQuote(cmd.StockSymbol, cmd.TransactionID)
+	quote, err := ts.cache.GetQuote(cmd.StockSymbol, cmd.UserId, cmd.TransactionID)
 	if err != nil {
 		return ts.error(cmd, "Failed to get quote for that stock", resp)
 	}
@@ -273,7 +273,7 @@ func (ts *TxnRPC) SET_SELL_AMOUNT(cmd *common.Command, resp *common.Response) er
 		When:          0,
 	}
 
-	err = ts.db.Triggers.Set(trigger)
+	_, err = ts.db.Triggers.Set(trigger)
 	if err != nil {
 		return ts.error(cmd, "Failed to set sell amount", resp)
 	}
@@ -313,7 +313,7 @@ func (ts *TxnRPC) CANCEL_SET_SELL(cmd *common.Command, resp *common.Response) er
 		return ts.error(cmd, "No sell trigger to cancel", resp)
 	}
 
-	err = ts.db.Users.UnreserveShares(cmd.UserId, cmd.StockSymbol, trig.Shares)
+	_, err = ts.db.Users.UnreserveShares(cmd.UserId, cmd.StockSymbol, trig.Shares)
 	if err != nil {
 		log.Println(err)
 		return ts.error(cmd, "Internal server error", resp)
@@ -367,17 +367,18 @@ func (ts *TxnRPC) DISPLAY_SUMMARY(cmd *common.Command, resp *common.Response) er
 	balance := user.Balance - cacheReserve
 	reserved := user.Reserved + cacheReserve
 
+	userCopy := *user
 	cacheStocks := ts.cache.GetReservedShares(cmd.UserId)
-	for k, v := range user.Stock {
+	for k, v := range userCopy.Stock {
 		v.Real = v.Real - cacheStocks[k]
 		v.Reserved = v.Reserved + cacheStocks[k]
-		user.Stock[k] = v
+		userCopy.Stock[k] = v
 	}
 
 	*resp = common.Response{
 		Success:      true,
-		Status:       &common.UserInfo{Balance: balance, Reserved: reserved, Stock: user.Stock},
-		Transactions: &transactions,
+		Status:       &common.UserInfo{Balance: balance, Reserved: reserved, Stock: userCopy.Stock},
+		Transactions: &transactions.Logged,
 		Triggers:     &triggers,
 	}
 	return nil
@@ -388,7 +389,7 @@ type TransactionServer struct{}
 func (ts *TransactionServer) Start() {
 	logger := networks.GetLogger(common.CFG.TxnServer.Url)
 	cache := tools.NewCache(logger)
-	db := tools.GetMongoDatabase()
+	db := tools.NewCacheDB()
 	defer db.Close()
 
 	// Start trigger manager

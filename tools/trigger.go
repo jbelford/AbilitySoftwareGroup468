@@ -11,7 +11,7 @@ import (
 
 type TriggerManager struct {
 	c      Cache
-	db     *MongoDB
+	db     *CacheDB
 	logger networks.Logger
 }
 
@@ -50,7 +50,7 @@ func (tm *TriggerManager) Start() {
 }
 
 func (tm *TriggerManager) processTrigger(t common.Trigger) *common.PendingTxn {
-	quote, err := tm.c.GetQuote(t.Stock, t.TransactionID)
+	quote, err := tm.c.GetQuote(t.Stock, t.UserId, t.TransactionID)
 	if err != nil {
 		return nil
 	}
@@ -88,6 +88,6 @@ func (tm *TriggerManager) processTrigger(t common.Trigger) *common.PendingTxn {
 	}
 }
 
-func NewTrigMan(c Cache, db *MongoDB, l networks.Logger) *TriggerManager {
+func NewTrigMan(c Cache, db *CacheDB, l networks.Logger) *TriggerManager {
 	return &TriggerManager{c, db, l}
 }

@@ -11,7 +11,7 @@ import (
 )
 
 type Cache interface {
-	GetQuote(symbol string, tid int64) (*common.QuoteData, error)
+	GetQuote(symbol string, userId string, tid int64) (*common.QuoteData, error)
 	GetReserved(userId string) int64
 	GetReservedShares(userId string) map[string]int
 	PushPendingTxn(pending common.PendingTxn)
@@ -23,13 +23,13 @@ type cache struct {
 	logger networks.Logger
 }
 
-func (c *cache) GetQuote(symbol string, tid int64) (*common.QuoteData, error) {
+func (c *cache) GetQuote(symbol string, userId string, tid int64) (*common.QuoteData, error) {
 	key := "Quote:" + symbol
 	quoteI, found := c.Get(key)
 	quote, ok := quoteI.(*common.QuoteData)
 	if !ok || !found {
 		var err error
-		quote, err = common.GetQuote(symbol)
+		quote, err = common.GetQuote(symbol, userId)
 		if err != nil {
 			return nil, err
 		}
@@ -39,6 +39,8 @@ func (c *cache) GetQuote(symbol string, tid int64) (*common.QuoteData, error) {
 	return quote, nil
 }
 
+// GetReserved returns the sum of valid pending BUYs for the user
+// Pending BUY's are stored in a list and are each valid for 60s
 func (c *cache) GetReserved(userId string) int64 {
 	key := userId + ":BUY"
 	buysI, found := c.Get(key)
@@ -61,6 +63,8 @@ func (c *cache) GetReserved(userId string) int64 {
 	return total
 }
 
+// GetReservedShares returns a mapping where the keys are stock symbols
+// The values of this mapping are the sum of shares pending to be sold
 func (c *cache) GetReservedShares(userId string) map[string]int {
 	key := userId + ":SELL"
 	sellsI, found := c.Get(key)
@@ -74,7 +78,7 @@ func (c *cache) GetReservedShares(userId string) map[string]int {
 		for i := len(sells) - 1; i >= 0; i-- {
 			txn := sells[i]
 			if txn.Expiry.After(now) {
-				mapping[txn.Stock] = txn.Shares
+				mapping[txn.Stock] += txn.Shares
 			} else {
 				break
 			}
@@ -83,6 +87,8 @@ func (c *cache) GetReservedShares(userId string) map[string]int {
 	return mapping
 }
 
+// PushPendingTxn adds a pending transaction (BUY or SELL) to the cache
+// The txn is given a time-to-live of 60s
 func (c *cache) PushPendingTxn(pending common.PendingTxn) {
 	key := pending.UserId + ":" + pending.Type
 	buysI, found := c.Get(key)
@@ -93,6 +99,8 @@ func (c *cache) PushPendingTxn(pending common.PendingTxn) {
 	}
 }
 
+// PopPendingTxn removes the most recent pending transaction of the specified type (BUY or SELL)
+// Returns nil if none exists
 func (c *cache) PopPendingTxn(userId string, txnType string) *common.PendingTxn {
 	key := userId + ":" + txnType
 	buysI, found := c.Get(key)

@@ -4,10 +4,8 @@ import (
 	"encoding/xml"
 )
 
-type Args struct {
-	Action, Command, Cryptokey, DebugMessage, ErrorMessage, FileName, Server, StockSymbol, Username string
-	Funds, Price, TransactionNum                                                                    int64
-	Timestamp, QuoteServerTime                                                                      uint64
+type DumpLogArgs struct {
+	UserId string
 }
 
 type UserCommand struct {

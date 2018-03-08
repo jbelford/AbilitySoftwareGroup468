@@ -33,7 +33,7 @@ func (t *txnServe) Send(cmd common.Command) *common.Response {
 		var resp common.Response
 		err := t.client.Call("TxnRPC."+common.Commands[cmd.C_type], cmd, &resp)
 		if err == rpc.ErrShutdown {
-			t.client, err = rpc.Dial("tcp", common.CFG.TxnServer.Url)
+			t.connect()
 			continue
 		}
 		return &resp

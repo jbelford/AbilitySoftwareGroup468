@@ -2,22 +2,28 @@ package common
 
 import (
 	"bufio"
+	"fmt"
 	"net"
 	"strconv"
 	"strings"
 )
 
-func GetQuote(symbol string) (*QuoteData, error) {
+// GetQuote returns quote data provided by the legacy quote server
+func GetQuote(symbol string, userid string) (*QuoteData, error) {
 	var msg string
 
-	tcpConn, err := net.Dial("tcp", CFG.Quoteserver.Address)
-	if err != nil {
-		return nil, err
-	}
-	tcpConn.Write([]byte(symbol + "\n"))
-	msg, err = bufio.NewReader(tcpConn).ReadString('\n')
-	if err != nil {
-		return nil, err
+	if CFG.Quoteserver.Mock {
+		msg = fmt.Sprintf("12.50,%s,%s,1111111111,123198fadfa", symbol, userid)
+	} else {
+		tcpConn, err := net.Dial("tcp", CFG.Quoteserver.Address)
+		if err != nil {
+			return nil, err
+		}
+		tcpConn.Write([]byte(fmt.Sprintf("%s, %s\n", symbol, userid)))
+		msg, err = bufio.NewReader(tcpConn).ReadString('\n')
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	args := strings.Split(msg, ",")

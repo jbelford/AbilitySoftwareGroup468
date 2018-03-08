@@ -27,6 +27,16 @@ type Response struct {
 	File         *[]byte        `json:"file,omitempty"`
 }
 
+type Command struct {
+	C_type        int
+	TransactionID int64
+	UserId        string
+	Amount        int64     `json:",omitempty"`
+	StockSymbol   string    `json:",omitempty"`
+	FileName      string    `json:",omitempty"`
+	Timestamp     time.Time `json:",omitempty"`
+}
+
 type UserInfo struct {
 	Balance  int64 `json:"balance"`
 	Reserved int64 `json:"reserved"`
@@ -36,8 +46,12 @@ type UserInfo struct {
 	} `json:"stock"`
 }
 
+type Transactions struct {
+	UserId string `bson:"_id" json:"userId"`
+	Logged []Transaction
+}
+
 type Transaction struct {
-	UserId    string `bson:"userId" json:"userId"`
 	Type      string `json:"type"`
 	Triggered bool   `json:"triggered"`
 	Stock     string `json:"stock"`
@@ -102,4 +116,9 @@ type Trigger struct {
 	Shares        int    `json:"shares"`
 	Amount        int64  `json:"amount"`
 	When          int64  `json:"when"`
+}
+
+type EventLog struct {
+	UserId string `bson:"userId"`
+	Xml    []byte
 }
