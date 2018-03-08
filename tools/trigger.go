@@ -4,15 +4,13 @@ import (
 	"log"
 	"time"
 
-	"github.com/mattpaletta/AbilitySoftwareGroup468/networks"
-
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 )
 
 type TriggerManager struct {
 	c      Cache
 	db     *CacheDB
-	logger networks.Logger
+	logger Logger
 }
 
 func (tm *TriggerManager) Start() {
@@ -88,6 +86,6 @@ func (tm *TriggerManager) processTrigger(t common.Trigger) *common.PendingTxn {
 	}
 }
 
-func NewTrigMan(c Cache, db *CacheDB, l networks.Logger) *TriggerManager {
+func NewTrigMan(c Cache, db *CacheDB, l Logger) *TriggerManager {
 	return &TriggerManager{c, db, l}
 }

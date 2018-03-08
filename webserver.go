@@ -11,15 +11,14 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/mattpaletta/AbilitySoftwareGroup468/networks"
-
 	"github.com/gorilla/mux"
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
+	"github.com/mattpaletta/AbilitySoftwareGroup468/tools"
 )
 
 type WebServer struct {
-	logger  networks.Logger
-	txnConn networks.TxnConn
+	logger  tools.Logger
+	txnConn tools.TxnConn
 }
 
 func (ws *WebServer) error(cmd *common.Command, msg string) *common.Response {
@@ -29,10 +28,12 @@ func (ws *WebServer) error(cmd *common.Command, msg string) *common.Response {
 }
 
 func (ws *WebServer) Start() {
-	ws.txnConn = networks.GetTxnConn()
-	ws.logger = networks.GetLogger(common.CFG.WebServer.Url)
-	var dir string
+	ws.txnConn = tools.GetTxnConn()
+	defer ws.txnConn.Close()
+	ws.logger = tools.GetLogger(common.CFG.WebServer.Url)
+	defer ws.logger.Close()
 
+	var dir string
 	flag.StringVar(&dir, "dir", ".", "the directory to serve files from. Defaults to the current dir")
 	flag.Parse()
 

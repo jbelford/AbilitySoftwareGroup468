@@ -2,31 +2,30 @@ package main
 
 import (
 	"log"
-	"net"
-	"net/rpc"
+
+	"github.com/valyala/gorpc"
 
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
-	"github.com/mattpaletta/AbilitySoftwareGroup468/networks"
+	"github.com/mattpaletta/AbilitySoftwareGroup468/tools"
 )
 
 type AuditServer struct{}
 
 func (ad *AuditServer) Start() {
 	log.Println("Requesting RPC")
-	logger, db := networks.GetLoggerRPC()
+	db := tools.GetMongoDatabase()
 	defer db.Close()
-	rpc.Register(logger)
-	ln, err := net.Listen("tcp", common.CFG.AuditServer.Url)
+
+	dispatcher := gorpc.NewDispatcher()
+
+	logger := tools.GetLoggerRPC(db)
+	dispatcher.AddService(tools.LoggerServiceName, logger)
+
+	server := gorpc.NewTCPServer(common.CFG.AuditServer.Url, dispatcher.NewHandlerFunc())
 	log.Println("connected to:", common.CFG.AuditServer.Url)
 
+	err := server.Serve()
 	if err != nil {
 		log.Fatal(err)
-	}
-	log.Println("Listening on:", common.CFG.AuditServer.Url)
-	defer ln.Close()
-	for {
-		conn, _ := ln.Accept()
-		log.Println("Accepted connection")
-		go rpc.ServeConn(conn)
 	}
 }

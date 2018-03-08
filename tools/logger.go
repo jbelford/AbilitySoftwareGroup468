@@ -1,22 +1,25 @@
-package networks
+package tools
 
 import (
 	"encoding/xml"
 	"log"
-	"net/rpc"
 	"time"
+
+	"github.com/valyala/gorpc"
 
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 )
 
 const (
-	userCommandMethod = "LoggerRPC.UserCommand"
-	quoteServerMethod = "LoggerRPC.QuoteServer"
-	accountTxnMethod  = "LoggerRPC.AccountTransaction"
-	systemEventMethod = "LoggerRPC.SystemEvent"
-	errorEventMethod  = "LoggerRPC.ErrorEvent"
-	debugEventMethod  = "LoggerRPC.DebugEvent"
-	dumpLogMethod     = "LoggerRPC.DumpLog"
+	LoggerServiceName = "LoggerRPC"
+
+	userCommandMethod = "UserCommand"
+	quoteServerMethod = "QuoteServer"
+	accountTxnMethod  = "AccountTransaction"
+	systemEventMethod = "SystemEvent"
+	errorEventMethod  = "ErrorEvent"
+	debugEventMethod  = "DebugEvent"
+	dumpLogMethod     = "DumpLog"
 )
 
 type Logger interface {
@@ -28,23 +31,13 @@ type Logger interface {
 	DebugEvent(cmd *common.Command, debug string) error
 	DumpLogUser(userId string) (*[]byte, error)
 	DumpLog() (*[]byte, error)
-	Close() error
+	Close()
 }
 
 type logger struct {
-	client *rpc.Client
-	server string
-}
-
-func (l *logger) Call(method string, args interface{}, result interface{}) (err error) {
-	for {
-		err = l.client.Call(method, args, result)
-		if err == rpc.ErrShutdown {
-			l.client, err = rpc.Dial("tcp", common.CFG.AuditServer.Url)
-			continue
-		}
-		return err
-	}
+	client   *gorpc.Client
+	dispatch *gorpc.DispatcherClient
+	server   string
 }
 
 func (l *logger) UserCommand(cmd *common.Command) error {
@@ -57,7 +50,8 @@ func (l *logger) UserCommand(cmd *common.Command) error {
 		StockSymbol:    cmd.StockSymbol,
 		Funds:          cmd.Amount,
 	}
-	return l.Call(userCommandMethod, args, nil)
+	_, err := l.dispatch.Call(userCommandMethod, args)
+	return err
 }
 
 func (l *logger) QuoteServer(quote *common.QuoteData, tid int64) error {
@@ -71,7 +65,8 @@ func (l *logger) QuoteServer(quote *common.QuoteData, tid int64) error {
 		QuoteServerTime: quote.Timestamp,
 		Cryptokey:       quote.Cryptokey,
 	}
-	return l.Call(quoteServerMethod, args, nil)
+	_, err := l.dispatch.Call(quoteServerMethod, args)
+	return err
 }
 
 func (l *logger) AccountTransaction(userId string, funds int64, action string, tid int64) error {
@@ -83,7 +78,8 @@ func (l *logger) AccountTransaction(userId string, funds int64, action string, t
 		Username:       userId,
 		Funds:          funds,
 	}
-	return l.Call(accountTxnMethod, args, nil)
+	_, err := l.dispatch.Call(accountTxnMethod, args)
+	return err
 }
 
 func (l *logger) SystemEvent(cmd *common.Command) error {
@@ -96,7 +92,8 @@ func (l *logger) SystemEvent(cmd *common.Command) error {
 		Funds:          cmd.Amount,
 		TransactionNum: cmd.TransactionID,
 	}
-	return l.Call(systemEventMethod, args, nil)
+	_, err := l.dispatch.Call(systemEventMethod, args)
+	return err
 }
 
 func (l *logger) ErrorEvent(cmd *common.Command, e string) error {
@@ -110,7 +107,8 @@ func (l *logger) ErrorEvent(cmd *common.Command, e string) error {
 		TransactionNum: cmd.TransactionID,
 		ErrorMessage:   e,
 	}
-	return l.Call(errorEventMethod, args, nil)
+	_, err := l.dispatch.Call(errorEventMethod, args)
+	return err
 }
 
 func (l *logger) DebugEvent(cmd *common.Command, debug string) error {
@@ -124,34 +122,47 @@ func (l *logger) DebugEvent(cmd *common.Command, debug string) error {
 		DebugMessage:   debug,
 		TransactionNum: cmd.TransactionID,
 	}
-	return l.Call(debugEventMethod, args, nil)
+	_, err := l.dispatch.Call(debugEventMethod, args)
+	return err
 }
 
 func (l *logger) DumpLogUser(userId string) (*[]byte, error) {
-	var data []byte
-	err := l.Call(dumpLogMethod, DumpLogArgs{UserId: userId}, &data)
-	return &data, err
+	data, err := l.dispatch.Call(dumpLogMethod, &DumpLogArgs{UserId: userId})
+	if err != nil {
+		return nil, err
+	}
+	bytes, _ := data.([]byte)
+	return &bytes, nil
 }
 
 func (l *logger) DumpLog() (*[]byte, error) {
-	var data []byte
-	err := l.Call(dumpLogMethod, DumpLogArgs{UserId: "admin"}, &data)
-	return &data, err
+	data, err := l.dispatch.Call(dumpLogMethod, &DumpLogArgs{UserId: "admin"})
+	if err != nil {
+		return nil, err
+	}
+	bytes, _ := data.([]byte)
+	return &bytes, nil
 }
 
-func (l *logger) Close() error {
-	return l.client.Close()
+func (l *logger) Close() {
+	l.client.Stop()
 }
 
 func GetLogger(server string) Logger {
-	for {
-		client, err := rpc.Dial("tcp", common.CFG.AuditServer.Url)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		return &logger{client, server}
-	}
+	gorpc.RegisterType(&UserCommand{})
+	gorpc.RegisterType(&QuoteServer{})
+	gorpc.RegisterType(&AccountTransaction{})
+	gorpc.RegisterType(&SystemEvent{})
+	gorpc.RegisterType(&ErrorEvent{})
+	gorpc.RegisterType(&DebugEvent{})
+	gorpc.RegisterType(&DumpLogArgs{})
+
+	client := gorpc.NewTCPClient(common.CFG.AuditServer.Url)
+	dispatcher := gorpc.NewDispatcher()
+	dispatcher.AddService(LoggerServiceName, &LoggerRPC{})
+	dispatchClient := dispatcher.NewServiceClient(LoggerServiceName, client)
+	client.Start()
+	return &logger{client, dispatchClient, server}
 }
 
 type LoggerRPC struct {
@@ -169,7 +180,7 @@ func (l *LoggerRPC) readLog(userid string) ([]byte, error) {
 		toWrite := append(val.Xml, byte('\n'))
 		data = append(data, toWrite...)
 	}
-	data = append(data, []byte("\n</log>")...)
+	data = append(data, []byte("</log>")...)
 	return data, nil
 }
 
@@ -183,38 +194,35 @@ func (l *LoggerRPC) writeLog(e interface{}, userid string) error {
 	return nil
 }
 
-func (l *LoggerRPC) UserCommand(cmd *UserCommand, result *string) error {
+func (l *LoggerRPC) UserCommand(cmd *UserCommand) error {
 	return l.writeLog(cmd, cmd.Username)
 }
 
-func (l *LoggerRPC) QuoteServer(qs *QuoteServer, result *string) error {
+func (l *LoggerRPC) QuoteServer(qs *QuoteServer) error {
 	return l.writeLog(qs, qs.Username)
 }
 
-func (l *LoggerRPC) AccountTransaction(txn *AccountTransaction, result *string) error {
+func (l *LoggerRPC) AccountTransaction(txn *AccountTransaction) error {
 	return l.writeLog(txn, txn.Username)
 }
 
-func (l *LoggerRPC) SystemEvent(e *SystemEvent, result *string) error {
+func (l *LoggerRPC) SystemEvent(e *SystemEvent) error {
 	return l.writeLog(e, e.Username)
 }
 
-func (l *LoggerRPC) ErrorEvent(e *ErrorEvent, result *string) error {
+func (l *LoggerRPC) ErrorEvent(e *ErrorEvent) error {
 	return l.writeLog(e, e.Username)
 }
 
-func (l *LoggerRPC) DebugEvent(e *DebugEvent, result *string) error {
+func (l *LoggerRPC) DebugEvent(e *DebugEvent) error {
 	return l.writeLog(e, e.Username)
 }
 
-func (l *LoggerRPC) DumpLog(args *DumpLogArgs, result *[]byte) error {
-	var err error
-	*result, err = l.readLog(args.UserId)
-	return err
+func (l *LoggerRPC) DumpLog(args *DumpLogArgs) ([]byte, error) {
+	return l.readLog(args.UserId)
 }
 
-func GetLoggerRPC() (*LoggerRPC, *MongoDB) {
+func GetLoggerRPC(db *MongoDB) *LoggerRPC {
 	log.Println("Attempting to initiate RPC")
-	db := GetMongoDatabase()
-	return &LoggerRPC{db}, db
+	return &LoggerRPC{db}
 }

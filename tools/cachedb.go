@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mattpaletta/AbilitySoftwareGroup468/networks"
-
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 	gcache "github.com/patrickmn/go-cache"
 )
@@ -22,11 +20,11 @@ const (
 
 // CacheDB a caching middleware for all regular DB operations
 type CacheDB struct {
-	db           *networks.MongoDB
-	Users        networks.UsersCollection
-	Triggers     networks.TriggersCollection
-	Transactions networks.TransactionsCollection
-	Logs         networks.LogsCollection
+	db           *MongoDB
+	Users        UsersCollection
+	Triggers     TriggersCollection
+	Transactions TransactionsCollection
+	Logs         LogsCollection
 }
 
 func (c *CacheDB) Close() {
@@ -35,7 +33,7 @@ func (c *CacheDB) Close() {
 
 type cacheUsers struct {
 	*gcache.Cache
-	cln networks.UsersCollection
+	cln UsersCollection
 }
 
 // Sets the user in cache if error is nil and also performs the extra function if it exists
@@ -115,7 +113,7 @@ func (u *cacheUsers) ProcessTxn(txn *common.PendingTxn, wasCached bool) (*common
 
 type cacheTrig struct {
 	cache *gcache.Cache
-	cln   networks.TriggersCollection
+	cln   TriggersCollection
 }
 
 func (ct *cacheTrig) setTrigger(trig *common.Trigger, err error, ifGood func()) (*common.Trigger, error) {
@@ -208,7 +206,7 @@ func (ct *cacheTrig) BulkClose(txn []*common.PendingTxn) error {
 
 type cacheTxns struct {
 	cache *gcache.Cache
-	cln   networks.TransactionsCollection
+	cln   TransactionsCollection
 }
 
 func (ct *cacheTxns) LogTxn(txn *common.PendingTxn, triggered bool) (*common.Transactions, error) {
@@ -245,7 +243,7 @@ func (ct *cacheTxns) Get(userId string) (*common.Transactions, error) {
 
 type cacheLogs struct {
 	cache *gcache.Cache
-	cln   networks.LogsCollection
+	cln   LogsCollection
 }
 
 func (cl *cacheLogs) LogEvent(e *common.EventLog) {
@@ -257,7 +255,7 @@ func (cl *cacheLogs) GetLogs(userid string) ([]common.EventLog, error) {
 }
 
 func NewCacheDB() *CacheDB {
-	db := networks.GetMongoDatabase()
+	db := GetMongoDatabase()
 	cache := gcache.New(time.Minute, 10*time.Minute)
 	return &CacheDB{
 		db:           db,
