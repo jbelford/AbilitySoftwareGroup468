@@ -71,7 +71,7 @@ services:
       context: workloads
       dockerfile: Dockerfile
     tty: true
-    entrypoint: go run workloadgenerator.go 1userWorkLoad.txt
+    entrypoint: go run workloadgenerator.go 45User_testWorkLoad.txt
     #links:
     #  - web
     depends_on:
