@@ -7,11 +7,11 @@
         "address": "quoteserve.seng:4443",
         "mock": false
     },
-    "transactionserver": {
-        "url": "transaction:44421"
+    "transaction": {
+        "url": "transactionserver:44421"
     },
     "webserver": {
-        "url": "web:44420"
+        "url": "webserver:44420"
     },
     "auditserver": {
         "url": "auditserver:44422"
