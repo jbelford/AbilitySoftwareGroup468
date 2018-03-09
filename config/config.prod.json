@@ -1,19 +1,23 @@
 {
     "database": {
         "url": "mongodb:44423",
+        "lurl": "mongodb:44423",
         "name": "seng468"
     },
     "quoteserver": {
         "address": "quoteserve.seng:4443",
         "mock": false
     },
-    "transaction": {
-        "url": "transactionserver:44421"
+    "transactionserver": {
+        "url": "transactionserver:44421",
+        "lurl": "0.0.0.0:44421"
     },
     "webserver": {
-        "url": "webserver:44420"
+        "url": "webserver:44420",
+        "lurl": "0.0.0.0:44420"
     },
     "auditserver": {
-        "url": "auditserver:44422"
+        "url": "auditserver:44422",
+        "lurl": "0.0.0.0:44422"
     }
 }

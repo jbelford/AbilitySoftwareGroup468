@@ -30,7 +30,7 @@ func (ws *WebServer) error(cmd *common.Command, msg string) *common.Response {
 func (ws *WebServer) Start() {
 	ws.txnConn = tools.GetTxnConn()
 	defer ws.txnConn.Close()
-	ws.logger = tools.GetLogger(common.CFG.WebServer.Url)
+	ws.logger = tools.GetLogger(common.CFG.WebServer.LUrl)
 	defer ws.logger.Close()
 
 	var dir string
@@ -70,10 +70,10 @@ func (ws *WebServer) Start() {
 
 	r.PathPrefix("/templates/").Handler(http.StripPrefix("/templates/", http.FileServer(http.Dir(dir))))
 
-	log.Println("Listening on:", common.CFG.WebServer.Url)
+	log.Println("Listening on:", common.CFG.WebServer.LUrl)
 	srv := &http.Server{
 		Handler: r,
-		Addr:    common.CFG.WebServer.Url,
+		Addr:    common.CFG.WebServer.LUrl,
 	}
 
 	log.Fatal(srv.ListenAndServe())

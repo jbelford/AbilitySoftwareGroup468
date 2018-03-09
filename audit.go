@@ -21,8 +21,8 @@ func (ad *AuditServer) Start() {
 	logger := tools.GetLoggerRPC(db)
 	dispatcher.AddService(tools.LoggerServiceName, logger)
 
-	server := gorpc.NewTCPServer(common.CFG.AuditServer.Url, dispatcher.NewHandlerFunc())
-	log.Println("connected to:", common.CFG.AuditServer.Url)
+	server := gorpc.NewTCPServer(common.CFG.AuditServer.LUrl, dispatcher.NewHandlerFunc())
+	log.Println("connected to:", common.CFG.AuditServer.LUrl)
 
 	err := server.Serve()
 	if err != nil {
