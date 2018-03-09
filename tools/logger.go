@@ -166,12 +166,21 @@ func GetLogger(server string) Logger {
 }
 
 type LoggerRPC struct {
-	db *MongoDB
+	session *MongoSession
+	work    chan *common.EventLog
+	flush   chan bool
 }
 
 func (l *LoggerRPC) readLog(userid string) ([]byte, error) {
+	l.flush <- true
+	// While flushing may as well set socket connection ready
+	db := l.session.GetUniqueInstance()
+	defer db.Close()
+
+	<-l.flush
+
 	data := []byte("<log>\n")
-	logs, err := l.db.Logs.GetLogs(userid)
+	logs, err := db.Logs.GetLogs(userid)
 	if err != nil {
 		log.Println(err)
 		return nil, err
@@ -189,8 +198,7 @@ func (l *LoggerRPC) writeLog(e interface{}, userid string) error {
 	if err != nil {
 		return err
 	}
-	eLog := &common.EventLog{UserId: userid, Xml: data}
-	l.db.Logs.LogEvent(eLog)
+	l.work <- &common.EventLog{UserId: userid, Xml: data}
 	return nil
 }
 
@@ -222,7 +230,41 @@ func (l *LoggerRPC) DumpLog(args *DumpLogArgs) ([]byte, error) {
 	return l.readLog(args.UserId)
 }
 
-func GetLoggerRPC(db *MongoDB) *LoggerRPC {
+func GetLoggerRPC(session *MongoSession) *LoggerRPC {
 	log.Println("Attempting to initiate RPC")
-	return &LoggerRPC{db}
+	l := &LoggerRPC{session, nil, nil}
+	l.initBulkProcessing()
+	return l
+}
+
+func (l *LoggerRPC) initBulkProcessing() {
+	limit := 100
+	l.work = make(chan *common.EventLog, limit)
+	l.flush = make(chan bool)
+	go func() {
+		db := l.session.GetSharedInstance()
+		defer db.Close()
+		for {
+			eventLogs, flushed := l.wait(limit)
+			if len(eventLogs) > 0 {
+				db.Logs.LogEvents(eventLogs)
+			}
+			if flushed {
+				l.flush <- true
+			}
+		}
+	}()
+}
+
+func (l *LoggerRPC) wait(limit int) ([]*common.EventLog, bool) {
+	eventLogs := []*common.EventLog{}
+	for i := 0; i < limit; i++ {
+		select {
+		case val := <-l.work:
+			eventLogs = append(eventLogs, val)
+		case <-l.flush:
+			return eventLogs, true
+		}
+	}
+	return eventLogs, false
 }

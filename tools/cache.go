@@ -1,14 +1,50 @@
 package tools
 
 import (
+	"log"
 	"time"
 
-	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
+	"github.com/allegro/bigcache"
 
-	gcache "github.com/patrickmn/go-cache"
+	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
 )
 
 type Cache interface {
+	Get(key string, obj interface{}) error
+	Set(key string, obj interface{})
+	Delete(key string)
+}
+
+type cache struct {
+	bcache *bigcache.BigCache
+}
+
+func (c *cache) Get(key string, obj interface{}) error {
+	data, err := c.bcache.Get(key)
+	if err == nil && obj != nil {
+		err = common.DecodeData(data, obj)
+	}
+	return err
+}
+
+func (c *cache) Set(key string, obj interface{}) {
+	if encoded, err := common.EncodeData(obj); err == nil {
+		if err = c.bcache.Set(key, encoded); err != nil {
+			log.Println(err)
+		}
+	}
+}
+
+func (c *cache) Delete(key string) {
+	c.bcache.Delete(key)
+}
+
+func NewCache() Cache {
+	c, _ := bigcache.NewBigCache(bigcache.DefaultConfig(time.Minute))
+	return &cache{c}
+}
+
+type CacheUtil interface {
 	GetQuote(symbol string, userId string, tid int64) (*common.QuoteData, error)
 	GetReserved(userId string) int64
 	GetReservedShares(userId string) map[string]int
@@ -16,46 +52,43 @@ type Cache interface {
 	PopPendingTxn(userId string, txnType string) *common.PendingTxn
 }
 
-type cache struct {
-	*gcache.Cache
+type cacheUtil struct {
+	Cache
 	logger Logger
 }
 
-func (c *cache) GetQuote(symbol string, userId string, tid int64) (*common.QuoteData, error) {
+func (c *cacheUtil) GetQuote(symbol string, userId string, tid int64) (*common.QuoteData, error) {
 	key := "Quote:" + symbol
-	quoteI, found := c.Get(key)
-	quote, ok := quoteI.(*common.QuoteData)
-	if !ok || !found {
-		var err error
+	quote := &common.QuoteData{}
+	err := c.Get(key, quote)
+	if err != nil {
 		quote, err = common.GetQuote(symbol, userId)
 		if err != nil {
 			return nil, err
 		}
 		go c.logger.QuoteServer(quote, tid)
-		c.Set(key, quote, time.Minute)
+		c.Set(key, quote)
 	}
 	return quote, nil
 }
 
 // GetReserved returns the sum of valid pending BUYs for the user
 // Pending BUY's are stored in a list and are each valid for 60s
-func (c *cache) GetReserved(userId string) int64 {
+func (c *cacheUtil) GetReserved(userId string) int64 {
 	key := userId + ":BUY"
-	buysI, found := c.Get(key)
-	if !found {
+	buys := []common.PendingTxn{}
+	err := c.Get(key, &buys)
+	if err != nil {
 		return 0
 	}
 	now := time.Now()
 	var total int64
-	buys, ok := buysI.([]common.PendingTxn)
-	if ok {
-		for i := len(buys) - 1; i >= 0; i-- {
-			txn := buys[i]
-			if txn.Expiry.After(now) {
-				total += txn.Reserved
-			} else {
-				break
-			}
+	for i := len(buys) - 1; i >= 0; i-- {
+		txn := buys[i]
+		if txn.Expiry.After(now) {
+			total += txn.Reserved
+		} else {
+			break
 		}
 	}
 	return total
@@ -63,23 +96,21 @@ func (c *cache) GetReserved(userId string) int64 {
 
 // GetReservedShares returns a mapping where the keys are stock symbols
 // The values of this mapping are the sum of shares pending to be sold
-func (c *cache) GetReservedShares(userId string) map[string]int {
+func (c *cacheUtil) GetReservedShares(userId string) map[string]int {
 	key := userId + ":SELL"
-	sellsI, found := c.Get(key)
-	if !found {
+	sells := []common.PendingTxn{}
+	err := c.Get(key, &sells)
+	if err != nil {
 		return nil
 	}
 	now := time.Now()
 	mapping := make(map[string]int)
-	sells, ok := sellsI.([]common.PendingTxn)
-	if ok {
-		for i := len(sells) - 1; i >= 0; i-- {
-			txn := sells[i]
-			if txn.Expiry.After(now) {
-				mapping[txn.Stock] += txn.Shares
-			} else {
-				break
-			}
+	for i := len(sells) - 1; i >= 0; i-- {
+		txn := sells[i]
+		if txn.Expiry.After(now) {
+			mapping[txn.Stock] += txn.Shares
+		} else {
+			break
 		}
 	}
 	return mapping
@@ -87,26 +118,24 @@ func (c *cache) GetReservedShares(userId string) map[string]int {
 
 // PushPendingTxn adds a pending transaction (BUY or SELL) to the cache
 // The txn is given a time-to-live of 60s
-func (c *cache) PushPendingTxn(pending common.PendingTxn) {
+func (c *cacheUtil) PushPendingTxn(pending common.PendingTxn) {
 	key := pending.UserId + ":" + pending.Type
-	buysI, found := c.Get(key)
-	if buys, ok := buysI.([]common.PendingTxn); !ok || !found {
-		c.Set(key, []common.PendingTxn{pending}, time.Minute)
+	buys := []common.PendingTxn{}
+	err := c.Get(key, &buys)
+	if err != nil {
+		c.Set(key, []common.PendingTxn{pending})
 	} else {
-		c.Set(key, append(buys, pending), time.Minute)
+		c.Set(key, append(buys, pending))
 	}
 }
 
 // PopPendingTxn removes the most recent pending transaction of the specified type (BUY or SELL)
 // Returns nil if none exists
-func (c *cache) PopPendingTxn(userId string, txnType string) *common.PendingTxn {
+func (c *cacheUtil) PopPendingTxn(userId string, txnType string) *common.PendingTxn {
 	key := userId + ":" + txnType
-	buysI, found := c.Get(key)
-	if !found {
-		return nil
-	}
-	buys, ok := buysI.([]common.PendingTxn)
-	if !ok {
+	buys := []common.PendingTxn{}
+	err := c.Get(key, &buys)
+	if err != nil {
 		return nil
 	}
 	c.Delete(key)
@@ -116,15 +145,13 @@ func (c *cache) PopPendingTxn(userId string, txnType string) *common.PendingTxn 
 	if recent.Expiry.Before(now) {
 		return nil
 	}
-	if n > 1 {
-		newExpiry := buys[n-2].Expiry.Sub(now)
-		if newExpiry >= 0 {
-			c.Set(key, buys[:n-1], newExpiry)
-		}
+	if n > 1 && buys[n-2].Expiry.After(now) {
+		c.Set(key, buys[:n-1])
 	}
 	return &recent
 }
 
-func NewCache(l Logger) Cache {
-	return &cache{gcache.New(time.Minute, 10*time.Minute), l}
+func NewCacheUtil(l Logger) CacheUtil {
+	c := NewCache()
+	return &cacheUtil{c, l}
 }

@@ -43,7 +43,7 @@ type UserInfo struct {
 	Stock    map[string]struct {
 		Real     int `json:"real"`
 		Reserved int `json:"reserved"`
-	} `json:"stock"`
+	} `json:"stock,omitempty"`
 }
 
 type Transactions struct {

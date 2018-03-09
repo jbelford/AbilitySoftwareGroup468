@@ -3,10 +3,8 @@ package tools
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/mattpaletta/AbilitySoftwareGroup468/common"
-	gcache "github.com/patrickmn/go-cache"
 )
 
 const (
@@ -17,6 +15,31 @@ const (
 	triggerKey       = "Trigger:%s:%s:%s"
 	txnKey           = "Transaction:%s"
 )
+
+type CacheMongoSession struct {
+	session *MongoSession
+	cache   Cache
+}
+
+func (ms *CacheMongoSession) GetSharedInstance() *CacheDB {
+	mongodb := ms.session.GetSharedInstance()
+	return getCacheDB(mongodb, ms.cache)
+}
+
+func (ms *CacheMongoSession) GetUniqueInstance() *CacheDB {
+	mongodb := ms.session.GetUniqueInstance()
+	return getCacheDB(mongodb, ms.cache)
+}
+
+func (ms *CacheMongoSession) Close() {
+	ms.session.Close()
+}
+
+func GetCacheMongoSession() *CacheMongoSession {
+	session := GetMongoSession()
+	c := NewCache()
+	return &CacheMongoSession{session, c}
+}
 
 // CacheDB a caching middleware for all regular DB operations
 type CacheDB struct {
@@ -32,7 +55,7 @@ func (c *CacheDB) Close() {
 }
 
 type cacheUsers struct {
-	*gcache.Cache
+	Cache
 	cln UsersCollection
 }
 
@@ -44,7 +67,7 @@ func (u *cacheUsers) setUser(user *common.User, err error, ifGood func()) (*comm
 		ifGood()
 	}
 	key := fmt.Sprintf(userKey, user.UserId)
-	u.Set(key, user, time.Minute)
+	u.Set(key, user)
 	return user, nil
 }
 
@@ -79,21 +102,20 @@ func (u *cacheUsers) ReserveShares(userId string, stock string, shares int) (*co
 
 func (u *cacheUsers) GetUser(userId string) (*common.User, error) {
 	checkKey := fmt.Sprintf(notExistsKey, userId)
-	if _, found := u.Get(checkKey); found {
+	if err := u.Get(checkKey, nil); err == nil {
 		return nil, errors.New("User does not exist")
 	}
 
 	key := fmt.Sprintf(userKey, userId)
-	userI, found := u.Get(key)
-	user, ok := userI.(*common.User)
-	if !ok || !found {
-		var err error
+	user := &common.User{}
+	err := u.Get(key, &user)
+	if err != nil {
 		if user, err = u.cln.GetUser(userId); err != nil {
 			// Mark that the user doesn't exist for next time
-			u.Set(checkKey, true, time.Minute)
+			u.Set(checkKey, true)
 			return nil, err
 		}
-		u.Set(key, user, time.Minute)
+		u.Set(key, user)
 	}
 	return user, nil
 }
@@ -112,7 +134,7 @@ func (u *cacheUsers) ProcessTxn(txn *common.PendingTxn, wasCached bool) (*common
 }
 
 type cacheTrig struct {
-	cache *gcache.Cache
+	cache Cache
 	cln   TriggersCollection
 }
 
@@ -123,7 +145,7 @@ func (ct *cacheTrig) setTrigger(trig *common.Trigger, err error, ifGood func()) 
 		ifGood()
 	}
 	key := fmt.Sprintf(triggerKey, trig.UserId, trig.Type, trig.Stock)
-	ct.cache.Set(key, trig, time.Minute)
+	ct.cache.Set(key, trig)
 	return trig, nil
 }
 
@@ -144,7 +166,7 @@ func (ct *cacheTrig) Set(t *common.Trigger) (*common.Trigger, error) {
 
 func (ct *cacheTrig) Cancel(userId string, stock string, trigType string) (*common.Trigger, error) {
 	checkKey := fmt.Sprintf(trigNotExistsKey, userId, trigType, stock)
-	if _, found := ct.cache.Get(checkKey); found {
+	if err := ct.cache.Get(checkKey, nil); err == nil {
 		return nil, errors.New("Trigger does not exist")
 	}
 
@@ -159,27 +181,26 @@ func (ct *cacheTrig) Cancel(userId string, stock string, trigType string) (*comm
 
 func (ct *cacheTrig) Get(userId string, stock string, trigType string) (*common.Trigger, error) {
 	checkKey := fmt.Sprintf(trigNotExistsKey, userId, trigType, stock)
-	if _, found := ct.cache.Get(checkKey); found {
+	if err := ct.cache.Get(checkKey, nil); err == nil {
 		return nil, errors.New("Trigger does not exist")
 	}
 
 	key := fmt.Sprintf(triggerKey, userId, trigType, stock)
-	trigI, found := ct.cache.Get(key)
-	trig, ok := trigI.(*common.Trigger)
-	if !ok || !found {
-		var err error
-		if trig, err = ct.cln.Get(userId, stock, trigType); err != nil {
-			ct.cache.Set(checkKey, true, time.Minute)
+	t := &common.Trigger{}
+	err := ct.cache.Get(key, &t)
+	if err != nil {
+		if t, err = ct.cln.Get(userId, stock, trigType); err != nil {
+			ct.cache.Set(checkKey, true)
 			return nil, err
 		}
-		ct.cache.Set(key, trig, time.Minute)
+		ct.cache.Set(key, t)
 	}
-	return trig, nil
+	return t, nil
 }
 
 func (ct *cacheTrig) GetAllUser(userId string) ([]common.Trigger, error) {
 	checkKey := fmt.Sprintf(userNoTrigKey, userId)
-	if _, found := ct.cache.Get(checkKey); found {
+	if err := ct.cache.Get(checkKey, nil); err == nil {
 		return []common.Trigger{}, nil
 	}
 
@@ -187,7 +208,7 @@ func (ct *cacheTrig) GetAllUser(userId string) ([]common.Trigger, error) {
 	if err != nil {
 		return nil, err
 	} else if len(trigs) == 0 {
-		ct.cache.Set(checkKey, true, time.Minute)
+		ct.cache.Set(checkKey, true)
 	} else {
 		for _, t := range trigs {
 			ct.setTrigger(&t, nil, nil)
@@ -205,7 +226,7 @@ func (ct *cacheTrig) BulkClose(txn []*common.PendingTxn) error {
 }
 
 type cacheTxns struct {
-	cache *gcache.Cache
+	cache Cache
 	cln   TransactionsCollection
 }
 
@@ -215,7 +236,7 @@ func (ct *cacheTxns) LogTxn(txn *common.PendingTxn, triggered bool) (*common.Tra
 		return nil, err
 	}
 	key := fmt.Sprintf(txnKey, newTxn.UserId)
-	ct.cache.Set(key, newTxn, time.Minute)
+	ct.cache.Set(key, newTxn)
 	return newTxn, nil
 }
 
@@ -229,39 +250,36 @@ func (ct *cacheTxns) BulkLog(txns []*common.PendingTxn, triggered bool) error {
 
 func (ct *cacheTxns) Get(userId string) (*common.Transactions, error) {
 	key := fmt.Sprintf(txnKey, userId)
-	txnI, found := ct.cache.Get(key)
-	txn, ok := txnI.(*common.Transactions)
-	if !ok || !found {
-		var err error
-		if txn, err = ct.cln.Get(userId); err != nil {
-			return nil, err
+	txns := &common.Transactions{}
+	err := ct.cache.Get(key, &txns)
+	if err != nil {
+		if txns, err = ct.cln.Get(userId); err != nil {
+			txns = &common.Transactions{UserId: userId, Logged: []common.Transaction{}}
 		}
-		ct.cache.Set(key, txn, time.Minute)
+		ct.cache.Set(key, txns)
 	}
-	return txn, nil
+	return txns, nil
 }
 
 type cacheLogs struct {
-	cache *gcache.Cache
+	cache Cache
 	cln   LogsCollection
 }
 
-func (cl *cacheLogs) LogEvent(e *common.EventLog) {
-	cl.LogEvent(e)
+func (cl *cacheLogs) LogEvents(e []*common.EventLog) {
+	cl.LogEvents(e)
 }
 
 func (cl *cacheLogs) GetLogs(userid string) ([]common.EventLog, error) {
 	return cl.cln.GetLogs(userid)
 }
 
-func NewCacheDB() *CacheDB {
-	db := GetMongoDatabase()
-	cache := gcache.New(time.Minute, 10*time.Minute)
+func getCacheDB(db *MongoDB, c Cache) *CacheDB {
 	return &CacheDB{
 		db:           db,
-		Users:        &cacheUsers{cache, db.Users},
-		Triggers:     &cacheTrig{cache, db.Triggers},
-		Transactions: &cacheTxns{cache, db.Transactions},
-		Logs:         &cacheLogs{cache, db.Logs},
+		Users:        &cacheUsers{c, db.Users},
+		Triggers:     &cacheTrig{c, db.Triggers},
+		Transactions: &cacheTxns{c, db.Transactions},
+		Logs:         &cacheLogs{c, db.Logs},
 	}
 }
