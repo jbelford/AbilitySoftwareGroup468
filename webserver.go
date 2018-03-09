@@ -643,6 +643,8 @@ func wrapHandler(
 ) func(w http.ResponseWriter, r *http.Request) {
 
 	h := func(w http.ResponseWriter, r *http.Request) {
+		log.Println("Received request: " + r.URL.EscapedPath())
+
 		w.Header().Set("Content-Type", "application/json")
 		// test input here/validity of requester
 		t_id, err := strconv.ParseInt(mux.Vars(r)["t_id"], 10, 64)

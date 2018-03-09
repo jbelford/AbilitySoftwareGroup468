@@ -8,16 +8,18 @@ import (
 )
 
 type TriggerManager struct {
-	c      Cache
-	db     *CacheDB
-	logger Logger
+	c       CacheUtil
+	session *CacheMongoSession
+	logger  Logger
 }
 
 func (tm *TriggerManager) Start() {
 	go func() {
+		db := tm.session.GetUniqueInstance()
+		defer db.Close()
 		for {
 			log.Println("Executing triggers...")
-			trigs, err := tm.db.Triggers.GetAll()
+			trigs, err := db.Triggers.GetAll()
 			if err == nil {
 				txns := make([]*common.PendingTxn, 0)
 				for _, trig := range trigs {
@@ -28,20 +30,21 @@ func (tm *TriggerManager) Start() {
 				}
 				if len(txns) > 0 {
 					log.Printf("Resolving %d transactions\n", len(txns))
-					err = tm.db.Users.BulkTransaction(txns, false)
+					err = db.Users.BulkTransaction(txns, false)
 					if err != nil {
 						log.Println(err)
 					}
-					err = tm.db.Transactions.BulkLog(txns, true)
+					err = db.Transactions.BulkLog(txns, true)
 					if err != nil {
 						log.Println(err)
 					}
-					err = tm.db.Triggers.BulkClose(txns)
+					err = db.Triggers.BulkClose(txns)
 					if err != nil {
 						log.Println(err)
 					}
 				}
 			}
+			log.Println("Trigger job going back to sleep")
 			time.Sleep(time.Minute)
 		}
 	}()
@@ -86,6 +89,6 @@ func (tm *TriggerManager) processTrigger(t common.Trigger) *common.PendingTxn {
 	}
 }
 
-func NewTrigMan(c Cache, db *CacheDB, l Logger) *TriggerManager {
-	return &TriggerManager{c, db, l}
+func NewTrigMan(c CacheUtil, session *CacheMongoSession, l Logger) *TriggerManager {
+	return &TriggerManager{c, session, l}
 }

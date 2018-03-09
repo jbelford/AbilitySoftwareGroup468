@@ -10,6 +10,35 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+type MongoSession struct {
+	session *mgo.Session
+}
+
+func (ms *MongoSession) GetSharedInstance() *MongoDB {
+	clone := ms.session.Clone()
+	return getMongoDatabase(clone)
+}
+
+func (ms *MongoSession) GetUniqueInstance() *MongoDB {
+	copy := ms.session.Copy()
+	return getMongoDatabase(copy)
+}
+
+func (ms *MongoSession) Close() {
+	ms.session.Close()
+}
+
+func GetMongoSession() *MongoSession {
+	for {
+		session, err := mgo.Dial(common.CFG.Database.Url)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		return &MongoSession{session}
+	}
+}
+
 type MongoDB struct {
 	session      *mgo.Session
 	Users        UsersCollection
@@ -57,7 +86,6 @@ type UsersCollection interface {
 
 type users struct {
 	*mgo.Collection
-	s *mgo.Session
 }
 
 func (c *users) findAndModify(query interface{}, update interface{}) (*common.User, error) {
@@ -210,7 +238,6 @@ type TriggersCollection interface {
 
 type triggers struct {
 	*mgo.Collection
-	s *mgo.Session
 }
 
 func (c *triggers) findAndModify(query interface{}, update interface{}) (*common.Trigger, error) {
@@ -286,7 +313,6 @@ type TransactionsCollection interface {
 
 type transactions struct {
 	*mgo.Collection
-	s *mgo.Session
 }
 
 func (c *transactions) findAndModify(query interface{}, update interface{}) (*common.Transactions, error) {
@@ -339,59 +365,23 @@ func (c *transactions) Get(userId string) (*common.Transactions, error) {
 }
 
 type LogsCollection interface {
-	LogEvent(e *common.EventLog)
+	LogEvents(e []*common.EventLog)
 	GetLogs(userid string) ([]common.EventLog, error)
 }
 
 type logs struct {
 	*mgo.Collection
-	work  chan *common.EventLog
-	flush chan bool
 }
 
-func (c *logs) wait(bulk *mgo.Bulk, limit int) bool {
-	for i := 0; i < limit; i++ {
-		select {
-		case l := <-c.work:
-			bulk.Insert(l)
-		case <-c.flush:
-			return true
-		}
+func (c *logs) LogEvents(e []*common.EventLog) {
+	bulk := c.Bulk()
+	for _, l := range e {
+		bulk.Insert(l)
 	}
-	return false
-}
-
-func (c *logs) initBulkProcessing() {
-	limit := 100
-	c.work = make(chan *common.EventLog, limit)
-	c.flush = make(chan bool)
-	go func() {
-		for {
-			bulk := c.Bulk()
-			flushed := c.wait(bulk, limit)
-			bulk.Run()
-			if flushed {
-				c.flush <- true
-			}
-		}
-	}()
-}
-
-func (c *logs) LogEvent(e *common.EventLog) {
-	if c.work == nil {
-		c.initBulkProcessing()
-	}
-	c.work <- e
+	bulk.Run()
 }
 
 func (c *logs) GetLogs(userid string) ([]common.EventLog, error) {
-	if c.work == nil {
-		c.initBulkProcessing()
-	} else {
-		c.flush <- true
-		<-c.flush // Wait for flush
-	}
-
 	query := bson.M{"Username": userid}
 	if userid == "admin" {
 		query = bson.M{}
@@ -401,21 +391,13 @@ func (c *logs) GetLogs(userid string) ([]common.EventLog, error) {
 	return result, err
 }
 
-func GetMongoDatabase() *MongoDB {
-	log.Println("Connecting to db using", common.CFG.Database.Url)
-	for {
-		session, err := mgo.Dial(common.CFG.Database.Url)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		db := session.DB(common.CFG.Database.Name)
-		return &MongoDB{
-			session:      session,
-			Users:        &users{db.C("Users"), session},
-			Triggers:     &triggers{db.C("Triggers"), session},
-			Transactions: &transactions{db.C("Transactions"), session},
-			Logs:         &logs{db.C("Logs"), nil, nil},
-		}
+func getMongoDatabase(s *mgo.Session) *MongoDB {
+	db := s.DB(common.CFG.Database.Name)
+	return &MongoDB{
+		session:      s,
+		Users:        &users{db.C("Users")},
+		Triggers:     &triggers{db.C("Triggers")},
+		Transactions: &transactions{db.C("Transactions")},
+		Logs:         &logs{db.C("Logs")},
 	}
 }

@@ -13,12 +13,12 @@ type AuditServer struct{}
 
 func (ad *AuditServer) Start() {
 	log.Println("Requesting RPC")
-	db := tools.GetMongoDatabase()
-	defer db.Close()
+	session := tools.GetMongoSession()
+	defer session.Close()
 
 	dispatcher := gorpc.NewDispatcher()
 
-	logger := tools.GetLoggerRPC(db)
+	logger := tools.GetLoggerRPC(session)
 	dispatcher.AddService(tools.LoggerServiceName, logger)
 
 	server := gorpc.NewTCPServer(common.CFG.AuditServer.Url, dispatcher.NewHandlerFunc())

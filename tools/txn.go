@@ -51,9 +51,9 @@ func GetTxnConn() TxnConn {
 }
 
 type TxnRPC struct {
-	cache  Cache
-	db     *CacheDB
-	logger Logger
+	cache   CacheUtil
+	session *CacheMongoSession
+	logger  Logger
 }
 
 func (ts *TxnRPC) error(cmd *common.Command, msg string) (*common.Response, error) {
@@ -63,10 +63,14 @@ func (ts *TxnRPC) error(cmd *common.Command, msg string) (*common.Response, erro
 }
 
 func (ts *TxnRPC) ADD(cmd *common.Command) (*common.Response, error) {
-	_, err := ts.db.Users.AddUserMoney(cmd.UserId, cmd.Amount)
+	db := ts.session.GetSharedInstance()
+	defer db.Close()
+
+	_, err := db.Users.AddUserMoney(cmd.UserId, cmd.Amount)
 	if err != nil {
 		return ts.error(cmd, "Failed to create and/or add money to account")
 	}
+
 	go ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "add", cmd.TransactionID)
 	return &common.Response{Success: true}, nil
 }
@@ -80,7 +84,10 @@ func (ts *TxnRPC) QUOTE(cmd *common.Command) (*common.Response, error) {
 }
 
 func (ts *TxnRPC) BUY(cmd *common.Command) (*common.Response, error) {
-	user, err := ts.db.Users.GetUser(cmd.UserId)
+	db := ts.session.GetSharedInstance()
+	defer db.Close()
+
+	user, err := db.Users.GetUser(cmd.UserId)
 	if err != nil {
 		return ts.error(cmd, "The user "+cmd.UserId+" does not exist")
 	}
@@ -113,13 +120,16 @@ func (ts *TxnRPC) COMMIT_BUY(cmd *common.Command) (*common.Response, error) {
 		return ts.error(cmd, "There are no pending transactions")
 	}
 
-	_, err := ts.db.Users.ProcessTxn(buy, true)
+	db := ts.session.GetUniqueInstance()
+	defer db.Close()
+
+	_, err := db.Users.ProcessTxn(buy, true)
 	if err != nil {
 		return ts.error(cmd, "User can no longer afford this purchase")
 	}
 	go ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "remove", cmd.TransactionID)
 
-	_, err = ts.db.Transactions.LogTxn(buy, false)
+	_, err = db.Transactions.LogTxn(buy, false)
 	if err != nil {
 		return ts.error(cmd, "Failed to store transaction log in database")
 	}
@@ -136,7 +146,10 @@ func (ts *TxnRPC) CANCEL_BUY(cmd *common.Command) (*common.Response, error) {
 }
 
 func (ts *TxnRPC) SELL(cmd *common.Command) (*common.Response, error) {
-	user, err := ts.db.Users.GetUser(cmd.UserId)
+	db := ts.session.GetSharedInstance()
+	defer db.Close()
+
+	user, err := db.Users.GetUser(cmd.UserId)
 	if err != nil {
 		return ts.error(cmd, "The user "+cmd.UserId+" does not exist")
 	} else if user.Stock[cmd.StockSymbol].Real == 0 {
@@ -171,13 +184,16 @@ func (ts *TxnRPC) COMMIT_SELL(cmd *common.Command) (*common.Response, error) {
 		return ts.error(cmd, "There are no pending transactions")
 	}
 
-	_, err := ts.db.Users.ProcessTxn(sell, true)
+	db := ts.session.GetUniqueInstance()
+	defer db.Close()
+
+	_, err := db.Users.ProcessTxn(sell, true)
 	if err != nil {
 		return ts.error(cmd, "User no longer has the correct number of shares to sell")
 	}
 	go ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "add", cmd.TransactionID)
 
-	_, err = ts.db.Transactions.LogTxn(sell, false)
+	_, err = db.Transactions.LogTxn(sell, false)
 	if err != nil {
 		log.Println("!!IMPORTANT!! Failed to log sell")
 	}
@@ -194,7 +210,10 @@ func (ts *TxnRPC) CANCEL_SELL(cmd *common.Command) (*common.Response, error) {
 }
 
 func (ts *TxnRPC) SET_BUY_AMOUNT(cmd *common.Command) (*common.Response, error) {
-	user, err := ts.db.Users.GetUser(cmd.UserId)
+	db := ts.session.GetUniqueInstance()
+	defer db.Close()
+
+	user, err := db.Users.GetUser(cmd.UserId)
 	if err != nil {
 		return ts.error(cmd, "The user does not exist")
 	}
@@ -216,10 +235,10 @@ func (ts *TxnRPC) SET_BUY_AMOUNT(cmd *common.Command) (*common.Response, error) 
 		When:          0,
 	}
 	// Reserve the money and then set the trigger
-	if _, err = ts.db.Users.ReserveMoney(cmd.UserId, cmd.Amount); err != nil {
+	if _, err = db.Users.ReserveMoney(cmd.UserId, cmd.Amount); err != nil {
 		return ts.error(cmd, "Failed to reserve even though should have")
-	} else if _, err = ts.db.Triggers.Set(trigger); err != nil {
-		go ts.db.Users.UnreserveMoney(cmd.UserId, cmd.Amount)
+	} else if _, err = db.Triggers.Set(trigger); err != nil {
+		go db.Users.UnreserveMoney(cmd.UserId, cmd.Amount)
 		return ts.error(cmd, "Failed to set trigger even though should have")
 	}
 	go ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "reserve", cmd.TransactionID)
@@ -228,16 +247,19 @@ func (ts *TxnRPC) SET_BUY_AMOUNT(cmd *common.Command) (*common.Response, error) 
 }
 
 func (ts *TxnRPC) CANCEL_SET_BUY(cmd *common.Command) (*common.Response, error) {
-	_, err := ts.db.Users.GetUser(cmd.UserId)
+	db := ts.session.GetUniqueInstance()
+	defer db.Close()
+
+	_, err := db.Users.GetUser(cmd.UserId)
 	if err != nil {
 		return ts.error(cmd, "The user does not exist")
 	}
 
-	trig, err := ts.db.Triggers.Cancel(cmd.UserId, cmd.StockSymbol, "BUY")
+	trig, err := db.Triggers.Cancel(cmd.UserId, cmd.StockSymbol, "BUY")
 	if err != nil {
 		return ts.error(cmd, "No buy trigger to cancel")
 	}
-	_, err = ts.db.Users.UnreserveMoney(cmd.UserId, trig.Amount)
+	_, err = db.Users.UnreserveMoney(cmd.UserId, trig.Amount)
 	if err != nil {
 		log.Println(err)
 		return ts.error(cmd, "Internal server error")
@@ -248,18 +270,21 @@ func (ts *TxnRPC) CANCEL_SET_BUY(cmd *common.Command) (*common.Response, error) 
 }
 
 func (ts *TxnRPC) SET_BUY_TRIGGER(cmd *common.Command) (*common.Response, error) {
-	_, err := ts.db.Users.GetUser(cmd.UserId)
+	db := ts.session.GetUniqueInstance()
+	defer db.Close()
+
+	_, err := db.Users.GetUser(cmd.UserId)
 	if err != nil {
 		return ts.error(cmd, "The user does not exist")
 	}
 
-	trig, err := ts.db.Triggers.Get(cmd.UserId, cmd.StockSymbol, "BUY")
+	trig, err := db.Triggers.Get(cmd.UserId, cmd.StockSymbol, "BUY")
 	if err != nil {
 		return ts.error(cmd, "User must set buy amount first")
 	}
 
 	trig.When = cmd.Amount
-	_, err = ts.db.Triggers.Set(trig)
+	_, err = db.Triggers.Set(trig)
 	if err != nil {
 		return ts.error(cmd, "Internal error during operation")
 	}
@@ -268,7 +293,10 @@ func (ts *TxnRPC) SET_BUY_TRIGGER(cmd *common.Command) (*common.Response, error)
 }
 
 func (ts *TxnRPC) SET_SELL_AMOUNT(cmd *common.Command) (*common.Response, error) {
-	user, err := ts.db.Users.GetUser(cmd.UserId)
+	db := ts.session.GetUniqueInstance()
+	defer db.Close()
+
+	user, err := db.Users.GetUser(cmd.UserId)
 	if err != nil {
 		return ts.error(cmd, "The user does not exist")
 	}
@@ -298,45 +326,51 @@ func (ts *TxnRPC) SET_SELL_AMOUNT(cmd *common.Command) (*common.Response, error)
 		When:          0,
 	}
 
-	_, err = ts.db.Triggers.Set(trigger)
+	_, err = db.Triggers.Set(trigger)
 	if err != nil {
 		return ts.error(cmd, "Failed to set sell amount")
 	}
-	ts.db.Users.ReserveShares(cmd.UserId, cmd.StockSymbol, reservedShares)
+	db.Users.ReserveShares(cmd.UserId, cmd.StockSymbol, reservedShares)
 	go ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "reserve", cmd.TransactionID)
 
 	return &common.Response{Success: true}, nil
 }
 
 func (ts *TxnRPC) SET_SELL_TRIGGER(cmd *common.Command) (*common.Response, error) {
-	_, err := ts.db.Users.GetUser(cmd.UserId)
+	db := ts.session.GetUniqueInstance()
+	defer db.Close()
+
+	_, err := db.Users.GetUser(cmd.UserId)
 	if err != nil {
 		return ts.error(cmd, "The user does not exist")
 	}
 
-	trig, err := ts.db.Triggers.Get(cmd.UserId, cmd.StockSymbol, "SELL")
+	trig, err := db.Triggers.Get(cmd.UserId, cmd.StockSymbol, "SELL")
 	if err != nil {
 		return ts.error(cmd, "User must set sell amount first")
 	}
 
 	trig.When = cmd.Amount
-	ts.db.Triggers.Set(trig)
+	db.Triggers.Set(trig)
 
 	return &common.Response{Success: true}, nil
 }
 
 func (ts *TxnRPC) CANCEL_SET_SELL(cmd *common.Command) (*common.Response, error) {
-	_, err := ts.db.Users.GetUser(cmd.UserId)
+	db := ts.session.GetUniqueInstance()
+	defer db.Close()
+
+	_, err := db.Users.GetUser(cmd.UserId)
 	if err != nil {
 		return ts.error(cmd, "The user does not exist")
 	}
 
-	trig, err := ts.db.Triggers.Cancel(cmd.UserId, cmd.StockSymbol, "SELL")
+	trig, err := db.Triggers.Cancel(cmd.UserId, cmd.StockSymbol, "SELL")
 	if err != nil {
 		return ts.error(cmd, "No sell trigger to cancel")
 	}
 
-	_, err = ts.db.Users.UnreserveShares(cmd.UserId, cmd.StockSymbol, trig.Shares)
+	_, err = db.Users.UnreserveShares(cmd.UserId, cmd.StockSymbol, trig.Shares)
 	if err != nil {
 		log.Println(err)
 		return ts.error(cmd, "Internal server error")
@@ -350,7 +384,10 @@ func (ts *TxnRPC) DUMPLOG(cmd *common.Command) (*common.Response, error) {
 	var data *[]byte
 	var err error
 	if cmd.UserId != "admin" {
-		_, err = ts.db.Users.GetUser(cmd.UserId)
+		db := ts.session.GetSharedInstance()
+		defer db.Close()
+
+		_, err = db.Users.GetUser(cmd.UserId)
 		if err != nil {
 			return ts.error(cmd, "The user does not exist")
 		}
@@ -369,17 +406,20 @@ func (ts *TxnRPC) DUMPLOG(cmd *common.Command) (*common.Response, error) {
 }
 
 func (ts *TxnRPC) DISPLAY_SUMMARY(cmd *common.Command) (*common.Response, error) {
-	user, err := ts.db.Users.GetUser(cmd.UserId)
+	db := ts.session.GetUniqueInstance()
+	defer db.Close()
+
+	user, err := db.Users.GetUser(cmd.UserId)
 	if err != nil {
 		return ts.error(cmd, "The user does not exist")
 	}
 
-	transactions, err := ts.db.Transactions.Get(cmd.UserId)
+	transactions, err := db.Transactions.Get(cmd.UserId)
 	if err != nil {
 		return ts.error(cmd, "Failed to get transactions")
 	}
 
-	triggers, err := ts.db.Triggers.GetAllUser(cmd.UserId)
+	triggers, err := db.Triggers.GetAllUser(cmd.UserId)
 	if err != nil {
 		return ts.error(cmd, "Failed to get triggers")
 	}
@@ -404,6 +444,6 @@ func (ts *TxnRPC) DISPLAY_SUMMARY(cmd *common.Command) (*common.Response, error)
 	}, nil
 }
 
-func GetTxnRPC(c Cache, db *CacheDB, l Logger) *TxnRPC {
-	return &TxnRPC{cache: c, db: db, logger: l}
+func GetTxnRPC(c CacheUtil, session *CacheMongoSession, l Logger) *TxnRPC {
+	return &TxnRPC{cache: c, session: session, logger: l}
 }

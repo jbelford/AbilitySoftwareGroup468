@@ -13,17 +13,18 @@ import (
 type TransactionServer struct{}
 
 func (ts *TransactionServer) Start() {
-	db := tools.NewCacheDB()
-	defer db.Close()
 	logger := tools.GetLogger(common.CFG.TxnServer.Url)
 	defer logger.Close()
-	cache := tools.NewCache(logger)
+
+	util := tools.NewCacheUtil(logger)
+	session := tools.GetCacheMongoSession()
+	defer session.Close()
 
 	// Start trigger manager
-	tm := tools.NewTrigMan(cache, db, logger)
+	tm := tools.NewTrigMan(util, session, logger)
 	tm.Start()
 
-	txn := tools.GetTxnRPC(cache, db, logger)
+	txn := tools.GetTxnRPC(util, session, logger)
 
 	dispatcher := gorpc.NewDispatcher()
 	dispatcher.AddService(tools.TxnServiceName, txn)
