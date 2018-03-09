@@ -175,6 +175,10 @@ func main() {
 	now := time.Now()
 	log.Println("Finished for loop")
 	log.Println("Ran for: ", now.Sub(start))
+
+	for {
+		time.Sleep(time.Duration(100))
+	}
 	//log.Println(sentMessages)
 }
 

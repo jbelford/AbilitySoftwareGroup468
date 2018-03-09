@@ -76,6 +76,9 @@ services:
     #  - web
     depends_on:
       - web
+    deploy:
+      restart_policy:
+        condition: on-failure
     networks:
       mynetwork:
         aliases:
