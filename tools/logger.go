@@ -3,6 +3,7 @@ package tools
 import (
 	"encoding/xml"
 	"log"
+	"os"
 	"time"
 
 	"github.com/valyala/gorpc"
@@ -190,6 +191,12 @@ func (l *LoggerRPC) readLog(userid string) ([]byte, error) {
 		data = append(data, toWrite...)
 	}
 	data = append(data, []byte("</log>")...)
+
+	if f, err := os.OpenFile("log.xml", os.O_WRONLY|os.O_CREATE, 0777); err == nil {
+		defer f.Close()
+		f.Write(data)
+	}
+
 	return data, nil
 }
 
