@@ -24,3 +24,5 @@ data/
 *.xml
 
 *.exe~
+
+workloads/stats.txt

@@ -2,92 +2,123 @@ package main
 
 import (
 	"bufio"
+	"crypto/tls"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 const (
 	//CTYPE   = "C_type"
-	USER        = "UserId"
-	AMOUNT      = "Amount"
-	STOCK       = "StockSymbol"
-	FILE        = "FileName"
-	WEB_URL     = "http://web:44420"
-	NUM_WORKERS = 10000
+	USER    = "UserId"
+	AMOUNT  = "Amount"
+	STOCK   = "StockSymbol"
+	FILE    = "FileName"
+	WEB_URL = "http://web:44420"
 )
 
 type endpoint struct {
+	Key    string
 	Method string
 	Query  string
 }
 
+type Result struct {
+	Key       string
+	Code      uint16        `json:"code"`
+	Timestamp time.Time     `json:"timestamp"`
+	Latency   time.Duration `json:"latency"`
+	BytesOut  uint64        `json:"bytes_out"`
+	BytesIn   uint64        `json:"bytes_in"`
+	Error     string        `json:"error"`
+}
+
 var rest = map[string]endpoint{
 	"ADD": endpoint{
+		Key:    "ADD",
 		Method: "POST",
 		Query:  "%s/%d/%s/add?amount=%s",
 	},
 	"QUOTE": endpoint{
+		Key:    "QUOTE",
 		Method: "GET",
 		Query:  "%s/%d/%s/quote?stock=%s",
 	},
 	"BUY": endpoint{
+		Key:    "BUY",
 		Method: "POST",
 		Query:  "%s/%d/%s/buy?stock=%s&amount=%s",
 	},
 	"COMMIT_BUY": endpoint{
+		Key:    "COMMIT_BUY",
 		Method: "POST",
 		Query:  "%s/%d/%s/commit_buy",
 	},
 	"CANCEL_BUY": endpoint{
+		Key:    "CANCEL_BUY",
 		Method: "POST",
 		Query:  "%s/%d/%s/cancel_buy",
 	},
 	"SELL": endpoint{
+		Key:    "SELL",
 		Method: "POST",
 		Query:  "%s/%d/%s/sell?stock=%s&amount=%s",
 	},
 	"COMMIT_SELL": endpoint{
+		Key:    "COMMIT_SELL",
 		Method: "POST",
 		Query:  "%s/%d/%s/commit_sell",
 	},
 	"CANCEL_SELL": endpoint{
+		Key:    "CANCEL_SELL",
 		Method: "POST",
 		Query:  "%s/%d/%s/cancel_sell",
 	},
 	"SET_BUY_AMOUNT": endpoint{
+		Key:    "SET_BUY_AMOUNT",
 		Method: "POST",
 		Query:  "%s/%d/%s/set_buy_amount?stock=%s&amount=%s",
 	},
 	"CANCEL_SET_BUY": endpoint{
+		Key:    "CANCEL_SET_BUY",
 		Method: "POST",
 		Query:  "%s/%d/%s/cancel_set_buy?stock=%s",
 	},
 	"SET_BUY_TRIGGER": endpoint{
+		Key:    "SET_BUY_TRIGGER",
 		Method: "POST",
 		Query:  "%s/%d/%s/set_buy_trigger?stock=%s&amount=%s",
 	},
 	"SET_SELL_AMOUNT": endpoint{
+		Key:    "SET_SELL_AMOUNT",
 		Method: "POST",
 		Query:  "%s/%d/%s/set_sell_amount?stock=%s&amount=%s",
 	},
 	"SET_SELL_TRIGGER": endpoint{
+		Key:    "SET_SELL_TRIGGER",
 		Method: "POST",
 		Query:  "%s/%d/%s/set_sell_trigger?stock=%s&amount=%s",
 	},
 	"CANCEL_SET_SELL": endpoint{
+		Key:    "CANCEL_SET_SELL",
 		Method: "POST",
 		Query:  "%s/%d/%s/cancel_set_sell?stock=%s",
 	},
 	"DUMPLOG": endpoint{
+		Key:    "DUMPLOG",
 		Method: "GET",
 		Query:  "%s/%d/%s/dumplog?filename=%s",
 	},
 	"DISPLAY_SUMMARY": endpoint{
+		Key:    "DISPLAY_SUMMARY",
 		Method: "GET",
 		Query:  "%s/%d/%s/display_summary",
 	},
@@ -141,93 +172,183 @@ func main() {
 		linesInFiles = append(linesInFiles, endpoint)
 	}
 
-	sliceLength := len(linesInFiles)
-	//log.Println(linesInFiles)
-	log.Println("Sending:", sliceLength, "commands.")
-
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-		panic(err) // Used do CI will stop tests.
-	}
-
-	c := make(chan endpoint, 100)
-	done := make(chan bool, NUM_WORKERS)
-	for i := 0; i < NUM_WORKERS; i++ {
-		go startWorker(c, done)
-	}
+	gen := NewGenerator(10)
 
 	log.Println("Sending Traffic to: " + WEB_URL)
 	start := time.Now()
 
-	// Request rate per second
-	rate := 3000
-	sleepTime := time.Second.Nanoseconds() / int64(rate)
-	for _, req := range linesInFiles {
-		c <- req
-		time.Sleep(time.Duration(sleepTime))
-	}
+	rate := uint64(3000)
 
-	close(c)
-	for i := 0; i < NUM_WORKERS; i++ {
-		<-done
+	results := []*Result{}
+	for r := range gen.Start(linesInFiles, rate) {
+		results = append(results, r)
 	}
 
 	now := time.Now()
 	log.Println("Finished for loop")
 	log.Println("Ran for: ", now.Sub(start))
-	//log.Println(sentMessages)
+	log.Println(fmt.Sprintf("Sent %d requests at a rate of %d req/s", len(linesInFiles), rate))
+
+	printStats(results)
 }
 
-func startWorker(ch chan endpoint, done chan bool) {
-	for {
-		data, ok := <-ch
-		if !ok {
-			done <- true
-			return
-		}
-		log.Println("Sending", data)
+type Statistics struct {
+	Count          uint64
+	AverageLatency time.Duration
+	TotalBytesOut  uint64
+	TotalBytesIn   uint64
+	Errors         []string
+}
 
-		client := &http.Client{}
-		req, err := http.NewRequest(data.Method, data.Query, nil)
-		if err != nil {
-			log.Println(err)
-			return
+func printStats(results []*Result) {
+	msg := "--------------------\nSTATISTICs\n--------------------"
+	stats := make(map[string]Statistics)
+	for _, r := range results {
+		s := stats[r.Key]
+		s.Count++
+		s.AverageLatency += r.Latency
+		s.TotalBytesIn += r.BytesIn
+		s.TotalBytesOut += r.BytesOut
+		if r.Error != "" {
+			s.Errors = append(s.Errors, r.Error)
 		}
-		req.Close = true
-		req.Header.Set("Content-Type", "application/json")
+		stats[r.Key] = s
+	}
+	for k, s := range stats {
+		// Fix the latency calculation
+		latency := float64(int64(s.AverageLatency/time.Millisecond)) / float64(s.Count)
+		s.AverageLatency = s.AverageLatency / time.Duration(s.Count)
+		msg += fmt.Sprintf("\n\n%s - Average Latency: %f ms - Total Bytes out: %d - Total Bytes in: %d - Errors: %d\n",
+			k, latency, s.TotalBytesOut, s.TotalBytesIn, len(s.Errors))
+		for _, e := range s.Errors {
+			msg += "\t" + e + "\n"
+		}
+	}
+	f, _ := os.OpenFile("stats.txt", os.O_WRONLY|os.O_CREATE, 0777)
+	f.WriteString(msg)
+}
 
-		success := false
-		for !success {
-			resp, err := client.Do(req)
-			if err != nil {
-				continue
+type ReqInfo struct {
+	Timestamp time.Time
+	Endpoint  endpoint
+}
+
+type WorkLoadGenerator struct {
+	workers uint64
+	client  http.Client
+	dialer  *net.Dialer
+}
+
+func NewGenerator(workers uint64) *WorkLoadGenerator {
+	wl := &WorkLoadGenerator{workers: workers}
+	localAddr := net.IPAddr{IP: net.IPv4zero}
+	timeout := 30 * time.Second
+	tlsConfig := &tls.Config{InsecureSkipVerify: true}
+	wl.dialer = &net.Dialer{
+		LocalAddr: &net.TCPAddr{IP: localAddr.IP, Zone: localAddr.Zone},
+		KeepAlive: 30 * time.Second,
+		Timeout:   timeout,
+	}
+	wl.client = http.Client{
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			Dial:  wl.dialer.Dial,
+			ResponseHeaderTimeout: timeout,
+			TLSClientConfig:       tlsConfig,
+			TLSHandshakeTimeout:   10 * time.Second,
+			MaxIdleConnsPerHost:   10000,
+		},
+	}
+	return wl
+}
+
+func (wl *WorkLoadGenerator) Start(work []endpoint, rate uint64) chan *Result {
+	var workers sync.WaitGroup
+	results := make(chan *Result)
+	ticks := make(chan ReqInfo)
+	for i := uint64(0); i < wl.workers; i++ {
+		workers.Add(1)
+		go wl.attack(&workers, ticks, results)
+	}
+
+	go func() {
+		defer close(results)
+		defer workers.Wait()
+		defer close(ticks)
+		interval := 1e9 / rate
+		hits := uint64(len(work))
+		began, done := time.Now(), uint64(0)
+		for {
+			now, next := time.Now(), began.Add(time.Duration(done*interval))
+			time.Sleep(next.Sub(now))
+			select {
+			case ticks <- ReqInfo{Timestamp: max(next, now), Endpoint: work[done]}:
+				if done++; done == hits {
+					return
+				}
+			default: // All workers are blocked so lets create another worker
+				if wl.workers < 8000 {
+					wl.workers++
+					workers.Add(1)
+					go wl.attack(&workers, ticks, results)
+				}
 			}
-			success = true
-			if resp.StatusCode != 200 {
-				log.Println(resp.StatusCode, data.Method, data.Query, resp.Body)
-			}
-			resp.Body.Close()
 		}
+	}()
+
+	return results
+}
+
+func (wl *WorkLoadGenerator) attack(workers *sync.WaitGroup, ticks chan ReqInfo, results chan *Result) {
+	defer workers.Done()
+	for reqInfo := range ticks {
+		results <- wl.hit(reqInfo)
 	}
 }
 
-// rate := uint64(100)
-// duration := 30 * time.Second
-// targeter := vegeta.NewStaticTargeter(vegeta.Target{
-// 	Method: "GET",
-// 	URL:    "http://127.0.0.1:8081/test/quote?stock=ABC",
-// })
-// attacker := vegeta.NewAttacker()
-// var metrics vegeta.Metrics
-// for res := range attacker.Attack(targeter, rate, duration) {
-// 	metrics.Add(res)
-// }
-// metrics.Close()
-// fmt.Printf("99th percentile: %s\n", metrics.Latencies.P99)
-// reporter := vegeta.NewJSONReporter(&metrics)
+func (wl *WorkLoadGenerator) hit(reqInfo ReqInfo) *Result {
+	var err error
+	ep := reqInfo.Endpoint
+	res := Result{Timestamp: reqInfo.Timestamp, Key: ep.Key}
 
-// f, _ := os.OpenFile("results.json", os.O_WRONLY|os.O_CREATE, 0700)
+	defer func() {
+		res.Latency = time.Since(reqInfo.Timestamp)
+		if err != nil {
+			res.Error = err.Error()
+		}
+	}()
 
-// reporter.Report(f)
+	req, err := http.NewRequest(ep.Method, ep.Query, nil)
+	if err != nil {
+		return &res
+	}
 
-// f.Close()
+	r, err := wl.client.Do(req)
+	if err != nil {
+		return &res
+	}
+	defer r.Body.Close()
+
+	in, err := io.Copy(ioutil.Discard, r.Body)
+	if err != nil {
+		return &res
+	}
+	res.BytesIn = uint64(in)
+
+	if req.ContentLength != -1 {
+		res.BytesOut = uint64(req.ContentLength)
+	}
+
+	if res.Code = uint16(r.StatusCode); res.Code < 200 || res.Code >= 400 {
+		res.Error = r.Status
+	}
+
+	return &res
+}
+
+func max(a, b time.Time) time.Time {
+	if a.After(b) {
+		return a
+	}
+	return b
+}
