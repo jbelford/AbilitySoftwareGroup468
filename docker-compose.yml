@@ -101,3 +101,5 @@ services:
 networks:
   mynetwork:
     driver: overlay
+    #scope: swarm
+    #attachable: true
