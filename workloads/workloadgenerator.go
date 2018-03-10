@@ -25,6 +25,8 @@ const (
 	WEB_URL = "http://web:44420"
 )
 
+var MAX_WORKERS = uint64(8000)
+
 type endpoint struct {
 	Key    string
 	Method string
@@ -154,7 +156,11 @@ func parseWorkloadCommand(cmdLine string, i int64) endpoint {
 func main() {
 	if len(os.Args) < 2 {
 		panic("Missing arguments: <workLoadFile>")
+	} else if len(os.Args) == 3 {
+		MAX_WORKERS, _ = strconv.ParseUint(os.Args[2], 10, 64)
 	}
+	log.Printf("Using %d workers...", MAX_WORKERS)
+
 	pathToFile := os.Args[1]
 	file, err := os.Open(pathToFile)
 	if err != nil {
@@ -172,7 +178,7 @@ func main() {
 		linesInFiles = append(linesInFiles, endpoint)
 	}
 
-	gen := NewGenerator(10)
+	gen := NewGenerator(1000)
 
 	log.Println("Sending Traffic to: " + WEB_URL)
 	start := time.Now()
@@ -228,8 +234,12 @@ func printStats(results []*Result) {
 			msg += "\t" + e + "\n"
 		}
 	}
-	f, _ := os.OpenFile("stats.txt", os.O_WRONLY|os.O_CREATE, 0777)
-	f.WriteString(msg)
+	if f, err := os.OpenFile("stats.txt", os.O_WRONLY|os.O_CREATE, 0777); err == nil {
+		defer f.Close()
+		f.WriteString(msg)
+	} else {
+		log.Println(msg)
+	}
 }
 
 type ReqInfo struct {
@@ -269,6 +279,7 @@ func NewGenerator(workers uint64) *WorkLoadGenerator {
 func (wl *WorkLoadGenerator) Start(work []endpoint, rate uint64) chan *Result {
 	var workers sync.WaitGroup
 	results := make(chan *Result)
+
 	ticks := make(chan ReqInfo)
 	for i := uint64(0); i < wl.workers; i++ {
 		workers.Add(1)
@@ -291,7 +302,7 @@ func (wl *WorkLoadGenerator) Start(work []endpoint, rate uint64) chan *Result {
 					return
 				}
 			default: // All workers are blocked so lets create another worker
-				if wl.workers < 8000 {
+				if wl.workers < MAX_WORKERS {
 					wl.workers++
 					workers.Add(1)
 					go wl.attack(&workers, ticks, results)
