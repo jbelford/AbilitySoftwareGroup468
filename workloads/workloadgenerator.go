@@ -183,7 +183,7 @@ func main() {
 	log.Println("Sending Traffic to: " + WEB_URL)
 	start := time.Now()
 
-	rate := uint64(3000)
+	rate := uint64(2300)
 
 	results := []*Result{}
 	for r := range gen.Start(linesInFiles, rate) {

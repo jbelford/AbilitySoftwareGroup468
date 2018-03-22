@@ -6,6 +6,7 @@ import (
 	"net"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // GetQuote returns quote data provided by the legacy quote server
@@ -13,6 +14,7 @@ func GetQuote(symbol string, userid string) (*QuoteData, error) {
 	var msg string
 
 	if CFG.Quoteserver.Mock {
+		time.Sleep(time.Millisecond * 300)
 		msg = fmt.Sprintf("12.50,%s,%s,1111111111,123198fadfa", symbol, userid)
 	} else {
 		tcpConn, err := net.Dial("tcp", CFG.Quoteserver.Address)

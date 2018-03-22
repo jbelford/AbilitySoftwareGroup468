@@ -245,7 +245,7 @@ func GetLoggerRPC(session *MongoSession) *LoggerRPC {
 }
 
 func (l *LoggerRPC) initBulkProcessing() {
-	limit := 100
+	limit := 100000
 	l.work = make(chan *common.EventLog, limit)
 	l.flush = make(chan bool)
 	go func() {

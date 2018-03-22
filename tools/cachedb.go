@@ -102,22 +102,23 @@ func (u *cacheUsers) ReserveShares(userId string, stock string, shares int) (*co
 
 func (u *cacheUsers) GetUser(userId string) (*common.User, error) {
 	checkKey := fmt.Sprintf(notExistsKey, userId)
-	if err := u.Get(checkKey, nil); err == nil {
+	if err := u.Get(checkKey, nil, nil); err == nil {
 		return nil, errors.New("User does not exist")
 	}
 
 	key := fmt.Sprintf(userKey, userId)
 	user := &common.User{}
-	err := u.Get(key, &user)
-	if err != nil {
-		if user, err = u.cln.GetUser(userId); err != nil {
-			// Mark that the user doesn't exist for next time
-			u.Set(checkKey, true)
-			return nil, err
+	err := u.Get(key, &user, func(hit bool, result interface{}) (interface{}, error) {
+		if !hit {
+			user, err := u.cln.GetUser(userId)
+			if err != nil {
+				u.Set(checkKey, true)
+			}
+			return user, err
 		}
-		u.Set(key, user)
-	}
-	return user, nil
+		return nil, nil
+	})
+	return user, err
 }
 
 func (u *cacheUsers) BulkTransaction(txns []*common.PendingTxn, wasCached bool) error {
@@ -166,7 +167,7 @@ func (ct *cacheTrig) Set(t *common.Trigger) (*common.Trigger, error) {
 
 func (ct *cacheTrig) Cancel(userId string, stock string, trigType string) (*common.Trigger, error) {
 	checkKey := fmt.Sprintf(trigNotExistsKey, userId, trigType, stock)
-	if err := ct.cache.Get(checkKey, nil); err == nil {
+	if err := ct.cache.Get(checkKey, nil, nil); err == nil {
 		return nil, errors.New("Trigger does not exist")
 	}
 
@@ -181,26 +182,28 @@ func (ct *cacheTrig) Cancel(userId string, stock string, trigType string) (*comm
 
 func (ct *cacheTrig) Get(userId string, stock string, trigType string) (*common.Trigger, error) {
 	checkKey := fmt.Sprintf(trigNotExistsKey, userId, trigType, stock)
-	if err := ct.cache.Get(checkKey, nil); err == nil {
+	if err := ct.cache.Get(checkKey, nil, nil); err == nil {
 		return nil, errors.New("Trigger does not exist")
 	}
 
 	key := fmt.Sprintf(triggerKey, userId, trigType, stock)
 	t := &common.Trigger{}
-	err := ct.cache.Get(key, &t)
-	if err != nil {
-		if t, err = ct.cln.Get(userId, stock, trigType); err != nil {
-			ct.cache.Set(checkKey, true)
-			return nil, err
+	err := ct.cache.Get(key, &t, func(hit bool, result interface{}) (interface{}, error) {
+		if !hit {
+			trig, err := ct.cln.Get(userId, stock, trigType)
+			if err != nil {
+				ct.cache.Set(checkKey, true)
+			}
+			return trig, err
 		}
-		ct.cache.Set(key, t)
-	}
-	return t, nil
+		return nil, nil
+	})
+	return t, err
 }
 
 func (ct *cacheTrig) GetAllUser(userId string) ([]common.Trigger, error) {
 	checkKey := fmt.Sprintf(userNoTrigKey, userId)
-	if err := ct.cache.Get(checkKey, nil); err == nil {
+	if err := ct.cache.Get(checkKey, nil, nil); err == nil {
 		return []common.Trigger{}, nil
 	}
 
@@ -251,14 +254,17 @@ func (ct *cacheTxns) BulkLog(txns []*common.PendingTxn, triggered bool) error {
 func (ct *cacheTxns) Get(userId string) (*common.Transactions, error) {
 	key := fmt.Sprintf(txnKey, userId)
 	txns := &common.Transactions{}
-	err := ct.cache.Get(key, &txns)
-	if err != nil {
-		if txns, err = ct.cln.Get(userId); err != nil {
-			txns = &common.Transactions{UserId: userId, Logged: []common.Transaction{}}
+	err := ct.cache.Get(key, &txns, func(hit bool, result interface{}) (interface{}, error) {
+		if !hit {
+			txns, err := ct.cln.Get(userId)
+			if err != nil {
+				txns = &common.Transactions{UserId: userId, Logged: []common.Transaction{}}
+			}
+			return txns, err
 		}
-		ct.cache.Set(key, txns)
-	}
-	return txns, nil
+		return nil, nil
+	})
+	return txns, err
 }
 
 type cacheLogs struct {
