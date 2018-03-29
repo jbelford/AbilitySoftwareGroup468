@@ -2,6 +2,7 @@ package tools
 
 import (
 	"encoding/xml"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -56,12 +57,17 @@ func (l *logger) UserCommand(cmd *common.Command) error {
 }
 
 func (l *logger) QuoteServer(quote *common.QuoteData, tid int64) error {
+	// Convert integer price to string without using floating point arithmetic
+	price := fmt.Sprintf("%03d", quote.Quote) // Pads zeros if length less than 3
+	mid := len(price) - 2
+	price = price[:mid] + "." + price[mid:]
+
 	args := &QuoteServer{
 		TransactionNum:  tid,
 		Timestamp:       uint64(time.Now().Unix() * 1000),
 		Server:          l.server,
 		Username:        quote.UserId,
-		Price:           quote.Quote,
+		Price:           price,
 		StockSymbol:     quote.Symbol,
 		QuoteServerTime: quote.Timestamp,
 		Cryptokey:       quote.Cryptokey,
