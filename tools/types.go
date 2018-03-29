@@ -25,7 +25,7 @@ type QuoteServer struct {
 	Timestamp       uint64   `xml:"timestamp"`
 	Server          string   `xml:"server"`
 	TransactionNum  int64    `xml:"transactionNum"`
-	Price           int64    `xml:"price"`
+	Price           string   `xml:"price"`
 	StockSymbol     string   `xml:"stockSymbol"`
 	Username        string   `xml:"username"`
 	QuoteServerTime uint64   `xml:"quoteServerTime"`
