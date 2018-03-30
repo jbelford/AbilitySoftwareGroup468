@@ -2,18 +2,66 @@
 <html lang='en'>
 <head>
   <meta charset='utf-8'/>
-  <title>Innoti.me</title>
+  <title>Stocks</title>
   <meta name='viewport' content='width=device-width, initial-scale=1'>
   <style>
 
   </style>
+
 </head>
 <body>
   <h1>Welcome {{.userid}}</h1>
-  
 
-{{.command}}
+  <input name="quote" id="quote" placeholder="stock id"></input>
+  <input name="amount" id="amount" placeholder="amount"></input><br/>
+<button onclick="g_action(this)" name="DISPLAY_SUMMARY" id="DISPLAY_SUMMARY">DISPLAY_SUMMARY</button></br>
+<button onclick="action(this)" name="ADD" id="ADD">ADD</button></br>
+<button onclick="g_action(this)" name="QUOTE" id="QUOTE">QUOTE</button></br>
+<button onclick="action(this)" name="BUY" id="BUY">BUY</button></br>
+<button onclick="action(this)" name="COMMIT_BUY" id="COMMIT_BUY">COMMIT_BUY</button> </br>
+<button onclick="action(this)" name="CANCEL_BUY" id="CANCEL_BUY">CANCEL_BUY</button> </br>
+<button onclick="action(this)" name="SELL" id="SELL">SELL</button></br>
+<button onclick="action(this)" name="COMMIT_SELL" id="COMMIT_SELL">COMMIT_SELL</button> </br>
+<button onclick="action(this)" name="CANCEL_SELL" id="CANCEL_SELL">CANCEL_SELL</button> </br>
+<button onclick="action(this)" name="SET_BUY_AMOUNT" id="SET_BUY_AMOUNT">SET_BUY_AMOUNT</button></br>
+<button onclick="action(this)" name="SET_BUY_TRIGGER" id="SET_BUY_TRIGGER">SET_BUY_TRIGGER</button> </br>
+<button onclick="action(this)" name="CANCEL_SET_BUY" id="CANCEL_SET_BUY">CANCEL_SET_BUY</button> </br>
+<button onclick="action(this)" name="SET_SELL_AMOUNT" id="SET_SELL_AMOUNT">SET_SELL_AMOUNT</button></br>
+<button onclick="action(this)" name="SET_SELL_TRIGGER" id="SET_SELL_TRIGGER">SET_SELL_TRIGGER</button> </br>
+<button onclick="action(this)" name="CANCEL_SET_SELL" id="CANCEL_SET_SELL">CANCEL_SET_SELL</button> </br>
+<button onclick="g_action(this)" name="DUMPLOG" id="DUMPLOG">DUMPLOG</button> <br/>
+<button onclick="g_action(this)" name="ADMIN_DUMPLOG" id="ADMIN_DUMPLOG">ADMIN_DUMPLOG</button> </br>
 
+<h4>User info </h4>
+<div id="user">
 
+</div>
+
+<script>
+var tid = 0;
+var uid = "asdf";
+window.onload = function(){
+  //document.getElementByTagName("button").click()
+}
+
+function action(t){
+  console.log(t.id)
+  var xhttp = new XMLHttpRequest();
+  xhttp.open("POST",tid + "/" + uid + "/" + t.id + "?amount=" + document.getElementById("amount").value + "&stock=" + document.getElementById("quote").value,true);
+  xhttp.send()
+  document.getElementById("user").innerHTML = xhttp.response;
+  tid ++;
+}
+function g_action(t){
+  console.log(t.id)
+  var xhttp = new XMLHttpRequest();
+  xhttp.open("GET",tid + "/" + uid + "/" + t.id + "?amount=" + document.getElementById("amount").value + "&stock=" + document.getElementById("quote").value,true);
+  xhttp.send()
+  document.getElementById("user").innerHTML = xhttp.response;
+  tid ++;
+}
+
+</script>
 </body>
+
 </html>
