@@ -196,6 +196,10 @@ func main() {
 	log.Println(fmt.Sprintf("Sent %d requests at a rate of %d req/s", len(linesInFiles), rate))
 
 	printStats(results)
+
+	for {
+		time.Sleep(time.Duration(100))
+	}
 }
 
 type Statistics struct {

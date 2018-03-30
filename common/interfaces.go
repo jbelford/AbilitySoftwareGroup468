@@ -73,6 +73,7 @@ type PendingTxn struct {
 type Config struct {
 	Database struct {
 		Url  string `json:"url"`
+		LUrl string `json:"lurl"`
 		Name string `json:"name"`
 	} `json:"database"`
 	Quoteserver struct {
@@ -81,12 +82,15 @@ type Config struct {
 	} `json:"quoteserver"`
 	TxnServer struct {
 		Url string `json:"url"`
+		LUrl string `json:"lurl"`
 	} `json:"transactionserver"`
 	WebServer struct {
 		Url string `json:"url"`
+		LUrl string `json:"lurl"`
 	} `json:"webserver"`
 	AuditServer struct {
 		Url string `json:"url"`
+		LUrl string `json:"lurl"`
 	} `json:"auditserver"`
 }
 

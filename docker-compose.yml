@@ -6,60 +6,65 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    links:
-      - mongodb:db1.prod.ability.com
-      - auditserver:auditserver.prod.ability.com
-    ports:
-      - 44421:44421
-    expose:
-      - 44421
+    #links:
+    #  - mongo #:db1.prod.ability.com
+    #  - audit #:auditserver.prod.ability.com
+    #ports:
+    #  - "44421"
+    #expose:
+    #  - 44421
     depends_on:
-      - mongodb
-      - auditserver
+      - mongo
+      - audit
     command: transaction --prod
     tty: true
     networks:
       mynetwork:
         aliases:
-          - transaction.prod.ability.com
+          - transactionserver
   web:
     container_name: "web"
     image: ability:latest
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      #- 44420
-      - "8080:44420"
-    expose:
-      - 44420
-    links:
-      - transaction:transaction.prod.ability.com
+    #ports:
+    #  #- 44420
+    #  - "8080:44420"
+    #expose:
+    #  - 44420
+    #links:
+    #  - transaction #:transaction.prod.ability.com
+    #  - mongo #:db1.prod.ability.com
+    #  - audit
     depends_on:
       - transaction
-      - auditserver
+      - audit
     tty: true
     command: webserver --prod
     networks:
-      - scaryoutside
-      - mynetwork
-  auditserver:
+      mynetwork:
+        aliases:
+          - webserver
+  audit:
     container_name: "auditserver"
     image: ability:latest
     build:
       context: .
       dockerfile: Dockerfile
-    expose:
-      - 44422
-    ports:
-      - 44422:44422
+    #expose:
+    #  - 44422
+    #ports:
+    #  - "44422"
     command: auditserver --prod
+    #links:
+    #  - mongo #:db1.prod.ability.com
     tty: true
     networks:
       mynetwork:
         aliases:
-          - auditserver.prod.ability.com
-  workloadgen:
+          - auditserver
+  workload:
     container_name: "workloadgen"
     image: workloadgen:latest
     build:
@@ -67,34 +72,34 @@ services:
       dockerfile: Dockerfile
     tty: true
     entrypoint: go run workloadgenerator.go 45User_testWorkLoad.txt
-    links:
-      - web
+    #links:
+    #  - web
     depends_on:
       - web
+    deploy:
+      restart_policy:
+        condition: on-failure
     networks:
       mynetwork:
         aliases:
-          - workgen.prod.ability.com
-  mongodb:
+          - workloadgen
+  mongo:
     image: mongo:latest
     container_name: "mongodb"
     environment:
       - MONGO_DATA_DIR=/data/db
       #- MONGO_LOG_DIR=/dev/null
-    expose:
-      - 44423
-    ports:
-      - 44423:44423
-    command: mongod --smallfiles --port 44423 --bind_ip db1.prod.ability.com #--logpath=/dev/null # --quiet
+    #expose:
+    #  - 44423
+    #ports:
+    #  - "44423"
+    command: mongod --smallfiles --port 44423 #--bind_ip mongodb #--logpath=/dev/null # --quiet
     networks:
       mynetwork:
         aliases:
-          - db1.prod.ability.com
+          - mongodb
 networks:
   mynetwork:
     driver: overlay
-    #ipam:
-      #driver: default
-      #config:
-        #- subnet: 10.0.1.0/24
-  scaryoutside:
+    #scope: swarm
+    #attachable: true

@@ -13,7 +13,7 @@ import (
 type TransactionServer struct{}
 
 func (ts *TransactionServer) Start() {
-	logger := tools.GetLogger(common.CFG.TxnServer.Url)
+	logger := tools.GetLogger(common.CFG.TxnServer.LUrl)
 	defer logger.Close()
 
 	util := tools.NewCacheUtil(logger)
@@ -28,7 +28,7 @@ func (ts *TransactionServer) Start() {
 
 	dispatcher := gorpc.NewDispatcher()
 	dispatcher.AddService(tools.TxnServiceName, txn)
-	server := gorpc.NewTCPServer(common.CFG.TxnServer.Url, dispatcher.NewHandlerFunc())
+	server := gorpc.NewTCPServer(common.CFG.TxnServer.LUrl, dispatcher.NewHandlerFunc())
 
 	err := server.Serve()
 	if err != nil {

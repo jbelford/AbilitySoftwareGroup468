@@ -1,12 +1,13 @@
 {
     "database": {
         "url": "localhost:27017",
+        "lurl": "localhost:27017",
         "name": "seng468"
     },
     "quoteserver": {
         "address": "quoteserve.seng:4443",
         "mock": true
-    },    
+    },
     "transactionserver": {
         "url": "localhost:8080"
     },
