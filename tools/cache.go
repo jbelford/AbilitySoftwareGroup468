@@ -2,6 +2,7 @@ package tools
 
 import (
 	"log"
+	"sync"
 	"time"
 
 	"github.com/allegro/bigcache"
@@ -10,6 +11,15 @@ import (
 )
 
 type Cache interface {
+	// Thread locks access to the object at the key
+	// Optional: setFunc can be used to set a new value before releasing the lock
+	// , setFunc func(hit bool, result interface{}) (interface{}, error)
+	GetLock(key string) *sync.RWMutex
+	// Convenience methods that lock before operation
+	GetSync(key string, obj interface{}) error
+	SetSync(key string, obj interface{})
+	DeleteSync(key string)
+	// Normal non-locking operations
 	Get(key string, obj interface{}) error
 	Set(key string, obj interface{})
 	Delete(key string)
@@ -17,6 +27,47 @@ type Cache interface {
 
 type cache struct {
 	bcache *bigcache.BigCache
+	locks  map[string]*sync.RWMutex
+	mtx    *sync.RWMutex
+}
+
+func (c *cache) GetLock(key string) *sync.RWMutex {
+	// Allow concurrent reading
+	c.mtx.RLock()
+	lock := c.locks[key]
+	c.mtx.RUnlock()
+	// If lock doesn't exist then we need to serially block until its set
+	if lock == nil {
+		c.mtx.Lock()
+		lock = c.locks[key] // need to check again due to race condition
+		if lock == nil {
+			lock = &sync.RWMutex{}
+			c.locks[key] = lock
+		}
+		c.mtx.Unlock()
+	}
+	return lock
+}
+
+func (c *cache) GetSync(key string, obj interface{}) error {
+	lock := c.GetLock(key)
+	lock.RLock()
+	defer lock.RUnlock()
+	return c.Get(key, obj)
+}
+
+func (c *cache) SetSync(key string, obj interface{}) {
+	lock := c.GetLock(key)
+	lock.Lock()
+	defer lock.Unlock()
+	c.Set(key, obj)
+}
+
+func (c *cache) DeleteSync(key string) {
+	lock := c.GetLock(key)
+	lock.Lock()
+	defer lock.Unlock()
+	c.Delete(key)
 }
 
 func (c *cache) Get(key string, obj interface{}) error {
@@ -40,8 +91,16 @@ func (c *cache) Delete(key string) {
 }
 
 func NewCache() Cache {
-	c, _ := bigcache.NewBigCache(bigcache.DefaultConfig(time.Minute))
-	return &cache{c}
+	rwMtx := sync.RWMutex{}
+	locks := make(map[string]*sync.RWMutex)
+	cfg := bigcache.DefaultConfig(time.Minute)
+	cfg.OnRemove = func(key string, data []byte) {
+		rwMtx.Lock()
+		defer rwMtx.Unlock()
+		delete(locks, key)
+	}
+	c, _ := bigcache.NewBigCache(cfg)
+	return &cache{c, locks, &rwMtx}
 }
 
 type CacheUtil interface {
@@ -59,7 +118,9 @@ type cacheUtil struct {
 
 func (c *cacheUtil) GetQuote(symbol string, userId string, tid int64) (*common.QuoteData, error) {
 	key := "Quote:" + symbol
+	lock := c.GetLock(key)
 	quote := &common.QuoteData{}
+	lock.Lock()
 	err := c.Get(key, quote)
 	if err != nil {
 		quote, err = common.GetQuote(symbol, userId)
@@ -69,6 +130,7 @@ func (c *cacheUtil) GetQuote(symbol string, userId string, tid int64) (*common.Q
 		go c.logger.QuoteServer(quote, tid)
 		c.Set(key, quote)
 	}
+	lock.Unlock()
 	return quote, nil
 }
 
@@ -77,7 +139,7 @@ func (c *cacheUtil) GetQuote(symbol string, userId string, tid int64) (*common.Q
 func (c *cacheUtil) GetReserved(userId string) int64 {
 	key := userId + ":BUY"
 	buys := []common.PendingTxn{}
-	err := c.Get(key, &buys)
+	err := c.GetSync(key, &buys)
 	if err != nil {
 		return 0
 	}
@@ -99,7 +161,7 @@ func (c *cacheUtil) GetReserved(userId string) int64 {
 func (c *cacheUtil) GetReservedShares(userId string) map[string]int {
 	key := userId + ":SELL"
 	sells := []common.PendingTxn{}
-	err := c.Get(key, &sells)
+	err := c.GetSync(key, &sells)
 	if err != nil {
 		return nil
 	}
@@ -120,13 +182,17 @@ func (c *cacheUtil) GetReservedShares(userId string) map[string]int {
 // The txn is given a time-to-live of 60s
 func (c *cacheUtil) PushPendingTxn(pending common.PendingTxn) {
 	key := pending.UserId + ":" + pending.Type
+	lock := c.GetLock(key)
 	buys := []common.PendingTxn{}
+	lock.Lock()
 	err := c.Get(key, &buys)
 	if err != nil {
-		c.Set(key, []common.PendingTxn{pending})
+		buys = []common.PendingTxn{pending}
 	} else {
-		c.Set(key, append(buys, pending))
+		buys = append(buys, pending)
 	}
+	c.Set(key, buys)
+	lock.Unlock()
 }
 
 // PopPendingTxn removes the most recent pending transaction of the specified type (BUY or SELL)
@@ -134,10 +200,14 @@ func (c *cacheUtil) PushPendingTxn(pending common.PendingTxn) {
 func (c *cacheUtil) PopPendingTxn(userId string, txnType string) *common.PendingTxn {
 	key := userId + ":" + txnType
 	buys := []common.PendingTxn{}
-	err := c.Get(key, &buys)
+	err := c.GetSync(key, &buys)
 	if err != nil {
 		return nil
 	}
+	lock := c.GetLock(key)
+	lock.Lock()
+	defer lock.Unlock()
+
 	c.Delete(key)
 	now := time.Now()
 	n := len(buys)
