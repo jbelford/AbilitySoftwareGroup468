@@ -15,7 +15,7 @@ func GetQuote(symbol string, userid string) (*QuoteData, error) {
 
 	if CFG.Quoteserver.Mock {
 		time.Sleep(time.Millisecond * 300)
-		msg = fmt.Sprintf("12.50,%s,%s,1111111111,123198fadfa", symbol, userid)
+		msg = fmt.Sprintf("12.50,%s,%s,1111111111,123198fadfa\n", symbol, userid)
 	} else {
 		tcpConn, err := net.Dial("tcp", CFG.Quoteserver.Address)
 		if err != nil {
@@ -29,6 +29,9 @@ func GetQuote(symbol string, userid string) (*QuoteData, error) {
 	}
 
 	args := strings.Split(msg, ",")
+	for i, a := range args {
+		args[i] = strings.TrimSpace(a)
+	}
 	quote, _ := strconv.ParseFloat(args[0], 64)
 	timestamp, _ := strconv.ParseUint(args[3], 10, 64)
 	data := &QuoteData{
