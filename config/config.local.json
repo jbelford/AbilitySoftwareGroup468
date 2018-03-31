@@ -9,12 +9,15 @@
         "mock": true
     },
     "transactionserver": {
-        "url": "localhost:8080"
+        "url": "localhost:8080",
+        "lurl": "localhost:8080"
     },
     "webserver": {
-        "url": "localhost:8081"
+        "url": "localhost:8081",
+        "lurl": "localhost:8081"
     },
     "auditserver": {
-        "url": "localhost:8082"
+        "url": "localhost:8082",
+        "lurl": "localhost:8082"
     }
 }
