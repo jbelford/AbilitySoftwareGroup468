@@ -39,6 +39,6 @@ func GetQuote(symbol string, userid string) (*QuoteData, error) {
 		Symbol:    args[1],
 		UserId:    args[2],
 		Timestamp: timestamp,
-		Cryptokey: args[4]}
+		Cryptokey: args[4]}	
 	return data, nil
 }

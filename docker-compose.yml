@@ -16,6 +16,8 @@ services:
     depends_on:
       - mongo
       - audit
+    extra_hosts:
+      - "quoteserve.seng:192.168.1.135"
     command: transaction --prod
     tty: true
     networks:
@@ -100,6 +102,6 @@ services:
           - mongodb
 networks:
   mynetwork:
-    driver: overlay
+    external: true
     #scope: swarm
     #attachable: true

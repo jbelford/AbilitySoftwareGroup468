@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"time"
+	"strings"
 
 	"github.com/valyala/gorpc"
 
@@ -61,6 +62,7 @@ func (l *logger) QuoteServer(quote *common.QuoteData, tid int64) error {
 	price := fmt.Sprintf("%03d", quote.Quote) // Pads zeros if length less than 3
 	mid := len(price) - 2
 	price = price[:mid] + "." + price[mid:]
+	cryptokey := strings.TrimSpace(quote.Cryptokey)
 
 	args := &QuoteServer{
 		TransactionNum:  tid,
@@ -70,7 +72,7 @@ func (l *logger) QuoteServer(quote *common.QuoteData, tid int64) error {
 		Price:           price,
 		StockSymbol:     quote.Symbol,
 		QuoteServerTime: quote.Timestamp,
-		Cryptokey:       quote.Cryptokey,
+		Cryptokey:       cryptokey,
 	}
 	_, err := l.dispatch.Call(quoteServerMethod, args)
 	return err
@@ -274,7 +276,9 @@ func (l *LoggerRPC) wait(limit int) ([]*common.EventLog, bool) {
 	for i := 0; i < limit; i++ {
 		select {
 		case val := <-l.work:
+			log.Printf("%s\n",val)
 			eventLogs = append(eventLogs, val)
+			log.Printf("Properly appended!")
 		case <-l.flush:
 			return eventLogs, true
 		}
