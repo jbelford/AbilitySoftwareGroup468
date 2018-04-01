@@ -121,6 +121,7 @@ func (c *cacheUtil) GetQuote(symbol string, userId string, tid int64) (*common.Q
 	lock := c.GetLock(key)
 	quote := &common.QuoteData{}
 	lock.Lock()
+	defer lock.Unlock()
 	err := c.Get(key, quote)
 	if err != nil {
 		quote, err = common.GetQuote(symbol, userId)
@@ -130,7 +131,6 @@ func (c *cacheUtil) GetQuote(symbol string, userId string, tid int64) (*common.Q
 		go c.logger.QuoteServer(quote, tid)
 		c.Set(key, quote)
 	}
-	lock.Unlock()
 	return quote, nil
 }
 
@@ -185,6 +185,7 @@ func (c *cacheUtil) PushPendingTxn(pending common.PendingTxn) {
 	lock := c.GetLock(key)
 	buys := []common.PendingTxn{}
 	lock.Lock()
+	defer lock.Unlock()
 	err := c.Get(key, &buys)
 	if err != nil {
 		buys = []common.PendingTxn{pending}
@@ -192,7 +193,6 @@ func (c *cacheUtil) PushPendingTxn(pending common.PendingTxn) {
 		buys = append(buys, pending)
 	}
 	c.Set(key, buys)
-	lock.Unlock()
 }
 
 // PopPendingTxn removes the most recent pending transaction of the specified type (BUY or SELL)
