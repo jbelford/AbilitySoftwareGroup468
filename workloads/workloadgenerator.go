@@ -185,10 +185,7 @@ func main() {
 
 	rate := uint64(2300)
 
-	results := []*Result{}
-	for r := range gen.Start(linesInFiles, rate) {
-		results = append(results, r)
-	}
+	results := gen.Start(linesInFiles, rate)
 
 	now := time.Now()
 	log.Println("Finished for loop")
@@ -276,7 +273,7 @@ func NewGenerator(workers uint64) *WorkLoadGenerator {
 	return wl
 }
 
-func (wl *WorkLoadGenerator) Start(work []endpoint, rate uint64) chan *Result {
+func (wl *WorkLoadGenerator) Start(work []endpoint, rate uint64) []*Result {
 	var workers sync.WaitGroup
 	results := make(chan *Result)
 
@@ -285,6 +282,10 @@ func (wl *WorkLoadGenerator) Start(work []endpoint, rate uint64) chan *Result {
 		workers.Add(1)
 		go wl.attack(&workers, ticks, results)
 	}
+
+	n := len(work) - 1
+	lastReq := work[n]
+	work = work[:n]
 
 	go func() {
 		defer close(results)
@@ -296,22 +297,27 @@ func (wl *WorkLoadGenerator) Start(work []endpoint, rate uint64) chan *Result {
 		for {
 			now, next := time.Now(), began.Add(time.Duration(done*interval))
 			time.Sleep(next.Sub(now))
+			nextReq := ReqInfo{Timestamp: max(next, now), Endpoint: work[done]}
 			select {
-			case ticks <- ReqInfo{Timestamp: max(next, now), Endpoint: work[done]}:
+			case ticks <- nextReq:
 				if done++; done == hits {
 					return
 				}
-			default: // All workers are blocked so lets create another worker
-				if wl.workers < MAX_WORKERS {
-					wl.workers++
-					workers.Add(1)
-					go wl.attack(&workers, ticks, results)
-				}
+			default:
+				wl.workers++
+				workers.Add(1)
+				go wl.attack(&workers, ticks, results)
 			}
 		}
 	}()
 
-	return results
+	resultArr := []*Result{}
+	for r := range results {
+		resultArr = append(resultArr, r)
+	}
+	resultArr = append(resultArr, wl.hit(ReqInfo{Timestamp: time.Now(), Endpoint: lastReq}))
+
+	return resultArr
 }
 
 func (wl *WorkLoadGenerator) attack(workers *sync.WaitGroup, ticks chan ReqInfo, results chan *Result) {
@@ -357,7 +363,6 @@ func (wl *WorkLoadGenerator) hit(reqInfo ReqInfo) *Result {
 	if res.Code = uint16(r.StatusCode); res.Code < 200 || res.Code >= 400 {
 		res.Error = r.Status
 	}
-
 	return &res
 }
 
