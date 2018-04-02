@@ -231,6 +231,7 @@ func printStats(results []*Result) {
 			msg += "\t" + e + "\n"
 		}
 	}
+	os.Remove("stats.txt")
 	if f, err := os.OpenFile("stats.txt", os.O_WRONLY|os.O_CREATE, 0777); err == nil {
 		defer f.Close()
 		f.WriteString(msg)
@@ -304,9 +305,11 @@ func (wl *WorkLoadGenerator) Start(work []endpoint, rate uint64) []*Result {
 					return
 				}
 			default:
-				wl.workers++
-				workers.Add(1)
-				go wl.attack(&workers, ticks, results)
+				if wl.workers < MAX_WORKERS {
+					wl.workers++
+					workers.Add(1)
+					go wl.attack(&workers, ticks, results)
+				}
 			}
 		}
 	}()
