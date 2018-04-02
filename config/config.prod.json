@@ -19,5 +19,8 @@
     "auditserver": {
         "url": "auditserver:44422",
         "lurl": "0.0.0.0:44422"
+    },
+    "logging": {
+        "db" : true
     }
 }

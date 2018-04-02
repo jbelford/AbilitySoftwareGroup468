@@ -19,5 +19,8 @@
     "auditserver": {
         "url": "localhost:8082",
         "lurl": "localhost:8082"
+    },
+    "logging": {
+        "db" : false
     }
 }

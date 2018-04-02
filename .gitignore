@@ -26,3 +26,5 @@ data/
 *.exe~
 
 workloads/stats.txt
+
+*.json
