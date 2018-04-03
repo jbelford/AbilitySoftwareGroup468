@@ -1,7 +1,7 @@
 version: '3'
 services:
   transaction:
-    image: ability:latest
+    image: 192.168.1.150:5111/ability:latest
     container_name: "transaction"
     build:
       context: .
@@ -16,6 +16,8 @@ services:
     depends_on:
       - mongo
       - audit
+    extra_hosts:
+      - "quoteserve.seng:192.168.1.135"
     command: transaction --prod
     tty: true
     networks:
@@ -24,7 +26,7 @@ services:
           - transactionserver
   web:
     container_name: "web"
-    image: ability:latest
+    image: 192.168.1.150:5111/ability:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -48,7 +50,7 @@ services:
           - webserver
   audit:
     container_name: "auditserver"
-    image: ability:latest
+    image: 192.168.1.150:5111/ability:latest
     build:
       context: .
       dockerfile: Dockerfile
@@ -66,7 +68,7 @@ services:
           - auditserver
   workload:
     container_name: "workloadgen"
-    image: workloadgen:latest
+    image: 192.168.1.150:5111/workloadgen:latest
     build:
       context: workloads
       dockerfile: Dockerfile
@@ -84,7 +86,7 @@ services:
         aliases:
           - workloadgen
   mongo:
-    image: mongo:latest
+    image: 192.168.1.150:5111/mongo:latest
     container_name: "mongodb"
     environment:
       - MONGO_DATA_DIR=/data/db
@@ -100,6 +102,6 @@ services:
           - mongodb
 networks:
   mynetwork:
-    driver: overlay
+    external: true
     #scope: swarm
     #attachable: true

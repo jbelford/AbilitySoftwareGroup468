@@ -1,8 +1,10 @@
 package tools
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"time"
@@ -180,29 +182,44 @@ type LoggerRPC struct {
 
 func (l *LoggerRPC) readLog(userid string) ([]byte, error) {
 	l.flush <- true
-	// While flushing may as well set socket connection ready
-	db := l.session.GetUniqueInstance()
-	defer db.Close()
-
 	<-l.flush
 
 	data := []byte("<log>\n")
-	logs, err := db.Logs.GetLogs(userid)
-	if err != nil {
-		log.Println(err)
-		return nil, err
+
+	var err error
+	var logs []common.EventLog
+	if common.CFG.Logging.Db {
+		db := l.session.GetUniqueInstance()
+		defer db.Close()
+
+		logs, err = db.Logs.GetLogs(userid)
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
+	} else {
+		data, err := ioutil.ReadFile("log.json")
+		if err == nil {
+			var eventLogs []common.EventLog
+			json.Unmarshal(data, &eventLogs)
+			for _, l := range eventLogs {
+				if userid == "admin" || userid == l.UserId {
+					logs = append(logs, l)
+				}
+			}
+		}
 	}
-	for _, val := range logs {
-		toWrite := append(val.Xml, byte('\n'))
+	for _, l := range logs {
+		toWrite := append(l.Xml, byte('\n'))
 		data = append(data, toWrite...)
 	}
 	data = append(data, []byte("</log>")...)
 
+	os.Remove("log.xml")
 	if f, err := os.OpenFile("log.xml", os.O_WRONLY|os.O_CREATE, 0777); err == nil {
 		defer f.Close()
 		f.Write(data)
 	}
-
 	return data, nil
 }
 
@@ -255,18 +272,51 @@ func (l *LoggerRPC) initBulkProcessing() {
 	l.work = make(chan *common.EventLog, limit)
 	l.flush = make(chan bool)
 	go func() {
-		db := l.session.GetSharedInstance()
-		defer db.Close()
 		for {
 			eventLogs, flushed := l.wait(limit)
 			if len(eventLogs) > 0 {
-				db.Logs.LogEvents(eventLogs)
+				l.bulkWrite(eventLogs)
 			}
 			if flushed {
 				l.flush <- true
 			}
 		}
 	}()
+}
+
+func (l *LoggerRPC) bulkWrite(eventLogs []*common.EventLog) {
+	if common.CFG.Logging.Db {
+		db := l.session.GetSharedInstance()
+		defer db.Close()
+		db.Logs.LogEvents(eventLogs)
+	} else {
+		jsonLogs := make([]*common.EventLog, 0)
+		data, err := ioutil.ReadFile("log.json")
+		if err == nil {
+			err = json.Unmarshal(data, &jsonLogs)
+			if err != nil {
+				log.Println("Failed to unmarshal json data: " + err.Error())
+			}
+		}
+		jsonLogs = append(jsonLogs, eventLogs...)
+
+		data, err = json.Marshal(jsonLogs)
+		if err != nil {
+			log.Println("Failed to marshal json data: " + err.Error())
+			return
+		}
+		os.Remove("log.json")
+		f, err := os.OpenFile("log.json", os.O_APPEND|os.O_CREATE, 0777)
+		if err != nil {
+			log.Println("Error writing to file: " + err.Error())
+			return
+		}
+		defer f.Close()
+		_, err = f.Write(data)
+		if err != nil {
+			log.Println("Error writing data: " + err.Error())
+		}
+	}
 }
 
 func (l *LoggerRPC) wait(limit int) ([]*common.EventLog, bool) {

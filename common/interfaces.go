@@ -81,17 +81,20 @@ type Config struct {
 		Mock    bool   `json:"mock"`
 	} `json:"quoteserver"`
 	TxnServer struct {
-		Url string `json:"url"`
+		Url  string `json:"url"`
 		LUrl string `json:"lurl"`
 	} `json:"transactionserver"`
 	WebServer struct {
-		Url string `json:"url"`
+		Url  string `json:"url"`
 		LUrl string `json:"lurl"`
 	} `json:"webserver"`
 	AuditServer struct {
-		Url string `json:"url"`
+		Url  string `json:"url"`
 		LUrl string `json:"lurl"`
 	} `json:"auditserver"`
+	Logging struct {
+		Db bool `json:"db"`
+	} `json:"logging"`
 }
 
 type QuoteData struct {
@@ -123,6 +126,6 @@ type Trigger struct {
 }
 
 type EventLog struct {
-	UserId string `bson:"userId"`
-	Xml    []byte
+	UserId string `bson:"userId" json:"userId"`
+	Xml    []byte `json:"xml"`
 }
