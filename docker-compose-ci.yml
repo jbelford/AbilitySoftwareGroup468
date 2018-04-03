@@ -6,7 +6,29 @@ services:
     volumes:  
         - /var/run/docker.sock:/var/run/docker.sock
     command: ["pumba --random --interval 0.5s kill re2:'^ability_*' --signal SIGTERM"]
-
+  transaction:
+    image: ability:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - mongo
+      - audit
+  web:
+    image: ability:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - transaction
+      - audit
+  audit:
+    image: ability:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+  mongo:
+    image: mongo:latest
   workloadgen:
     #container_name: "workloadgen"
     image: workloadgen:latest
@@ -14,7 +36,7 @@ services:
       context: workloads
       dockerfile: Dockerfile
     tty: true
-    entrypoint: go run workloadgenerator.go $WORKLOAD_FILE
+    #entrypoint: go run workloadgenerator.go $WORKLOAD_FILE
     links:
       - web
     depends_on:

@@ -131,7 +131,7 @@ func (ws *WebServer) userSummaryHandler(w http.ResponseWriter, r *http.Request, 
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return ws.error(&cmd, "Internal error prevented operation")
+		return ws.error(&cmd, "Internal error prevented operation: UserSummary")
 	}
 	return resp
 }
@@ -166,7 +166,7 @@ func (ws *WebServer) userAddHandler(w http.ResponseWriter, r *http.Request, t_id
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return ws.error(&cmd, "Internal error prevented operation")
+		return ws.error(&cmd, "Internal error prevented operation: UserAdd")
 	}
 	return resp
 }
@@ -200,7 +200,7 @@ func (ws *WebServer) userQuoteHandler(w http.ResponseWriter, r *http.Request, t_
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return ws.error(&cmd, "Internal error prevented operation")
+		return ws.error(&cmd, "Internal error prevented operation: UserQuote")
 	}
 	return resp
 }
@@ -246,7 +246,7 @@ func (ws *WebServer) userBuyHandler(w http.ResponseWriter, r *http.Request, t_id
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return ws.error(&cmd, "Internal error prevented operation")
+		return ws.error(&cmd, "Internal error prevented operation: UserBuy")
 	}
 	return resp
 }
@@ -267,7 +267,7 @@ func (ws *WebServer) userCommitBuyHandler(w http.ResponseWriter, r *http.Request
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return ws.error(&cmd, "Internal error prevented operation")
+		return ws.error(&cmd, "Internal error prevented operation: UserCommitBuy")
 	}
 	return resp
 }
@@ -288,7 +288,7 @@ func (ws *WebServer) userCancelBuyHandler(w http.ResponseWriter, r *http.Request
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return ws.error(&cmd, "Internal error prevented operation")
+		return ws.error(&cmd, "Internal error prevented operation: UserCancelBuy")
 	}
 	return resp
 }
@@ -334,7 +334,7 @@ func (ws *WebServer) userSellHandler(w http.ResponseWriter, r *http.Request, t_i
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return ws.error(&cmd, "Internal error prevented operation")
+		return ws.error(&cmd, "Internal error prevented operation: UserSell")
 	}
 	return resp
 }
@@ -354,7 +354,7 @@ func (ws *WebServer) userCommitSellHandler(w http.ResponseWriter, r *http.Reques
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return ws.error(&cmd, "Internal error prevented operation")
+		return ws.error(&cmd, "Internal error prevented operation: UserCommitSell")
 	}
 	return resp
 }
@@ -374,7 +374,7 @@ func (ws *WebServer) userCancelSellHandler(w http.ResponseWriter, r *http.Reques
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return ws.error(&cmd, "Internal error prevented operation")
+		return ws.error(&cmd, "Internal error prevented operation: UserCancelSell")
 	}
 	return resp
 }
@@ -416,7 +416,7 @@ func (ws *WebServer) userSetBuyAmountHandler(w http.ResponseWriter, r *http.Requ
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return ws.error(&cmd, "Internal error prevented operation")
+		return ws.error(&cmd, "Internal error prevented operation: UserSetBuyAmount")
 	}
 	return resp
 }
@@ -448,7 +448,7 @@ func (ws *WebServer) userCancelSetBuyHandler(w http.ResponseWriter, r *http.Requ
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return ws.error(&cmd, "Internal error prevented operation")
+		return ws.error(&cmd, "Internal error prevented operation: UserCancelSetBuy")
 	}
 	return resp
 }
@@ -489,7 +489,7 @@ func (ws *WebServer) userSetBuyTriggerHandler(w http.ResponseWriter, r *http.Req
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return ws.error(&cmd, "Internal error prevented operation")
+		return ws.error(&cmd, "Internal error prevented operation: UserSetBuyTrigger")
 	}
 	return resp
 }
@@ -531,7 +531,7 @@ func (ws *WebServer) userSetSellAmountHandler(w http.ResponseWriter, r *http.Req
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return ws.error(&cmd, "Internal error prevented operation")
+		return ws.error(&cmd, "Internal error prevented operation: UserSetSellAmount")
 	}
 	return resp
 }
@@ -573,7 +573,7 @@ func (ws *WebServer) userSetSellTriggerHandler(w http.ResponseWriter, r *http.Re
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return ws.error(&cmd, "Internal error prevented operation")
+		return ws.error(&cmd, "Internal error prevented operation: UserSetSellTrigger")
 	}
 	return resp
 }
@@ -604,7 +604,7 @@ func (ws *WebServer) userCancelSetSellHandler(w http.ResponseWriter, r *http.Req
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return ws.error(&cmd, "Internal error prevented operation")
+		return ws.error(&cmd, "Internal error prevented operation: UserCancelSetSell")
 	}
 	return resp
 }
@@ -629,7 +629,7 @@ func (ws *WebServer) userDumplogHandler(w http.ResponseWriter, r *http.Request, 
 	resp := ws.txnConn.Send(cmd)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		return ws.error(&cmd, "Internal error prevented operation")
+		return ws.error(&cmd, "Internal error prevented operation: UserDumpLog")
 	} else if resp.Success {
 		w.Header().Set("Content-Disposition", "attachment; filename="+cmd.FileName)
 		w.Header().Set("Content-Type", "application/xml")
