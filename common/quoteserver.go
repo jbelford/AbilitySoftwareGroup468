@@ -17,7 +17,7 @@ func GetQuote(symbol string, userid string) (*QuoteData, error) {
 		time.Sleep(time.Millisecond * 300)
 		msg = fmt.Sprintf("12.50,%s,%s,1111111111,123198fadfa\n", symbol, userid)
 	} else {
-		tcpConn, err := net.Dial("tcp", CFG.Quoteserver.Address)
+		tcpConn, err := net.DialTimeout("tcp", CFG.Quoteserver.Address, time.Second*10)
 		if err != nil {
 			return nil, err
 		}
