@@ -21,6 +21,7 @@ func GetQuote(symbol string, userid string) (*QuoteData, error) {
 		if err != nil {
 			return nil, err
 		}
+		defer tcpConn.Close()
 		tcpConn.Write([]byte(fmt.Sprintf("%s, %s\n", symbol, userid)))
 		msg, err = bufio.NewReader(tcpConn).ReadString('\n')
 		if err != nil {
