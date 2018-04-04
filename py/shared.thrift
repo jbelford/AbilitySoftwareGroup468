@@ -56,6 +56,7 @@ struct Trigger {
     5: i32 Shares
     6: i64 Amount
     7: i64 When
+    8: error error
 }
 
 struct Transaction {

@@ -1,0 +1,81 @@
+version: '3'
+services:
+  workloadgen:
+    container_name: "Workload"
+    image: workloadgen:latest
+    build:
+      context: ../workloads
+      dockerfile: Dockerfile
+    tty: true
+    entrypoint: go run workloadgenerator.go 100User_testWorkLoad.txt
+    depends_on:
+      - web
+
+  transaction:
+    container_name: "Transaction"
+    image: "ability:latest"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python transaction.py
+    depends_on:
+      - audit
+      - database
+      - cache
+    tty: true
+  cache:
+    image: "ability:latest"
+    container_name: "Cache"
+    depends_on:
+      - audit
+    build:
+      context: .
+      dockerfile: Dockerfile
+    extra_hosts:
+      - "quoteserve.seng:192.168.1.135"
+    command: python cache.py
+    tty: true
+  web:
+    image: "ability:latest"
+    container_name: "web"
+    depends_on:
+      - transaction
+      - audit
+    ports:
+      - 44420
+    expose:
+      - 44420
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python webserver.py
+    tty: true
+  audit:
+    container_name: "LoggerRpc"
+    image: "ability:latest"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python auditserver.py
+    tty: true
+  triggerman:
+    image: "ability:latest"
+    container_name: "TriggerManRpc"
+    depends_on:
+      - audit
+      - transaction
+      - cache
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python triggerman.py
+    tty: true
+  database:
+    image: "ability:latest"
+    container_name: "Database"
+
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python database.py
+    tty: true

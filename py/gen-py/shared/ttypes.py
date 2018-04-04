@@ -632,10 +632,11 @@ class Trigger(object):
      - Shares
      - Amount
      - When
+     - error
     """
 
 
-    def __init__(self, UserId=None, Stock=None, TransactionID=None, Type=None, Shares=None, Amount=None, When=None,):
+    def __init__(self, UserId=None, Stock=None, TransactionID=None, Type=None, Shares=None, Amount=None, When=None, error=None,):
         self.UserId = UserId
         self.Stock = Stock
         self.TransactionID = TransactionID
@@ -643,6 +644,7 @@ class Trigger(object):
         self.Shares = Shares
         self.Amount = Amount
         self.When = When
+        self.error = error
 
     def read(self, iprot):
         if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
@@ -688,6 +690,11 @@ class Trigger(object):
                     self.When = iprot.readI64()
                 else:
                     iprot.skip(ftype)
+            elif fid == 8:
+                if ftype == TType.STRING:
+                    self.error = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
+                else:
+                    iprot.skip(ftype)
             else:
                 iprot.skip(ftype)
             iprot.readFieldEnd()
@@ -725,6 +732,10 @@ class Trigger(object):
         if self.When is not None:
             oprot.writeFieldBegin('When', TType.I64, 7)
             oprot.writeI64(self.When)
+            oprot.writeFieldEnd()
+        if self.error is not None:
+            oprot.writeFieldBegin('error', TType.STRING, 8)
+            oprot.writeString(self.error.encode('utf-8') if sys.version_info[0] == 2 else self.error)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()
@@ -1159,6 +1170,7 @@ Trigger.thrift_spec = (
     (5, TType.I32, 'Shares', None, None, ),  # 5
     (6, TType.I64, 'Amount', None, None, ),  # 6
     (7, TType.I64, 'When', None, None, ),  # 7
+    (8, TType.STRING, 'error', 'UTF8', None, ),  # 8
 )
 all_structs.append(Transaction)
 Transaction.thrift_spec = (

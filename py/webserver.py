@@ -1,5 +1,7 @@
 import logging
 import sys
+sys.path.append('gen-py')
+
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
@@ -68,10 +70,13 @@ audit = AuditServer(use_rpc=False, server=False)
 executor = ThreadPoolExecutor(max_workers=4)
 
 app = Flask(__name__)
+port = 44420
+hostname = "0.0.0.0"
 
 @app.route('/<t_id>/<user_id>/display_summary', methods=["GET"])
 @crossdomain(origin='*')
 def display_summary(t_id, user_id):
+	# TODO://
 	return json.dumps({"x": x, "y": y})
 
 
@@ -80,7 +85,7 @@ def display_summary(t_id, user_id):
 def add(t_id, user_id):
 	cmd = Command(TransactionID=t_id, C_type=Cmd.ADD, UserId=user_id, Timestamp=time.time())
 	try:
-		amount = int(request.form["amount"])
+		amount = request.args.get("amount", default=0, type=int)
 	except:
 		return process_error(audit, cmd, "Count not process field: 'amount'")
 	if amount <= 0:
@@ -109,7 +114,7 @@ def quote(t_id, user_id):
 @app.route('/<t_id>/<user_id>/buy', methods=["POST"])
 @crossdomain(origin='*')
 def buy(t_id, user_id):
-	stock = request.form["stock"]
+	stock = request.args.get('stock', default = '', type = str)
 	cmd = Command(TransactionID=t_id, C_type=Cmd.BUY, UserId=user_id,
 	              Timestamp=time.time(), StockSymbol=stock)
 
@@ -117,7 +122,7 @@ def buy(t_id, user_id):
 		return process_error(audit, cmd, "Parameter: 'stock' cannot be empty.")
 
 	try:
-		amount = int(request.form["amount"])
+		amount = request.args.get("amount", default=0, type=int)
 	except:
 		return process_error(audit, cmd, "Count not process field: 'amount'")
 	if amount <= 0:
@@ -159,14 +164,14 @@ def cancel_buy(t_id, user_id):
 @app.route('/<t_id>/<user_id>/sell', methods=["POST"])
 @crossdomain(origin='*')
 def sell(t_id, user_id):
-	stock = request.form["stock"]
+	stock = request.args.get('stock', default = '', type = str)
 	cmd = Command(TransactionID=t_id, C_type=Cmd.SELL, UserId=user_id,
 	              Timestamp=time.time(), StockSymbol=stock)
 	if stock == "":
 		return process_error(audit, cmd, "Parameter: 'stock' cannot be empty.")
 
 	try:
-		amount = int(request.form["amount"])
+		amount = request.args.get("amount", default=0, type=int)
 	except:
 		return process_error("Count not process field: 'amount'")
 	if amount <= 0:
@@ -207,14 +212,14 @@ def cancel_sell(t_id, user_id):
 @app.route('/<t_id>/<user_id>/set_buy_amount', methods=["POST"])
 @crossdomain(origin='*')
 def set_buy_amount(t_id, user_id):
-	stock = request.form["stock"]
+	stock = request.args.get('stock', default = '', type = str)
 	cmd = Command(TransactionID=t_id, C_type=Cmd.SET_BUY_AMOUNT, UserId=user_id,
 	              Timestamp=time.time(), StockSymbol=stock)
 	if stock == "":
 		return process_error(audit, cmd, "Parameter: 'stock' cannot be empty.")
 
 	try:
-		amount = int(request.form["amount"])
+		amount = request.args.get("amount", default=0, type=int)
 	except:
 		return process_error(audit, cmd, "Count not process field: 'amount'")
 	if amount <= 0:
@@ -231,7 +236,7 @@ def set_buy_amount(t_id, user_id):
 @app.route('/<t_id>/<user_id>/cancel_set_buy', methods=["POST"])
 @crossdomain(origin='*')
 def cancel_set_buy(t_id, user_id):
-	stock = request.form["stock"]
+	stock = request.args.get('stock', default = '', type = str)
 	cmd = Command(TransactionID=t_id, C_type=Cmd.CANCEL_SET_BUY, UserId=user_id,
 	              Timestamp=time.time(), StockSymbol=stock)
 	if stock == "":
@@ -246,14 +251,14 @@ def cancel_set_buy(t_id, user_id):
 @app.route('/<t_id>/<user_id>/set_buy_trigger', methods=["POST"])
 @crossdomain(origin='*')
 def set_buy_trigger(t_id, user_id):
-	stock = request.form["stock"]
+	stock = request.args.get('stock', default = '', type = str)
 	cmd = Command(TransactionID=t_id, C_type=Cmd.SET_BUY_TRIGGER, UserId=user_id,
 	              Timestamp=time.time(), StockSymbol=stock)
 	if stock == "":
 		return process_error(audit, cmd, "Parameter: 'stock' cannot be empty.")
 
 	try:
-		amount = int(request.form["amount"])
+		amount = request.args.get("amount", default=0, type=int)
 	except:
 		return process_error(audit, cmd, "Count not process field: 'amount'")
 	if amount <= 0:
@@ -268,7 +273,7 @@ def set_buy_trigger(t_id, user_id):
 @app.route('/<t_id>/<user_id>/set_sell_amount', methods=["POST"])
 @crossdomain(origin='*')
 def set_sell_amount(t_id, user_id):
-	stock = request.form["stock"]
+	stock = request.args.get('stock', default = '', type = str)
 	cmd = Command(TransactionID=t_id, C_type=Cmd.SET_SELL_AMOUNT, UserId=user_id,
 	              Timestamp=time.time(), StockSymbol=stock)
 
@@ -276,7 +281,7 @@ def set_sell_amount(t_id, user_id):
 		return process_error(audit, cmd, "Parameter: 'stock' cannot be empty.")
 
 	try:
-		amount = int(request.form["amount"])
+		amount = request.args.get("amount", default=0, type=int)
 	except:
 		return process_error(audit, cmd, "Count not process field: 'amount'")
 	if amount <= 0:
@@ -294,7 +299,7 @@ def set_sell_amount(t_id, user_id):
 @app.route('/<t_id>/<user_id>/set_sell_trigger', methods=["POST"])
 @crossdomain(origin='*')
 def set_sell_trigger(t_id, user_id):
-	stock = request.form["stock"]
+	stock = request.args.get('stock', default = '', type = str)
 	cmd = Command(TransactionID=t_id, C_type=Cmd.SET_SELL_TRIGGER, UserId=user_id,
 	              Timestamp=time.time(), StockSymbol=stock)
 
@@ -302,7 +307,7 @@ def set_sell_trigger(t_id, user_id):
 		return process_error(audit, cmd, "Parameter: 'stock' cannot be empty.")
 
 	try:
-		amount = int(request.form["amount"])
+		amount = request.args.get("amount", default=0, type=int)
 	except:
 		return process_error(audit, cmd, "Count not process field: 'amount'")
 	if amount <= 0:
@@ -319,7 +324,7 @@ def set_sell_trigger(t_id, user_id):
 @app.route('/<t_id>/<user_id>/cancel_set_sell', methods=["POST"])
 @crossdomain(origin='*')
 def cancel_set_sell(t_id, user_id):
-	stock = request.form["stock"]
+	stock = request.args.get('stock', default = '', type = str)
 	cmd = Command(TransactionID=t_id, C_type=Cmd.CANCEL_SET_SELL, UserId=user_id,
 	              Timestamp=time.time(), StockSymbol=stock)
 
@@ -327,7 +332,7 @@ def cancel_set_sell(t_id, user_id):
 		return process_error(audit, cmd, "Parameter: 'stock' cannot be empty.")
 
 	try:
-		amount = int(request.form["amount"])
+		amount = request.args.get("amount", default=0, type=int)
 	except:
 		return process_error(audit, cmd, "Count not process field: 'amount'")
 	if amount <= 0:
@@ -356,7 +361,7 @@ def dumplog(t_id, user_id):
 
 
 def start_web_server():
-	app.run()
+	app.run(host=hostname, port=port)
 
 if __name__ == "__main__":
 	root = logging.getLogger()

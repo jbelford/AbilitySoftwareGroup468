@@ -35,6 +35,8 @@ if len(sys.argv) <= 1 or sys.argv[1] == '--help':
     print('  DBResponse BulkTransactions( txns, bool wasCached)')
     print('  DBResponse ProcessTxn(PendingTxn txn, bool wasCached)')
     print('  void PushPendingTxn(PendingTxn pending)')
+    print('  DBResponse AddNewTrigger(Trigger trigger)')
+    print('  DBResponse CancelTrigger(string userId, string stock, string trigger_type)')
     print('')
     sys.exit(0)
 
@@ -179,6 +181,18 @@ elif cmd == 'PushPendingTxn':
         print('PushPendingTxn requires 1 args')
         sys.exit(1)
     pp.pprint(client.PushPendingTxn(eval(args[0]),))
+
+elif cmd == 'AddNewTrigger':
+    if len(args) != 1:
+        print('AddNewTrigger requires 1 args')
+        sys.exit(1)
+    pp.pprint(client.AddNewTrigger(eval(args[0]),))
+
+elif cmd == 'CancelTrigger':
+    if len(args) != 3:
+        print('CancelTrigger requires 3 args')
+        sys.exit(1)
+    pp.pprint(client.CancelTrigger(args[0], args[1], args[2],))
 
 else:
     print('Unrecognized method %s' % cmd)

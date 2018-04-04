@@ -1,18 +1,20 @@
+import logging
 import os
 import pickle
 import sys
+sys.path.append('gen-py')
+
 from multiprocessing import Lock
 
 from databaseRPC.ttypes import DBResponse
-from shared.ttypes import Response, User, PendingTxn
+from shared.ttypes import Response, User, PendingTxn, Trigger
 
-sys.path.append('gen-py')
 
 from Service import Service
 from databaseRPC import Database
 
 
-@Service(thrift_class=Database, port=44421)
+@Service(thrift_class=Database, port=44423)
 class dbserver(object):
 	tables_lookup = {
 		"Users": 0,
@@ -83,6 +85,12 @@ class dbserver(object):
 		self.lock.acquire(timeout=self._timeout)
 
 	def __unlock_user(self, userId):
+		self.lock.release()
+
+	def __lock_trigger(self, userId):
+		self.lock.acquire(timeout=self._timeout)
+
+	def __unlock_triggers(self, userId):
 		self.lock.release()
 
 	def __lock_txn(self, txn):
@@ -276,6 +284,31 @@ class dbserver(object):
 
 		return last
 
+	def AddNewTrigger(self, trigger: Trigger):
+		self.__lock_trigger(trigger.UserId)
+
+		key = trigger.UserId + ":" + trigger.Stock + ":" + trigger.Type
+
+		self.__replace_key("Triggers", key, Trigger.__dict__)
+
+		self.__unlock_triggers(trigger.UserId)
+		return DBResponse()
+
+	def CancelTrigger(self, userId, stock, trigger_type):
+		self.__lock_trigger(userId)
+		key = userId + ":" + stock + ":" + trigger_type
+		trig = self.__get_key("Triggers", key)
+		self.__replace_key("Triggers", key, None)  # Write a none there to cancel it...
+		self.__unlock_triggers(userId)
+		return trig
+
+	def GetTrigger(self, userId, stock, trigger_type):
+		self.__lock_trigger(userId)
+		key = userId + ":" + stock + ":" + trigger_type
+		trig = self.__get_key("Triggers", key)
+		self.__unlock_triggers(userId)
+		return trig
+
 
 	# TODO:// ---------------------------
 	def buyParams(self, txn, wasCached):
@@ -300,3 +333,14 @@ class dbserver(object):
 		self.__unlock_txn(txn)
 		return None
 
+if __name__ == "__main__":
+	root = logging.getLogger()
+	root.setLevel(logging.NOTSET)
+
+	ch = logging.StreamHandler(sys.stdout)
+	ch.setLevel(logging.NOTSET)
+	formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s - [%(filename)s:%(lineno)s]')
+	ch.setFormatter(formatter)
+	root.addHandler(ch)
+
+	dbserver(use_rpc=True, server=True)

@@ -1,11 +1,12 @@
 import logging
 import sys
+sys.path.append('gen-py')
+
 import time
 from multiprocessing import Lock
 
 from shared.ttypes import QuoteData
 
-sys.path.append('gen-py')
 
 from utils import process_error, _executor
 from auditserver import AuditServer
@@ -14,7 +15,7 @@ from cacheRPC import Cache
 import socket
 
 
-@Service(thrift_class=Cache, port=44426)
+@Service(thrift_class=Cache, port=44425)
 class Cache(object):
 	quotes = {}
 
@@ -70,3 +71,15 @@ class Cache(object):
 			_executor.submit(self._audit.QuoteServer, args=(quote, tid,))
 
 		return QuoteData(UserId=userid, Symbol=symbol, Quote=quote, Timestamp=timestamp, Cryptokey=cryptokey)
+
+if __name__ == "__main__":
+	root = logging.getLogger()
+	root.setLevel(logging.NOTSET)
+
+	ch = logging.StreamHandler(sys.stdout)
+	ch.setLevel(logging.NOTSET)
+	formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s - [%(filename)s:%(lineno)s]')
+	ch.setFormatter(formatter)
+	root.addHandler(ch)
+
+	Cache(use_rpc=True, server=True)

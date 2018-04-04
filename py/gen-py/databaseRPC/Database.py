@@ -106,6 +106,22 @@ class Iface(object):
         """
         pass
 
+    def AddNewTrigger(self, trigger):
+        """
+        Parameters:
+         - trigger
+        """
+        pass
+
+    def CancelTrigger(self, userId, stock, trigger_type):
+        """
+        Parameters:
+         - userId
+         - stock
+         - trigger_type
+        """
+        pass
+
 
 class Client(Iface):
     def __init__(self, iprot, oprot=None):
@@ -473,6 +489,72 @@ class Client(Iface):
         iprot.readMessageEnd()
         return
 
+    def AddNewTrigger(self, trigger):
+        """
+        Parameters:
+         - trigger
+        """
+        self.send_AddNewTrigger(trigger)
+        return self.recv_AddNewTrigger()
+
+    def send_AddNewTrigger(self, trigger):
+        self._oprot.writeMessageBegin('AddNewTrigger', TMessageType.CALL, self._seqid)
+        args = AddNewTrigger_args()
+        args.trigger = trigger
+        args.write(self._oprot)
+        self._oprot.writeMessageEnd()
+        self._oprot.trans.flush()
+
+    def recv_AddNewTrigger(self):
+        iprot = self._iprot
+        (fname, mtype, rseqid) = iprot.readMessageBegin()
+        if mtype == TMessageType.EXCEPTION:
+            x = TApplicationException()
+            x.read(iprot)
+            iprot.readMessageEnd()
+            raise x
+        result = AddNewTrigger_result()
+        result.read(iprot)
+        iprot.readMessageEnd()
+        if result.success is not None:
+            return result.success
+        raise TApplicationException(TApplicationException.MISSING_RESULT, "AddNewTrigger failed: unknown result")
+
+    def CancelTrigger(self, userId, stock, trigger_type):
+        """
+        Parameters:
+         - userId
+         - stock
+         - trigger_type
+        """
+        self.send_CancelTrigger(userId, stock, trigger_type)
+        return self.recv_CancelTrigger()
+
+    def send_CancelTrigger(self, userId, stock, trigger_type):
+        self._oprot.writeMessageBegin('CancelTrigger', TMessageType.CALL, self._seqid)
+        args = CancelTrigger_args()
+        args.userId = userId
+        args.stock = stock
+        args.trigger_type = trigger_type
+        args.write(self._oprot)
+        self._oprot.writeMessageEnd()
+        self._oprot.trans.flush()
+
+    def recv_CancelTrigger(self):
+        iprot = self._iprot
+        (fname, mtype, rseqid) = iprot.readMessageBegin()
+        if mtype == TMessageType.EXCEPTION:
+            x = TApplicationException()
+            x.read(iprot)
+            iprot.readMessageEnd()
+            raise x
+        result = CancelTrigger_result()
+        result.read(iprot)
+        iprot.readMessageEnd()
+        if result.success is not None:
+            return result.success
+        raise TApplicationException(TApplicationException.MISSING_RESULT, "CancelTrigger failed: unknown result")
+
 
 class Processor(Iface, TProcessor):
     def __init__(self, handler):
@@ -489,6 +571,8 @@ class Processor(Iface, TProcessor):
         self._processMap["BulkTransactions"] = Processor.process_BulkTransactions
         self._processMap["ProcessTxn"] = Processor.process_ProcessTxn
         self._processMap["PushPendingTxn"] = Processor.process_PushPendingTxn
+        self._processMap["AddNewTrigger"] = Processor.process_AddNewTrigger
+        self._processMap["CancelTrigger"] = Processor.process_CancelTrigger
 
     def process(self, iprot, oprot):
         (name, type, seqid) = iprot.readMessageBegin()
@@ -754,6 +838,52 @@ class Processor(Iface, TProcessor):
             msg_type = TMessageType.EXCEPTION
             result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
         oprot.writeMessageBegin("PushPendingTxn", msg_type, seqid)
+        result.write(oprot)
+        oprot.writeMessageEnd()
+        oprot.trans.flush()
+
+    def process_AddNewTrigger(self, seqid, iprot, oprot):
+        args = AddNewTrigger_args()
+        args.read(iprot)
+        iprot.readMessageEnd()
+        result = AddNewTrigger_result()
+        try:
+            result.success = self._handler.AddNewTrigger(args.trigger)
+            msg_type = TMessageType.REPLY
+        except TTransport.TTransportException:
+            raise
+        except TApplicationException as ex:
+            logging.exception('TApplication exception in handler')
+            msg_type = TMessageType.EXCEPTION
+            result = ex
+        except Exception:
+            logging.exception('Unexpected exception in handler')
+            msg_type = TMessageType.EXCEPTION
+            result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
+        oprot.writeMessageBegin("AddNewTrigger", msg_type, seqid)
+        result.write(oprot)
+        oprot.writeMessageEnd()
+        oprot.trans.flush()
+
+    def process_CancelTrigger(self, seqid, iprot, oprot):
+        args = CancelTrigger_args()
+        args.read(iprot)
+        iprot.readMessageEnd()
+        result = CancelTrigger_result()
+        try:
+            result.success = self._handler.CancelTrigger(args.userId, args.stock, args.trigger_type)
+            msg_type = TMessageType.REPLY
+        except TTransport.TTransportException:
+            raise
+        except TApplicationException as ex:
+            logging.exception('TApplication exception in handler')
+            msg_type = TMessageType.EXCEPTION
+            result = ex
+        except Exception:
+            logging.exception('Unexpected exception in handler')
+            msg_type = TMessageType.EXCEPTION
+            result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
+        oprot.writeMessageBegin("CancelTrigger", msg_type, seqid)
         result.write(oprot)
         oprot.writeMessageEnd()
         oprot.trans.flush()
@@ -2211,6 +2341,275 @@ class PushPendingTxn_result(object):
         return not (self == other)
 all_structs.append(PushPendingTxn_result)
 PushPendingTxn_result.thrift_spec = (
+)
+
+
+class AddNewTrigger_args(object):
+    """
+    Attributes:
+     - trigger
+    """
+
+
+    def __init__(self, trigger=None,):
+        self.trigger = trigger
+
+    def read(self, iprot):
+        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
+            return
+        iprot.readStructBegin()
+        while True:
+            (fname, ftype, fid) = iprot.readFieldBegin()
+            if ftype == TType.STOP:
+                break
+            if fid == 1:
+                if ftype == TType.STRUCT:
+                    self.trigger = shared.ttypes.Trigger()
+                    self.trigger.read(iprot)
+                else:
+                    iprot.skip(ftype)
+            else:
+                iprot.skip(ftype)
+            iprot.readFieldEnd()
+        iprot.readStructEnd()
+
+    def write(self, oprot):
+        if oprot._fast_encode is not None and self.thrift_spec is not None:
+            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
+            return
+        oprot.writeStructBegin('AddNewTrigger_args')
+        if self.trigger is not None:
+            oprot.writeFieldBegin('trigger', TType.STRUCT, 1)
+            self.trigger.write(oprot)
+            oprot.writeFieldEnd()
+        oprot.writeFieldStop()
+        oprot.writeStructEnd()
+
+    def validate(self):
+        return
+
+    def __repr__(self):
+        L = ['%s=%r' % (key, value)
+             for key, value in self.__dict__.items()]
+        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not (self == other)
+all_structs.append(AddNewTrigger_args)
+AddNewTrigger_args.thrift_spec = (
+    None,  # 0
+    (1, TType.STRUCT, 'trigger', [shared.ttypes.Trigger, None], None, ),  # 1
+)
+
+
+class AddNewTrigger_result(object):
+    """
+    Attributes:
+     - success
+    """
+
+
+    def __init__(self, success=None,):
+        self.success = success
+
+    def read(self, iprot):
+        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
+            return
+        iprot.readStructBegin()
+        while True:
+            (fname, ftype, fid) = iprot.readFieldBegin()
+            if ftype == TType.STOP:
+                break
+            if fid == 0:
+                if ftype == TType.STRUCT:
+                    self.success = DBResponse()
+                    self.success.read(iprot)
+                else:
+                    iprot.skip(ftype)
+            else:
+                iprot.skip(ftype)
+            iprot.readFieldEnd()
+        iprot.readStructEnd()
+
+    def write(self, oprot):
+        if oprot._fast_encode is not None and self.thrift_spec is not None:
+            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
+            return
+        oprot.writeStructBegin('AddNewTrigger_result')
+        if self.success is not None:
+            oprot.writeFieldBegin('success', TType.STRUCT, 0)
+            self.success.write(oprot)
+            oprot.writeFieldEnd()
+        oprot.writeFieldStop()
+        oprot.writeStructEnd()
+
+    def validate(self):
+        return
+
+    def __repr__(self):
+        L = ['%s=%r' % (key, value)
+             for key, value in self.__dict__.items()]
+        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not (self == other)
+all_structs.append(AddNewTrigger_result)
+AddNewTrigger_result.thrift_spec = (
+    (0, TType.STRUCT, 'success', [DBResponse, None], None, ),  # 0
+)
+
+
+class CancelTrigger_args(object):
+    """
+    Attributes:
+     - userId
+     - stock
+     - trigger_type
+    """
+
+
+    def __init__(self, userId=None, stock=None, trigger_type=None,):
+        self.userId = userId
+        self.stock = stock
+        self.trigger_type = trigger_type
+
+    def read(self, iprot):
+        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
+            return
+        iprot.readStructBegin()
+        while True:
+            (fname, ftype, fid) = iprot.readFieldBegin()
+            if ftype == TType.STOP:
+                break
+            if fid == 1:
+                if ftype == TType.STRING:
+                    self.userId = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 2:
+                if ftype == TType.STRING:
+                    self.stock = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 3:
+                if ftype == TType.STRING:
+                    self.trigger_type = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
+                else:
+                    iprot.skip(ftype)
+            else:
+                iprot.skip(ftype)
+            iprot.readFieldEnd()
+        iprot.readStructEnd()
+
+    def write(self, oprot):
+        if oprot._fast_encode is not None and self.thrift_spec is not None:
+            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
+            return
+        oprot.writeStructBegin('CancelTrigger_args')
+        if self.userId is not None:
+            oprot.writeFieldBegin('userId', TType.STRING, 1)
+            oprot.writeString(self.userId.encode('utf-8') if sys.version_info[0] == 2 else self.userId)
+            oprot.writeFieldEnd()
+        if self.stock is not None:
+            oprot.writeFieldBegin('stock', TType.STRING, 2)
+            oprot.writeString(self.stock.encode('utf-8') if sys.version_info[0] == 2 else self.stock)
+            oprot.writeFieldEnd()
+        if self.trigger_type is not None:
+            oprot.writeFieldBegin('trigger_type', TType.STRING, 3)
+            oprot.writeString(self.trigger_type.encode('utf-8') if sys.version_info[0] == 2 else self.trigger_type)
+            oprot.writeFieldEnd()
+        oprot.writeFieldStop()
+        oprot.writeStructEnd()
+
+    def validate(self):
+        return
+
+    def __repr__(self):
+        L = ['%s=%r' % (key, value)
+             for key, value in self.__dict__.items()]
+        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not (self == other)
+all_structs.append(CancelTrigger_args)
+CancelTrigger_args.thrift_spec = (
+    None,  # 0
+    (1, TType.STRING, 'userId', 'UTF8', None, ),  # 1
+    (2, TType.STRING, 'stock', 'UTF8', None, ),  # 2
+    (3, TType.STRING, 'trigger_type', 'UTF8', None, ),  # 3
+)
+
+
+class CancelTrigger_result(object):
+    """
+    Attributes:
+     - success
+    """
+
+
+    def __init__(self, success=None,):
+        self.success = success
+
+    def read(self, iprot):
+        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
+            return
+        iprot.readStructBegin()
+        while True:
+            (fname, ftype, fid) = iprot.readFieldBegin()
+            if ftype == TType.STOP:
+                break
+            if fid == 0:
+                if ftype == TType.STRUCT:
+                    self.success = DBResponse()
+                    self.success.read(iprot)
+                else:
+                    iprot.skip(ftype)
+            else:
+                iprot.skip(ftype)
+            iprot.readFieldEnd()
+        iprot.readStructEnd()
+
+    def write(self, oprot):
+        if oprot._fast_encode is not None and self.thrift_spec is not None:
+            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
+            return
+        oprot.writeStructBegin('CancelTrigger_result')
+        if self.success is not None:
+            oprot.writeFieldBegin('success', TType.STRUCT, 0)
+            self.success.write(oprot)
+            oprot.writeFieldEnd()
+        oprot.writeFieldStop()
+        oprot.writeStructEnd()
+
+    def validate(self):
+        return
+
+    def __repr__(self):
+        L = ['%s=%r' % (key, value)
+             for key, value in self.__dict__.items()]
+        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not (self == other)
+all_structs.append(CancelTrigger_result)
+CancelTrigger_result.thrift_spec = (
+    (0, TType.STRUCT, 'success', [DBResponse, None], None, ),  # 0
 )
 fix_spec(all_structs)
 del all_structs

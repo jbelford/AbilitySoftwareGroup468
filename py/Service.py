@@ -16,6 +16,10 @@ class Service(object):
 		def wrappee(*args, **kwargs):
 			logging.debug('in decorator before wrapee with flag ' + str(decorator_self._thrift_class.__name__))
 
+
+			dec_name = str(decorator_self._thrift_class.__name__).split(".")[-1]
+			print(dec_name)
+
 			assert "use_rpc" in kwargs.keys() and "server" in kwargs.keys(), \
 				"Wrapped function must be subclass of RPC."
 
@@ -38,9 +42,9 @@ class Service(object):
 				server = TServer.TThreadedServer(processor, transport,
 				                                 tfactory, pfactory)
 
-				logging.info("Serving: " + str(decorator_self._thrift_class.__name__))
+				logging.info("Serving: " + dec_name)
 				server.serve()
-				logging.info('Done: ' + str(decorator_self._thrift_class.__name__))
+				logging.info('Done: ' + dec_name)
 
 			elif "use_rpc" in kwargs.keys() and "server" in kwargs.keys() \
 					and kwargs["use_rpc"] and not kwargs["server"]:
@@ -51,7 +55,8 @@ class Service(object):
 				from thrift.server import TServer
 
 				# Make socket
-				self._transport = TSocket.TSocket(host='localhost', port=9090)
+				self._transport = TSocket.TSocket(host=dec_name,
+				                                  port=decorator_self._port)
 				# Buffering is critical. Raw sockets are very slow
 				self._transport = TTransport.TBufferedTransport(self._transport)
 				# Connect!
@@ -60,7 +65,7 @@ class Service(object):
 				protocol = TBinaryProtocol.TBinaryProtocol(self._transport)
 				# Create a client to use the protocol encoder
 				client = decorator_self._thrift_class.Client(protocol)
-				logging.info("Client (" + str(decorator_self._thrift_class.__name__) + ") connected to server: " + str(
+				logging.info("Client (" + dec_name + ") connected to server: " + str(
 					self._transport.isOpen()))
 
 				return client

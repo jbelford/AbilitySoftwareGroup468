@@ -1,1 +1,1 @@
-__all__ = ['ttypes', 'constants', 'Transaction']
+__all__ = ['ttypes', 'constants', 'Transaction', 'TriggerManRpc']

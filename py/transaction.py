@@ -1,9 +1,12 @@
+import logging
 import sys
+sys.path.append('gen-py')
+
 import time
 
 from cache import Cache
 
-sys.path.append('gen-py')
+
 
 from utils import process_error, _executor
 
@@ -132,8 +135,8 @@ class transactionserver(object):
 			return self.error(cmd, "User no longer has the correct number of shares.")
 
 		_executor.submit(self._audit.AccountTransaction, args=(cmd.UserId, cmd.Amount, "add", cmd.TransactionID))
-		# TODO:// Log into database...
 
+		# TODO:// Log into database?... (trying to just write to file, see how it works)
 
 		return Response(Success=True, Stock=sell.Stock, Shares=sell.Shares, Received=sell.Price)
 
@@ -164,6 +167,10 @@ class transactionserver(object):
 			return self.error(cmd, "Failed to reserve even though we should have.")
 
 		# TODO:// Set Trigger and unreserve money if fails...
+		trig = self._database.AddNewTrigger(trigger)
+		if trig.error is not None:
+			self._database.UnreserveMoney(cmd.UserId, cmd.Amount)
+			return self.error(cmd, "Failed to set trigger in DB.")
 
 		_executor.submit(self._audit.AccountTransaction, args=(cmd.UserId, cmd.Amount, "reserve", cmd.TransactionID, ))
 		return Response(Success=True)
@@ -175,9 +182,16 @@ class transactionserver(object):
 		if resp.error is not None:
 			return self.error(cmd, "The user does not exist.")
 
-		trig = Trigger()
-
 		# TODO:// Cancel Triggers and Unreserve money...
+		trig: Trigger = self._database.CancelTrigger(cmd.UserId, cmd.StockSymbol, "BUY")
+		if trig.error is not None:
+			return self.error(cmd, "No buy trigger to cancel.")
+
+		resp = self._database.UnreserveMoney(cmd.UserId, trig.Amount)
+		if resp.error is not None:
+			logging.error(resp.error)
+			return self.error(cmd, "Internal server error.")
+
 		_executor.submit(self._audit.AccountTransaction, args=(cmd.Amount, trig.Amount, "unreserve", cmd.TransactionID, ))
 
 		return Response(Success=True, Stock=cmd.StockSymbol)
@@ -188,9 +202,15 @@ class transactionserver(object):
 			return self.error(cmd, "The user does not exist.")
 
 		# TODO:// Triggers..
-		trig = Trigger()
+		trig: Trigger = self._database.GetTrigger(cmd.UserId, cmd.StockSymbol, "BUY")
+		if trig.error is not None:
+			return self.error(cmd, "User ust set buy amount first.")
 
 		trig.When = cmd.Amount
+		# Update that trigger...
+		resp = self._database.AddNewTrigger(trig)
+		if resp.error is not None:
+			return self.error(cmd, "Internal error during operation.")
 
 		return Response(Success=True)
 
@@ -216,22 +236,61 @@ class transactionserver(object):
 		                  Shares=reserved_shares, Stock=cmd.StockSymbol, Amount=cmd.Amount, When=0)
 
 		# TODO:// Set the trigger...
+		resp = self._database.AddNewTrigger(trigger)
+		if resp.error is not None:
+			return self.error(cmd, "Failed to set sell amount.")
 		self._database.ReserveShares(cmd.UserId, cmd.StockSymbol, reserved_shares)
 		_executor.submit(self._audit.AccountTransaction, args=(cmd.UserId, cmd.Amount, "reserve", cmd.TransactionID, ))
 		return Response(Success=True)
 
 	def SET_SELL_TRIGGER(self, cmd: Command):
-		return Response()
+
+		user = self._database.GetUser(cmd.UserId)
+		if user.error is not None:
+			return self.error(cmd, "The user does not exist.")
+
+		trig = self._database.GetTrigger(cmd.UserId, cmd.StockSymbol, "SELL")
+		if trig.error is not None:
+			return self.error(cmd, "User must set sell amount first.")
+
+		trig.When = cmd.Amount
+		self._database.AddNewTrigger(trig)
+
+		return Response(Success=True)
 
 	def CANCEL_SET_SELL(self, cmd: Command):
-		return Response()
+		user = self._database.GetUser(cmd.UserId)
+		if user.error is not None:
+			return self.error(cmd, "The user does not exist.")
 
+		trig: Trigger = self._database.CancelTrigger(cmd.UserId, cmd.StockSymbol, "SELL")
+		if trig.error is not None:
+			return self.error(cmd, "No sell trigger to cancel")
+
+		resp = self._database.UnreserveShares(cmd.UserId, cmd.StockSymbol, trig.Shares)
+		if resp.error is not None:
+			logging.error(resp.error)
+			return self.error(cmd, "Internal error occured.")
+
+		_executor.submit(self._audit.AccountTransaction, args=(cmd.UserId, trig.Amount, "unreserve", cmd.TransactionID,))
+		return Response(Success=True)
+
+	# TODO://
 	def DUMPLOG(self, cmd: Command):
-		return Response()
+		return Response(Success=True)
 
 	def DISPLAY_SUMMARY(self, cmd: Command):
-		return Response()
+		return Response(Success=True)
 
 
 if __name__ == "__main__":
+	root = logging.getLogger()
+	root.setLevel(logging.NOTSET)
+
+	ch = logging.StreamHandler(sys.stdout)
+	ch.setLevel(logging.NOTSET)
+	formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s - [%(filename)s:%(lineno)s]')
+	ch.setFormatter(formatter)
+	root.addHandler(ch)
+
 	trans = transactionserver(use_rpc=True, server=True)

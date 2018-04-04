@@ -22,3 +22,8 @@ service Transaction {
     shared.Response DISPLAY_SUMMARY(1:shared.Command cmd),
 
 }
+
+service TriggerManRpc {
+    shared.PendingTxn ProcessTrigger(1: shared.Trigger t),
+
+}
