@@ -21,13 +21,13 @@ struct Response {
 }
 
 struct Command {
-    1:i32 C_type
-	2:i64 TransactionID
-	3:string UserId
+    1:optional i32 C_type
+	2:optional i64 TransactionID
+	3:optional string UserId
 	4:optional i64 Amount
 	5:optional string StockSymbol
 	6:optional string FileName
-	7:optional i64 Timestamp
+	7:optional double Timestamp
 }
 
 struct UserInfo {
@@ -52,40 +52,40 @@ struct Trigger {
     1: string UserId
     2: string Stock
     3: i64 TransactionID
-    4: string Type
-    5: i32 Shares
-    6: i64 Amount
-    7: i64 When
-    8: error error
+    4: optional string Type
+    5: optional i32 Shares
+    6: optional i64 Amount
+    7: optional i64 When
+    8: optional error error
 }
 
 struct Transaction {
     1: string Type
     2: bool Triggered
     3: string Stock
-    4: i64 Amount
-    5: i32 Shares
-    6: i64 TimeStamp
+    4: optional i64 Amount
+    5: optional i32 Shares
+    6: optional i64 TimeStamp
 }
 
 struct PendingTxn {
     1: string UserId
     2: string Type
     3: string Stock
-    4: i64 Reserved
-    5: i64 Price
-    6: i32 Shares
-    7: i64 Expiry
-    8: error error
+    4: optional i64 Reserved
+    5: optional i64 Price
+    6: optional i32 Shares
+    7: optional i64 Expiry
+    8: optional error error
 }
 
 struct QuoteData {
     1: i64 Quote
-    2: string Symbol
-    3: string UserId
-    4: i64 Timestamp
-    5: string Cryptokey
-    6: error error
+    2: optional string Symbol
+    3: optional string UserId
+    4: optional i64 Timestamp
+    5: optional string Cryptokey
+    6: optional error error
 }
 
 

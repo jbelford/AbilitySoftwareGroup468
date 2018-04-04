@@ -2,15 +2,19 @@ import logging
 import os
 import pickle
 import sys
+from copy import deepcopy
+from threading import Thread
+
+import time
+
 sys.path.append('gen-py')
 
-from multiprocessing import Lock
+from multiprocessing import Lock, Queue
 
 from databaseRPC.ttypes import DBResponse
-from shared.ttypes import Response, User, PendingTxn, Trigger
-
-
+from shared.ttypes import User, PendingTxn, Trigger
 from Service import Service
+from locker import Locker
 from databaseRPC import Database
 
 
@@ -23,7 +27,6 @@ class dbserver(object):
 	}
 
 	tables = []
-	lock = None
 	_timeout = -1
 
 
@@ -31,23 +34,46 @@ class dbserver(object):
 
 	def __init__(self, use_rpc=False, server=False):
 		self.tables = {}
-		self.lock = Lock()
-		self._timeout = 10  # default timeout of 10 seconds.
-
+		self._timeout = 10000  # default timeout of 10 seconds.
+		self.__init_tables()
+		self.lock = Locker(use_rpc=use_rpc, server=False)
+		self._my_lock = Lock()
+		
+		self._update_queue = Queue()
+		
+		
+		self.__num_tables_to_keep = 10
+		t = Thread(target=self.__poll_for_table_changes, args=(self._update_queue, ))
+		t.start()
+	
+	
 	def __init_tables(self):
 		self.tables = [None] * len(self.tables_lookup.keys())
-
-		for table, ind in self.tables_lookup:
+		
+		# TODO:// Read in split tables properly
+		for table, ind in self.tables_lookup.items():
 			if os.path.exists(table + ".pkl"):
 				with open(table + ".pkl") as my_pickle:
 					self.tables[ind] = pickle.load(my_pickle)
 			else:
 				# Initialize to new dictionary.
 				self.tables[ind] = {}
-
+	
+	def __poll_for_table_changes(self, queue):
+		while True:
+			table_to_update = queue.get()
+			logging.debug("Saving Table: " + str(table_to_update))
+			self.__save_table(table_to_update)
+			
+			
 	def __save_table(self, table):
+		# Save the partition of the table to file...
 		with open(table + ".pkl") as my_pickle:
-			pickle.dump(self.tables[self.tables_lookup[table]], my_pickle)
+			table_name = table.split("_")[0]
+			my_table = {k:v for (k, v) in self.tables[self.tables_lookup] if
+						    table_name + "_" + hash(k) % self.__num_tables_to_keep == table}
+			
+			pickle.dump(my_table, my_pickle)
 
 	def __get_key(self, table, key):
 		assert table in self.tables_lookup.keys()
@@ -65,7 +91,8 @@ class dbserver(object):
 		my_table.update({key: value})
 
 		# TODO:// Mark as different, write it to a permanent log...
-
+		self._update_queue.put(str(table) + "_" + str(hash(key) % self.__num_tables_to_keep))
+		
 	def __get_new_user(self, userId):
 		return {
 			"userId": userId,
@@ -82,22 +109,36 @@ class dbserver(object):
 		return {}
 
 	def __lock_user(self, userId):
-		self.lock.acquire(timeout=self._timeout)
+		#self._my_lock.acquire()
+		#self.lock.requestLock(userId, "USER")
+		#self._my_lock.release()
+		pass
 
 	def __unlock_user(self, userId):
-		self.lock.release()
+		#self._my_lock.acquire()
+		#self.lock.releaseLock(userId, "USER")
+		#self._my_lock.release()
+		pass
+		
+	def __lock_trigger(self, txn):
+		#self._my_lock.acquire()
+		#self.lock.requestLock(txn, "TRIGGER")
+		#self._my_lock.release()
+		pass
 
-	def __lock_trigger(self, userId):
-		self.lock.acquire(timeout=self._timeout)
-
-	def __unlock_triggers(self, userId):
-		self.lock.release()
+	def __unlock_triggers(self, txn):
+		#self._my_lock.acquire()
+		#self.lock.releaseLock(txn, "TRIGGER")
+		#self._my_lock.release()
+		pass
 
 	def __lock_txn(self, txn):
-		self.lock.acquire(timeout=self._timeout)
+		#self.lock.requestLock(txn, "TRANSACTION")
+		pass
 
 	def __unlock_txn(self, txn):
-		self.lock.release()
+		#self.lock.releaseLock(txn, "TRANSACTION")
+		pass
 
 	def AddUserMoney(self, userId, amount):
 		self.__lock_user(userId)
@@ -171,7 +212,7 @@ class dbserver(object):
 		if user == {}:
 			self.__unlock_user(userId)
 			return DBResponse(error="User does not exist.")
-		if user["stocks"] == {} or \
+		if "stocks" not in user.keys() or user["stocks"] == {} or \
 				"shares." + stock + ".real" not in user["stock"].keys():
 			self.__unlock_user(userId)
 			return DBResponse(error="User does not own any of this stock.")
@@ -239,7 +280,10 @@ class dbserver(object):
 		self.__lock_user(userId)
 		user = self.__get_key("Users", userId)
 		self.__unlock_user(userId)
-
+		
+		if user == {}:
+			return DBResponse(error="The user does not exist.")
+		
 		return DBResponse(user=User(User=userId,
 		                            Balance=user["balance"],
 		                            Reserved=user["reserved"]))
@@ -295,18 +339,30 @@ class dbserver(object):
 		return DBResponse()
 
 	def CancelTrigger(self, userId, stock, trigger_type):
-		self.__lock_trigger(userId)
 		key = userId + ":" + stock + ":" + trigger_type
-		trig = self.__get_key("Triggers", key)
+		self.__lock_trigger(key)
+
+		trig = deepcopy(self.__get_key("Triggers", key))
+		if trig is None:
+			self.__unlock_triggers(key)
+			return Trigger(error="Trigger does not exist.")
 		self.__replace_key("Triggers", key, None)  # Write a none there to cancel it...
-		self.__unlock_triggers(userId)
+		self.__unlock_triggers(key)
+		
+		if trig == {}:
+			return Trigger(error="Trigger does not exist.")
+		
 		return trig
 
 	def GetTrigger(self, userId, stock, trigger_type):
-		self.__lock_trigger(userId)
 		key = userId + ":" + stock + ":" + trigger_type
+		self.__lock_trigger(key)
+
 		trig = self.__get_key("Triggers", key)
-		self.__unlock_triggers(userId)
+		
+		self.__unlock_triggers(key)
+		if trig == {}:
+			return Trigger(error="Trigger does not exist.")
 		return trig
 
 

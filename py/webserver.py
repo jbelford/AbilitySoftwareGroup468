@@ -65,8 +65,8 @@ def crossdomain(origin=None, methods=None, headers=None, max_age=21600,
 	return decorator
 
 
-txn = transactionserver(use_rpc=False, server=False)
-audit = AuditServer(use_rpc=False, server=False)
+txn = transactionserver(use_rpc=True, server=False)
+audit = AuditServer(use_rpc=True, server=False)
 executor = ThreadPoolExecutor(max_workers=4)
 
 app = Flask(__name__)
@@ -77,21 +77,25 @@ hostname = "0.0.0.0"
 @crossdomain(origin='*')
 def display_summary(t_id, user_id):
 	# TODO://
-	return json.dumps({"x": x, "y": y})
+	logging.warning("NOT IMPLEMENTED")
+	return json.dumps({})
 
 
 @app.route('/<t_id>/<user_id>/add', methods=["POST"])
 @crossdomain(origin='*')
 def add(t_id, user_id):
-	cmd = Command(TransactionID=t_id, C_type=Cmd.ADD, UserId=user_id, Timestamp=time.time())
+	cmd = Command(TransactionID=t_id, C_type=Cmd.ADD.value, UserId=user_id, Timestamp=time.time())
 	try:
-		amount = request.args.get("amount", default=0, type=int)
+		amount = int(request.args.get("amount", default=0, type=int))
 	except:
 		return process_error(audit, cmd, "Count not process field: 'amount'")
 	if amount <= 0:
 		return process_error(audit, cmd, "Parameter: 'amount' must be greater than 0")
-
-	log = executor.submit(audit.UserCommand, args=(cmd, ))
+	
+	cmd = Command(TransactionID=int(t_id), C_type=Cmd.ADD.value,
+	              UserId=user_id, Timestamp=time.time(), Amount=amount)
+	
+	log = executor.submit(audit.UserCommand, (cmd, ))
 	resp = txn.ADD(cmd=cmd)
 	log.result()
 	return json.dumps(thrift_to_json(resp))
@@ -101,7 +105,7 @@ def add(t_id, user_id):
 @crossdomain(origin='*')
 def quote(t_id, user_id):
 	stock = request.args.get('stock', default = '', type = str)
-	cmd = Command(TransactionID=t_id, C_type=Cmd.QUOTE, UserId=user_id, Timestamp=time.time(), StockSymbol=stock)
+	cmd = Command(TransactionID=int(t_id), C_type=Cmd.QUOTE.value, UserId=user_id, Timestamp=time.time(), StockSymbol=stock)
 	if stock == "":
 		return process_error(audit, cmd, "Parameter: 'stock' cannot be empty.")
 
@@ -115,23 +119,23 @@ def quote(t_id, user_id):
 @crossdomain(origin='*')
 def buy(t_id, user_id):
 	stock = request.args.get('stock', default = '', type = str)
-	cmd = Command(TransactionID=t_id, C_type=Cmd.BUY, UserId=user_id,
+	cmd = Command(TransactionID=int(t_id), C_type=Cmd.BUY.value, UserId=user_id,
 	              Timestamp=time.time(), StockSymbol=stock)
 
 	if stock == "":
 		return process_error(audit, cmd, "Parameter: 'stock' cannot be empty.")
 
 	try:
-		amount = request.args.get("amount", default=0, type=int)
+		amount = int(request.args.get("amount", default=0, type=int))
 	except:
 		return process_error(audit, cmd, "Count not process field: 'amount'")
 	if amount <= 0:
 		return process_error(audit, cmd, "Parameter: 'amount' must be greater than 0")
 
-	cmd = Command(TransactionID=t_id, C_type=Cmd.BUY, UserId=user_id,
-	              Timestamp=time.time(), StockSymbol=stock)
+	cmd = Command(TransactionID=int(t_id), C_type=Cmd.BUY.value, UserId=user_id,
+	              Timestamp=time.time(), StockSymbol=stock, Amount=amount)
 
-	log = executor.submit(audit.UserCommand, args=(cmd,))
+	log = executor.submit(audit.UserCommand, (cmd,))
 	resp = txn.BUY(cmd=cmd)
 	log.result()
 	return json.dumps(thrift_to_json(resp))
@@ -140,10 +144,10 @@ def buy(t_id, user_id):
 @app.route('/<t_id>/<user_id>/commit_buy', methods=["POST"])
 @crossdomain(origin='*')
 def commit_buy(t_id, user_id):
-	cmd = Command(TransactionID=t_id, C_type=Cmd.COMMIT_BUY, UserId=user_id,
+	cmd = Command(TransactionID=int(t_id), C_type=Cmd.COMMIT_BUY.value, UserId=user_id,
 	              Timestamp=time.time())
 
-	log = executor.submit(audit.UserCommand, args=(cmd,))
+	log = executor.submit(audit.UserCommand, (cmd,))
 	resp = txn.COMMIT_BUY(cmd=cmd)
 	log.result()
 	return json.dumps(thrift_to_json(resp))
@@ -152,10 +156,10 @@ def commit_buy(t_id, user_id):
 @app.route('/<t_id>/<user_id>/cancel_buy', methods=["POST"])
 @crossdomain(origin='*')
 def cancel_buy(t_id, user_id):
-	cmd = Command(TransactionID=t_id, C_type=Cmd.CANCEL_BUY, UserId=user_id,
+	cmd = Command(TransactionID=int(t_id), C_type=Cmd.CANCEL_BUY.value, UserId=user_id,
 	              Timestamp=time.time())
 
-	log = executor.submit(audit.UserCommand, args=(cmd,))
+	log = executor.submit(audit.UserCommand, (cmd,))
 	resp = txn.CANCEL_BUY(cmd=cmd)
 	log.result()
 	return json.dumps(thrift_to_json(resp))
@@ -165,21 +169,21 @@ def cancel_buy(t_id, user_id):
 @crossdomain(origin='*')
 def sell(t_id, user_id):
 	stock = request.args.get('stock', default = '', type = str)
-	cmd = Command(TransactionID=t_id, C_type=Cmd.SELL, UserId=user_id,
+	cmd = Command(TransactionID=int(t_id), C_type=Cmd.SELL.value, UserId=user_id,
 	              Timestamp=time.time(), StockSymbol=stock)
 	if stock == "":
 		return process_error(audit, cmd, "Parameter: 'stock' cannot be empty.")
 
 	try:
-		amount = request.args.get("amount", default=0, type=int)
+		amount = int(request.args.get("amount", default=0, type=int))
 	except:
 		return process_error("Count not process field: 'amount'")
 	if amount <= 0:
 		return process_error("Parameter: 'amount' must be greater than 0")
-	cmd = Command(TransactionID=t_id, C_type=Cmd.SELL, UserId=user_id,
+	cmd = Command(TransactionID=int(t_id), C_type=Cmd.SELL.value, UserId=user_id,
 	              Timestamp=time.time(), StockSymbol=stock, Amount=amount)
 
-	log = executor.submit(audit.UserCommand, args=(cmd,))
+	log = executor.submit(audit.UserCommand, (cmd,))
 	resp = txn.SELL(cmd=cmd)
 	log.result()
 	return json.dumps(thrift_to_json(resp))
@@ -188,10 +192,10 @@ def sell(t_id, user_id):
 @app.route('/<t_id>/<user_id>/commit_sell', methods=["POST"])
 @crossdomain(origin='*')
 def commit_sell(t_id, user_id):
-	cmd = Command(TransactionID=t_id, C_type=Cmd.COMMIT_SELL, UserId=user_id,
+	cmd = Command(TransactionID=int(t_id), C_type=Cmd.COMMIT_SELL.value, UserId=user_id,
 	              Timestamp=time.time())
 
-	log = executor.submit(audit.UserCommand, args=(cmd,))
+	log = executor.submit(audit.UserCommand, (cmd,))
 	resp = txn.COMMIT_SELL(cmd=cmd)
 	log.result()
 	return json.dumps(thrift_to_json(resp))
@@ -200,10 +204,10 @@ def commit_sell(t_id, user_id):
 @app.route('/<t_id>/<user_id>/cancel_sell', methods=["POST"])
 @crossdomain(origin='*')
 def cancel_sell(t_id, user_id):
-	cmd = Command(TransactionID=t_id, C_type=Cmd.CANCEL_SELL, UserId=user_id,
+	cmd = Command(TransactionID=int(t_id), C_type=Cmd.CANCEL_SELL.value, UserId=user_id,
 	              Timestamp=time.time())
 
-	log = executor.submit(audit.UserCommand, args=(cmd,))
+	log = executor.submit(audit.UserCommand, (cmd,))
 	resp = txn.CANCEL_SELL(cmd=cmd)
 	log.result()
 	return json.dumps(thrift_to_json(resp))
@@ -213,21 +217,21 @@ def cancel_sell(t_id, user_id):
 @crossdomain(origin='*')
 def set_buy_amount(t_id, user_id):
 	stock = request.args.get('stock', default = '', type = str)
-	cmd = Command(TransactionID=t_id, C_type=Cmd.SET_BUY_AMOUNT, UserId=user_id,
+	cmd = Command(TransactionID=int(t_id), C_type=Cmd.SET_BUY_AMOUNT.value, UserId=user_id,
 	              Timestamp=time.time(), StockSymbol=stock)
 	if stock == "":
 		return process_error(audit, cmd, "Parameter: 'stock' cannot be empty.")
 
 	try:
-		amount = request.args.get("amount", default=0, type=int)
+		amount = int(request.args.get("amount", default=0, type=int))
 	except:
 		return process_error(audit, cmd, "Count not process field: 'amount'")
 	if amount <= 0:
 		return process_error(audit, cmd, "Parameter: 'amount' must be greater than 0")
-	cmd = Command(TransactionID=t_id, C_type=Cmd.SET_BUY_AMOUNT, UserId=user_id,
+	cmd = Command(TransactionID=int(t_id), C_type=Cmd.SET_BUY_AMOUNT.value, UserId=user_id,
 	              Timestamp=time.time(), StockSymbol=stock, Amount=amount)
 
-	log = executor.submit(audit.UserCommand, args=(cmd,))
+	log = executor.submit(audit.UserCommand, (cmd,))
 	resp = txn.SET_BUY_AMOUNT(cmd=cmd)
 	log.result()
 	return json.dumps(thrift_to_json(resp))
@@ -237,12 +241,12 @@ def set_buy_amount(t_id, user_id):
 @crossdomain(origin='*')
 def cancel_set_buy(t_id, user_id):
 	stock = request.args.get('stock', default = '', type = str)
-	cmd = Command(TransactionID=t_id, C_type=Cmd.CANCEL_SET_BUY, UserId=user_id,
+	cmd = Command(TransactionID=int(t_id), C_type=Cmd.CANCEL_SET_BUY.value, UserId=user_id,
 	              Timestamp=time.time(), StockSymbol=stock)
 	if stock == "":
 		return process_error(audit, cmd, "Parameter: 'stock' cannot be empty.")
 
-	log = executor.submit(audit.UserCommand, args=(cmd,))
+	log = executor.submit(audit.UserCommand, (cmd,))
 	resp = txn.CANCEL_SET_BUY(cmd=cmd)
 	log.result()
 	return json.dumps(thrift_to_json(resp))
@@ -252,19 +256,21 @@ def cancel_set_buy(t_id, user_id):
 @crossdomain(origin='*')
 def set_buy_trigger(t_id, user_id):
 	stock = request.args.get('stock', default = '', type = str)
-	cmd = Command(TransactionID=t_id, C_type=Cmd.SET_BUY_TRIGGER, UserId=user_id,
+	cmd = Command(TransactionID=int(t_id), C_type=Cmd.SET_BUY_TRIGGER.value, UserId=user_id,
 	              Timestamp=time.time(), StockSymbol=stock)
 	if stock == "":
 		return process_error(audit, cmd, "Parameter: 'stock' cannot be empty.")
 
 	try:
-		amount = request.args.get("amount", default=0, type=int)
+		amount = int(request.args.get("amount", default=0, type=int))
 	except:
 		return process_error(audit, cmd, "Count not process field: 'amount'")
 	if amount <= 0:
 		return process_error(audit, cmd, "Parameter: 'amount' must be greater than 0")
+	cmd = Command(TransactionID=int(t_id), C_type=Cmd.SET_BUY_TRIGGER.value, UserId=user_id,
+	              Timestamp=time.time(), StockSymbol=stock, Amount=amount)
 
-	log = executor.submit(audit.UserCommand, args=(cmd,))
+	log = executor.submit(audit.UserCommand, (cmd,))
 	resp = txn.SET_BUY_TRIGGER(cmd=cmd)
 	log.result()
 	return json.dumps(thrift_to_json(resp))
@@ -274,23 +280,23 @@ def set_buy_trigger(t_id, user_id):
 @crossdomain(origin='*')
 def set_sell_amount(t_id, user_id):
 	stock = request.args.get('stock', default = '', type = str)
-	cmd = Command(TransactionID=t_id, C_type=Cmd.SET_SELL_AMOUNT, UserId=user_id,
+	cmd = Command(TransactionID=int(t_id), C_type=Cmd.SET_SELL_AMOUNT.value, UserId=user_id,
 	              Timestamp=time.time(), StockSymbol=stock)
 
 	if stock == "":
 		return process_error(audit, cmd, "Parameter: 'stock' cannot be empty.")
 
 	try:
-		amount = request.args.get("amount", default=0, type=int)
+		amount = int(request.args.get("amount", default=0, type=int))
 	except:
 		return process_error(audit, cmd, "Count not process field: 'amount'")
 	if amount <= 0:
 		return process_error(audit, cmd, "Parameter: 'amount' must be greater than 0")
 
-	cmd = Command(TransactionID=t_id, C_type=Cmd.SET_SELL_AMOUNT, UserId=user_id,
-	              Timestamp=time.time(), StockSymbol=stock)
+	cmd = Command(TransactionID=int(t_id), C_type=Cmd.SET_SELL_AMOUNT.value, UserId=user_id,
+	              Timestamp=time.time(), StockSymbol=stock, Amount=amount)
 
-	log = executor.submit(audit.UserCommand, args=(cmd,))
+	log = executor.submit(audit.UserCommand, (cmd,))
 	resp = txn.SET_SELL_AMOUNT(cmd=cmd)
 	log.result()
 	return json.dumps(thrift_to_json(resp))
@@ -300,20 +306,22 @@ def set_sell_amount(t_id, user_id):
 @crossdomain(origin='*')
 def set_sell_trigger(t_id, user_id):
 	stock = request.args.get('stock', default = '', type = str)
-	cmd = Command(TransactionID=t_id, C_type=Cmd.SET_SELL_TRIGGER, UserId=user_id,
+	cmd = Command(TransactionID=int(t_id), C_type=Cmd.SET_SELL_TRIGGER.value, UserId=user_id,
 	              Timestamp=time.time(), StockSymbol=stock)
 
 	if stock == "":
 		return process_error(audit, cmd, "Parameter: 'stock' cannot be empty.")
 
 	try:
-		amount = request.args.get("amount", default=0, type=int)
+		amount = int(request.args.get("amount", default=0, type=int))
 	except:
 		return process_error(audit, cmd, "Count not process field: 'amount'")
 	if amount <= 0:
 		return process_error(audit, cmd, "Parameter: 'amount' must be greater than 0")
-
-	log = executor.submit(audit.UserCommand, args=(cmd,))
+	
+	cmd = Command(TransactionID=int(t_id), C_type=Cmd.SET_BUY_TRIGGER.value, UserId=user_id,
+	              Timestamp=time.time(), StockSymbol=stock, Amount=amount)
+	log = executor.submit(audit.UserCommand, (cmd,))
 	resp = txn.SET_SELL_TRIGGER(cmd=cmd)
 	log.result()
 	if resp is None:
@@ -325,20 +333,21 @@ def set_sell_trigger(t_id, user_id):
 @crossdomain(origin='*')
 def cancel_set_sell(t_id, user_id):
 	stock = request.args.get('stock', default = '', type = str)
-	cmd = Command(TransactionID=t_id, C_type=Cmd.CANCEL_SET_SELL, UserId=user_id,
+	cmd = Command(TransactionID=int(t_id), C_type=Cmd.CANCEL_SET_SELL.value, UserId=user_id,
 	              Timestamp=time.time(), StockSymbol=stock)
 
 	if stock == "":
 		return process_error(audit, cmd, "Parameter: 'stock' cannot be empty.")
 
 	try:
-		amount = request.args.get("amount", default=0, type=int)
+		amount = int(request.args.get("amount", default=0, type=int))
 	except:
 		return process_error(audit, cmd, "Count not process field: 'amount'")
 	if amount <= 0:
 		return process_error(audit, cmd, "Parameter: 'amount' must be greater than 0")
-
-	log = executor.submit(audit.UserCommand, args=(cmd,))
+	cmd = Command(TransactionID=int(t_id), C_type=Cmd.SET_BUY_TRIGGER.value, UserId=user_id,
+	              Timestamp=time.time(), StockSymbol=stock, Amount=amount)
+	log = executor.submit(audit.UserCommand, (cmd,))
 	resp = txn.CANCEL_SET_SELL(cmd=cmd)
 	log.result()
 	return json.dumps(thrift_to_json(resp))
@@ -348,13 +357,14 @@ def cancel_set_sell(t_id, user_id):
 @crossdomain(origin='*')
 def dumplog(t_id, user_id):
 	filename = request.form["filename"]
-	cmd = Command(TransactionID=t_id, C_type=Cmd.DUMPLOG, UserId=user_id,
+	cmd = Command(TransactionID=int(t_id), C_type=Cmd.DUMPLOG.value, UserId=user_id,
 	              Timestamp=time.time(), FileName=filename)
 
 	if filename == "" and filename != "admin":
 		return process_error(audit, cmd, "Parameter: 'filename' cannot be empty.")
 
-	log = executor.submit(audit.UserCommand, args=(cmd,))
+
+	log = executor.submit(audit.UserCommand, (cmd,))
 	resp = txn.DUMPLOG(cmd=cmd)
 	log.result()
 	return json.dumps(thrift_to_json(resp))

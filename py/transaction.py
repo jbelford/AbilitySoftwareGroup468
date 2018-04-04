@@ -37,7 +37,7 @@ class transactionserver(object):
 		if err is not None:
 			return self.error(cmd, "Failed to create and/or add money to account")
 
-		_executor.submit(self._audit.AccountTransaction, args=(cmd.UserId, cmd.Amount, "add", cmd.TransactionID))
+		_executor.submit(self._audit.AccountTransaction, (cmd.UserId, cmd.Amount, "add", cmd.TransactionID))
 
 		return Response(Success=True)
 
@@ -51,7 +51,7 @@ class transactionserver(object):
 
 	def BUY(self, cmd: Command):
 		resp: DBResponse = self._database.GetUser(userId=cmd.UserId)
-		if resp.error is None:
+		if resp.error is None or resp.user.Reserved is None:
 			return self.error(cmd, "The user " + str(cmd.UserId) + " does not exist")
 
 		user_reserved = resp.user.Reserved
@@ -84,7 +84,7 @@ class transactionserver(object):
 		if resp.error is not None:
 			return self.error(cmd, "User can no longer afford this purchase.")
 
-		log = _executor.submit(self._audit.AccountTransaction, args=(cmd.UserId, cmd.Amount, "remove", cmd.TransactionID, ))
+		log = _executor.submit(self._audit.AccountTransaction, (cmd.UserId, cmd.Amount, "remove", cmd.TransactionID, ))
 		# TODO:// Log to database.
 		log.result()
 
@@ -99,8 +99,12 @@ class transactionserver(object):
 
 	def SELL(self, cmd: Command):
 		resp = self._database.GetUser(cmd.UserId)
-		if resp.error is not None:
+		if resp.error is not None or resp.user == {} \
+				or resp.user is None or resp.user.stock == {}\
+				or resp.user.stock is None:
 			return self.error(cmd, "The user " + str(cmd.UserId) + " does not exist.")
+		elif cmd.StockSymbol not in resp.user.stock.keys():
+			return self.error(cmd, "The user " + str(cmd.UserId) + " does not own any stocks.")
 		elif resp.user.stock[cmd.StockSymbol]["real"] == 0:
 			return self.error(cmd, "User does not own any shares for that stock")
 
@@ -112,6 +116,8 @@ class transactionserver(object):
 		shares = actual_shares
 		if shares <= 0:
 			return self.error(cmd, "A single share is worth more than specified amount.")
+		elif cmd.StockSymbol not in resp.user.stock.keys():
+			return self.error(cmd, "User does not own any stocks.")
 		elif resp.user.stock[cmd.StockSymbol]["real"] < shares:
 			shares = resp.user.stock[cmd.StockSymbol]["real"]
 
@@ -134,7 +140,7 @@ class transactionserver(object):
 		if resp.error is not None:
 			return self.error(cmd, "User no longer has the correct number of shares.")
 
-		_executor.submit(self._audit.AccountTransaction, args=(cmd.UserId, cmd.Amount, "add", cmd.TransactionID))
+		_executor.submit(self._audit.AccountTransaction, (cmd.UserId, cmd.Amount, "add", cmd.TransactionID))
 
 		# TODO:// Log into database?... (trying to just write to file, see how it works)
 
@@ -172,7 +178,7 @@ class transactionserver(object):
 			self._database.UnreserveMoney(cmd.UserId, cmd.Amount)
 			return self.error(cmd, "Failed to set trigger in DB.")
 
-		_executor.submit(self._audit.AccountTransaction, args=(cmd.UserId, cmd.Amount, "reserve", cmd.TransactionID, ))
+		_executor.submit(self._audit.AccountTransaction, (cmd.UserId, cmd.Amount, "reserve", cmd.TransactionID, ))
 		return Response(Success=True)
 
 
@@ -184,15 +190,17 @@ class transactionserver(object):
 
 		# TODO:// Cancel Triggers and Unreserve money...
 		trig: Trigger = self._database.CancelTrigger(cmd.UserId, cmd.StockSymbol, "BUY")
+
 		if trig.error is not None:
 			return self.error(cmd, "No buy trigger to cancel.")
-
+		
 		resp = self._database.UnreserveMoney(cmd.UserId, trig.Amount)
+		
 		if resp.error is not None:
 			logging.error(resp.error)
 			return self.error(cmd, "Internal server error.")
 
-		_executor.submit(self._audit.AccountTransaction, args=(cmd.Amount, trig.Amount, "unreserve", cmd.TransactionID, ))
+		_executor.submit(self._audit.AccountTransaction, (cmd.Amount, trig.Amount, "unreserve", cmd.TransactionID, ))
 
 		return Response(Success=True, Stock=cmd.StockSymbol)
 
@@ -220,6 +228,16 @@ class transactionserver(object):
 			return self.error(cmd, "The user does not exist.")
 
 		reserved = self._database.GetReservedShares(cmd.UserId, cmd.StockSymbol)
+		
+		if resp.error is not None or resp.user == {} \
+				or resp.user is None or resp.user.stock == {}\
+				or resp.user.stock is None:
+			return self.error(cmd, "The user " + str(cmd.UserId) + " does not exist.")
+		elif cmd.StockSymbol not in resp.user.stock.keys():
+			return self.error(cmd, "The user " + str(cmd.UserId) + " does not own any stocks.")
+		elif resp.user.stock[cmd.StockSymbol]["real"] == 0:
+			return self.error(cmd, "User does not own any shares for that stock")
+		
 		real_stocks = resp.user.stock[cmd.StockSymbol]["real"] - reserved
 		if real_stocks <= 0:
 			return self.error(cmd, "The user does not have any stocks.")
@@ -240,7 +258,7 @@ class transactionserver(object):
 		if resp.error is not None:
 			return self.error(cmd, "Failed to set sell amount.")
 		self._database.ReserveShares(cmd.UserId, cmd.StockSymbol, reserved_shares)
-		_executor.submit(self._audit.AccountTransaction, args=(cmd.UserId, cmd.Amount, "reserve", cmd.TransactionID, ))
+		_executor.submit(self._audit.AccountTransaction, (cmd.UserId, cmd.Amount, "reserve", cmd.TransactionID, ))
 		return Response(Success=True)
 
 	def SET_SELL_TRIGGER(self, cmd: Command):
@@ -272,7 +290,7 @@ class transactionserver(object):
 			logging.error(resp.error)
 			return self.error(cmd, "Internal error occured.")
 
-		_executor.submit(self._audit.AccountTransaction, args=(cmd.UserId, trig.Amount, "unreserve", cmd.TransactionID,))
+		_executor.submit(self._audit.AccountTransaction, (cmd.UserId, trig.Amount, "unreserve", cmd.TransactionID,))
 		return Response(Success=True)
 
 	# TODO://

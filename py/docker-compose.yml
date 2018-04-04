@@ -1,18 +1,31 @@
 version: '3'
 services:
   workloadgen:
-    container_name: "Workload"
+    #container_name: "Workload"
     image: workloadgen:latest
     build:
       context: ../workloads
       dockerfile: Dockerfile
     tty: true
-    entrypoint: go run workloadgenerator.go 100User_testWorkLoad.txt
+    entrypoint: go run workloadgenerator.go 10User_testWorkLoad.txt
     depends_on:
       - web
-
+    links:
+      - web
+  locker:
+    #container_name: "Locker"
+    image: "ability:latest"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python locker.py
+    depends_on:
+      - audit
+    links:
+      - audit:LoggerRpc
+    tty: true
   transaction:
-    container_name: "Transaction"
+    #container_name: "Transaction"
     image: "ability:latest"
     build:
       context: .
@@ -22,12 +35,20 @@ services:
       - audit
       - database
       - cache
+    links:
+      - audit:LoggerRpc
+      - database:Database
+      - cache:Cache
     tty: true
   cache:
     image: "ability:latest"
-    container_name: "Cache"
+    #container_name: "Cache"
     depends_on:
       - audit
+      - locker
+    links:
+      - audit:LoggerRpc
+      - locker:LockerRPC
     build:
       context: .
       dockerfile: Dockerfile
@@ -37,7 +58,7 @@ services:
     tty: true
   web:
     image: "ability:latest"
-    container_name: "web"
+    #container_name: "web"
     depends_on:
       - transaction
       - audit
@@ -45,13 +66,16 @@ services:
       - 44420
     expose:
       - 44420
+    links:
+      - transaction:Transaction
+      - audit:LoggerRpc
     build:
       context: .
       dockerfile: Dockerfile
     command: python webserver.py
     tty: true
   audit:
-    container_name: "LoggerRpc"
+    #container_name: "LoggerRpc"
     image: "ability:latest"
     build:
       context: .
@@ -60,11 +84,18 @@ services:
     tty: true
   triggerman:
     image: "ability:latest"
-    container_name: "TriggerManRpc"
+    #container_name: "TriggerManRpc"
     depends_on:
       - audit
       - transaction
       - cache
+      - locker
+    links:
+      - audit:LoggerRpc
+      - transaction:Transaction
+      - cache:Cache
+      - database:Database
+      - locker:LockerRPC
     build:
       context: .
       dockerfile: Dockerfile
@@ -72,10 +103,13 @@ services:
     tty: true
   database:
     image: "ability:latest"
-    container_name: "Database"
-
+    #container_name: "Database"
     build:
       context: .
       dockerfile: Dockerfile
     command: python database.py
+    depends_on:
+      - locker
+    links:
+      - locker:LockerRPC
     tty: true

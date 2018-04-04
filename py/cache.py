@@ -11,6 +11,7 @@ from shared.ttypes import QuoteData
 from utils import process_error, _executor
 from auditserver import AuditServer
 from Service import Service
+from locker import Locker
 from cacheRPC import Cache
 import socket
 
@@ -19,7 +20,7 @@ import socket
 class Cache(object):
 	quotes = {}
 
-	def __init__(self, mock=True, timeout=10, use_rpc=False, server=False):
+	def __init__(self, mock=True, timeout=10000, use_rpc=False, server=False):
 		self.quotes = {}
 		if not mock:
 			self._quote_server_conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -28,7 +29,7 @@ class Cache(object):
 			self._quote_server_conn = None
 		self._mock = mock
 		self._audit = AuditServer(use_rpc=use_rpc, server=False)
-		self._lock = Lock()
+		self._lock = Locker(use_rpc=use_rpc, server=False)
 		self._timeout = timeout  # default timeout of 10 seconds.
 
 	def error(self, cmd, msg):
@@ -50,10 +51,12 @@ class Cache(object):
 
 	# TODO:// Have multiple locks...
 	def __lock_quote(self, quote, userId):
-		self._lock.acquire(timeout=self._timeout)
+		#self._lock.requestLock(quote + ":" + userId, "QUOTE")
+		pass
 
 	def __unlock_quote(self, quote, userId):
-		self._lock.release()
+		#self._lock.releaseLock(quote + ":" + userId, "QUOTE")
+		pass
 
 	def GetQuote(self, symbol, userId, tid):
 		logging.debug("Getting Quote: " + str(symbol))

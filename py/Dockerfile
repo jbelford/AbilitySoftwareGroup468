@@ -5,7 +5,7 @@ RUN thrift -r -gen py transaction.thrift
 RUN thrift -r -gen py database.thrift
 RUN thrift -r -gen py cache.thrift
 RUN thrift -r -gen py logger.thrift
-
+RUN thrift -r -gen py locker.thrift
 
 FROM python:latest
 ADD . /src
