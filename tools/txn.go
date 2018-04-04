@@ -1,7 +1,6 @@
 package tools
 
 import (
-	"io"
 	"log"
 	"time"
 
@@ -23,7 +22,7 @@ type txnServe struct {
 }
 
 func (t *txnServe) Send(cmd common.Command) *common.Response {
-	log.Printf("Sending to transaction server: %d\n", cmd.TransactionID)
+	// log.Printf("Sending to transaction server: %d\n", cmd.TransactionID)
 	data, err := t.dispatch.Call(common.Commands[cmd.C_type], cmd)
 	if err != nil {
 		log.Println(err)
@@ -34,7 +33,7 @@ func (t *txnServe) Send(cmd common.Command) *common.Response {
 		log.Println("Failed to assert response type")
 		return nil
 	}
-	log.Printf("Sending response: %d\n", cmd.TransactionID)
+	// log.Printf("Sending response: %d\n", cmd.TransactionID)
 	return resp
 }
 
@@ -48,18 +47,19 @@ func GetTxnConn() TxnConn {
 	gorpc.RegisterType(&common.Command{})
 
 	client := gorpc.NewTCPClient(common.CFG.TxnServer.Url)
-	connected := make(chan bool)
-	client.OnConnect = func(remoteAddr string, rwc io.ReadWriteCloser) (io.ReadWriteCloser, error) {
-		connected <- true
-		return rwc, nil
-	}
+	// connected := make(chan bool)
+	// client.OnConnect = func(remoteAddr string, rwc io.ReadWriteCloser) (io.ReadWriteCloser, error) {
+	// 	log.Println("TRANSACTION CONNECTION")
+	// 	connected <- true
+	// 	return rwc, nil
+	// }
 
 	dispatcher := gorpc.NewDispatcher()
 	dispatcher.AddService(TxnServiceName, &TxnRPC{})
 	dispatchClient := dispatcher.NewServiceClient(TxnServiceName, client)
 	client.Start()
 
-	<-connected
+	// <-connected
 	return &txnServe{client: client, dispatch: dispatchClient}
 }
 
