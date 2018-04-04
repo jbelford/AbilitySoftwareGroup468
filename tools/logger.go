@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -154,10 +155,12 @@ func (l *logger) DumpLog() (*[]byte, error) {
 }
 
 func (l *logger) Close() {
+	log.Println("Closing logger RPC connection")
 	l.client.Stop()
 }
 
 func GetLogger(server string) Logger {
+	log.Println("Getting logger RPC connection...")
 	gorpc.RegisterType(&UserCommand{})
 	gorpc.RegisterType(&QuoteServer{})
 	gorpc.RegisterType(&AccountTransaction{})
@@ -167,10 +170,18 @@ func GetLogger(server string) Logger {
 	gorpc.RegisterType(&DumpLogArgs{})
 
 	client := gorpc.NewTCPClient(common.CFG.AuditServer.Url)
+	connected := make(chan bool)
+	client.OnConnect = func(remoteAddr string, rwc io.ReadWriteCloser) (io.ReadWriteCloser, error) {
+		connected <- true
+		return rwc, nil
+	}
+
 	dispatcher := gorpc.NewDispatcher()
 	dispatcher.AddService(LoggerServiceName, &LoggerRPC{})
 	dispatchClient := dispatcher.NewServiceClient(LoggerServiceName, client)
 	client.Start()
+
+	<-connected
 	return &logger{client, dispatchClient, server}
 }
 

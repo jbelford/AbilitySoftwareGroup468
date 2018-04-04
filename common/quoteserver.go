@@ -3,6 +3,7 @@ package common
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"net"
 	"strconv"
 	"strings"
@@ -17,11 +18,17 @@ func GetQuote(symbol string, userid string) (*QuoteData, error) {
 		time.Sleep(time.Millisecond * 300)
 		msg = fmt.Sprintf("12.50,%s,%s,1111111111,123198fadfa\n", symbol, userid)
 	} else {
-		tcpConn, err := net.Dial("tcp", CFG.Quoteserver.Address)
+		log.Printf("QuoteServer: Requesting quote '%s'\n", symbol)
+		tcpConn, err := net.DialTimeout("tcp", CFG.Quoteserver.Address, time.Second*5)
 		if err != nil {
 			return nil, err
 		}
-		tcpConn.Write([]byte(fmt.Sprintf("%s, %s\n", symbol, userid)))
+		defer tcpConn.Close()
+		_, err = tcpConn.Write([]byte(fmt.Sprintf("%s, %s\n", symbol, userid)))
+		if err != nil {
+			log.Println(err)
+			return nil, err
+		}
 		msg, err = bufio.NewReader(tcpConn).ReadString('\n')
 		if err != nil {
 			return nil, err
