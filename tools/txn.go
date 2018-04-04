@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"io"
 	"log"
 	"time"
 
@@ -47,10 +48,18 @@ func GetTxnConn() TxnConn {
 	gorpc.RegisterType(&common.Command{})
 
 	client := gorpc.NewTCPClient(common.CFG.TxnServer.Url)
+	connected := make(chan bool)
+	client.OnConnect = func(remoteAddr string, rwc io.ReadWriteCloser) (io.ReadWriteCloser, error) {
+		connected <- true
+		return rwc, nil
+	}
+
 	dispatcher := gorpc.NewDispatcher()
 	dispatcher.AddService(TxnServiceName, &TxnRPC{})
 	dispatchClient := dispatcher.NewServiceClient(TxnServiceName, client)
 	client.Start()
+
+	<-connected
 	return &txnServe{client: client, dispatch: dispatchClient}
 }
 
