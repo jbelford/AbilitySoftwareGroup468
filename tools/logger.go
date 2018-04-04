@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -170,18 +169,18 @@ func GetLogger(server string) Logger {
 	gorpc.RegisterType(&DumpLogArgs{})
 
 	client := gorpc.NewTCPClient(common.CFG.AuditServer.Url)
-	connected := make(chan bool)
-	client.OnConnect = func(remoteAddr string, rwc io.ReadWriteCloser) (io.ReadWriteCloser, error) {
-		connected <- true
-		return rwc, nil
-	}
+	// connected := make(chan bool)
+	// client.OnConnect = func(remoteAddr string, rwc io.ReadWriteCloser) (io.ReadWriteCloser, error) {
+	// 	connected <- true
+	// 	return rwc, nil
+	// }
 
 	dispatcher := gorpc.NewDispatcher()
 	dispatcher.AddService(LoggerServiceName, &LoggerRPC{})
 	dispatchClient := dispatcher.NewServiceClient(LoggerServiceName, client)
 	client.Start()
 
-	<-connected
+	// <-connected
 	return &logger{client, dispatchClient, server}
 }
 
