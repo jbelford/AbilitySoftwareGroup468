@@ -177,9 +177,9 @@ def sell(t_id, user_id):
 	try:
 		amount = int(request.args.get("amount", default=0, type=int))
 	except:
-		return process_error("Count not process field: 'amount'")
+		return process_error(cmd, "Count not process field: 'amount'")
 	if amount <= 0:
-		return process_error("Parameter: 'amount' must be greater than 0")
+		return process_error(cmd, "Parameter: 'amount' must be greater than 0")
 	cmd = Command(TransactionID=int(t_id), C_type=Cmd.SELL.value, UserId=user_id,
 	              Timestamp=time.time(), StockSymbol=stock, Amount=amount)
 

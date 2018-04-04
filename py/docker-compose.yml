@@ -7,7 +7,7 @@ services:
       context: ../workloads
       dockerfile: Dockerfile
     tty: true
-    entrypoint: go run workloadgenerator.go 10User_testWorkLoad.txt
+    entrypoint: go run workloadgenerator.go 1userWorkLoad.txt
     depends_on:
       - web
     links:

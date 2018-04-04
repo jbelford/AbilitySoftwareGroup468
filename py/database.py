@@ -50,10 +50,11 @@ class dbserver(object):
 	def __init_tables(self):
 		self.tables = [None] * len(self.tables_lookup.keys())
 		
+		logging.debug("Initializing Tables.")
 		# TODO:// Read in split tables properly
 		for table, ind in self.tables_lookup.items():
 			if os.path.exists(table + ".pkl"):
-				with open(table + ".pkl") as my_pickle:
+				with open(table + ".pkl", "r") as my_pickle:
 					self.tables[ind] = pickle.load(my_pickle)
 			else:
 				# Initialize to new dictionary.
@@ -67,10 +68,12 @@ class dbserver(object):
 			
 			
 	def __save_table(self, table):
+		logging.debug("Save Table")
+		
 		# Save the partition of the table to file...
-		with open(table + ".pkl") as my_pickle:
+		with open(table + ".pkl", "w") as my_pickle:
 			table_name = table.split("_")[0]
-			my_table = {k:v for (k, v) in self.tables[self.tables_lookup] if
+			my_table = {k:v for (k, v) in self.tables[self.tables_lookup].items() if
 						    table_name + "_" + hash(k) % self.__num_tables_to_keep == table}
 			
 			pickle.dump(my_table, my_pickle)
@@ -145,19 +148,17 @@ class dbserver(object):
 
 		user = self.__get_key("Users", userId)
 		if user == {}:
+			logging.debug("Getting new user.")
 			user = self.__get_new_user(userId)
-
-		user["balance"] += amount
+		
+		logging.debug("Adding user balance")
+		user.update({"balance": user["balance"] + amount})
 		self.__replace_key("Users", userId, user)
 
 		self.__unlock_user(userId)
 
 		# Error
-		resp = DBResponse(
-				user=User(User=userId, Balance=user["balance"], Reserved=0, stock=0)
-		)
-
-		return resp
+		return DBResponse(user=User(User=userId, Balance=user["balance"], Reserved=0, stock=0))
 
 
 	def UnreserveMoney(self, userId, amount):
@@ -172,8 +173,8 @@ class dbserver(object):
 			self.__unlock_user(userId)
 			return DBResponse(error="Not Enough Money To Unreserve!")
 
-		user["reserved"] -= amount
-		user["balance"] += amount
+		user.update({"reserved": user["reserved"] - amount})
+		user.update({"balance": user["balance"] + amount})
 
 		self.__replace_key("Users", userId, user)
 
@@ -192,8 +193,8 @@ class dbserver(object):
 			self.__unlock_user(userId)
 			return DBResponse(error="Not Enough Money To Unreserve!")
 
-		user["reserved"] -= amount
-		user["balance"] += amount
+		user.update({"reserved": user["reserved"] - amount})
+		user.update({"balance": user["balance"] + amount})
 
 		self.__replace_key("Users", userId, user)
 
@@ -243,8 +244,8 @@ class dbserver(object):
 			return DBResponse(error="User does not own that many shares")
 
 		st = user["stock"][stock]
-		st["shares." + stock + ".real"] += shares
-		st["shares." + stock + ".reserved"] -= shares
+		st.update({"shares." + stock + ".real": st["shares." + stock + ".real"] + shares})
+		st.update({"shares." + stock + ".reserved": st["shares." + stock + ".reserved"] - shares})
 
 		self.__replace_key("Users", userId, user)
 
@@ -268,8 +269,8 @@ class dbserver(object):
 			if st["shares." + stock + ".real"] < shares:
 				self.__unlock_user(userId)
 				return DBResponse(error="User does not own enough of this stock.")
-			st["shares." + stock + ".real"] -= shares
-			st["shares." + stock + ".reserved"] += shares
+			st.update({"shares." + stock + ".real": st["shares." + stock + ".real"] - shares})
+			st.update({"shares." + stock + ".reserved": st["shares." + stock + ".reserved"] + shares})
 
 		self.__replace_key("Users", userId, user)
 

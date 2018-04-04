@@ -32,11 +32,11 @@ class transactionserver(object):
 		return process_error(self._audit, cmd, msg)
 
 	def ADD(self, cmd: Command):
+		logging.debug("Getting Add")
 		resp = self._database.AddUserMoney(userId=cmd.UserId, amount=cmd.Amount)
-		err = resp.error
+		print("Got Response!")
 		if err is not None:
 			return self.error(cmd, "Failed to create and/or add money to account")
-
 		_executor.submit(self._audit.AccountTransaction, (cmd.UserId, cmd.Amount, "add", cmd.TransactionID))
 
 		return Response(Success=True)

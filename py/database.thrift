@@ -15,6 +15,7 @@ service Database {
     DBResponse BulkTransactions(1: list<shared.PendingTxn> txns, 2: bool wasCached),
     DBResponse ProcessTxn(1: shared.PendingTxn txn, 2: bool wasCached)
 
+    shared.Trigger PopPendingTxn(1: string userId, 2: string txnType),
     void PushPendingTxn(1: shared.PendingTxn pending),
     DBResponse AddNewTrigger(1: shared.Trigger trigger),
     shared.Trigger CancelTrigger(1: string userId, 2: string stock, 3: string trigger_type),
