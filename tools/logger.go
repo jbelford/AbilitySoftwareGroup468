@@ -154,10 +154,12 @@ func (l *logger) DumpLog() (*[]byte, error) {
 }
 
 func (l *logger) Close() {
+	log.Println("Closing logger RPC connection")
 	l.client.Stop()
 }
 
 func GetLogger(server string) Logger {
+	log.Println("Getting logger RPC connection...")
 	gorpc.RegisterType(&UserCommand{})
 	gorpc.RegisterType(&QuoteServer{})
 	gorpc.RegisterType(&AccountTransaction{})

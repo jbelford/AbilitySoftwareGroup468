@@ -32,15 +32,18 @@ type cache struct {
 }
 
 func (c *cache) GetLock(key string) *sync.RWMutex {
+	log.Printf("Cache: Getting lock for '%s'\n", key)
 	// Allow concurrent reading
 	c.mtx.RLock()
 	lock := c.locks[key]
 	c.mtx.RUnlock()
+	log.Printf("Cache: Got lock for '%s'\n", key)
 	// If lock doesn't exist then we need to serially block until its set
 	if lock == nil {
 		c.mtx.Lock()
 		lock = c.locks[key] // need to check again due to race condition
 		if lock == nil {
+			log.Printf("Cache: Created lock for '%s'\n", key)
 			lock = &sync.RWMutex{}
 			c.locks[key] = lock
 		}
@@ -117,6 +120,7 @@ type cacheUtil struct {
 }
 
 func (c *cacheUtil) GetQuote(symbol string, userId string, tid int64) (*common.QuoteData, error) {
+	log.Printf("CacheUtil:'%d' Getting quote '%s'\n", tid, symbol)
 	key := "Quote:" + symbol
 	lock := c.GetLock(key)
 	quote := &common.QuoteData{}
@@ -126,11 +130,13 @@ func (c *cacheUtil) GetQuote(symbol string, userId string, tid int64) (*common.Q
 	if err != nil {
 		quote, err = common.GetQuote(symbol, userId)
 		if err != nil {
+			log.Printf("CacheUtil:'%d' Failed to get quote '%s'\n", tid, symbol)
 			return nil, err
 		}
 		go c.logger.QuoteServer(quote, tid)
 		c.Set(key, quote)
 	}
+	log.Printf("CacheUtil:'%d' Got quote for '%s' - %d\n", tid, symbol, quote.Quote)
 	return quote, nil
 }
 

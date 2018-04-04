@@ -22,6 +22,7 @@ type txnServe struct {
 }
 
 func (t *txnServe) Send(cmd common.Command) *common.Response {
+	log.Printf("Sending to transaction server: %d\n", cmd.TransactionID)
 	data, err := t.dispatch.Call(common.Commands[cmd.C_type], cmd)
 	if err != nil {
 		log.Println(err)
@@ -32,14 +33,17 @@ func (t *txnServe) Send(cmd common.Command) *common.Response {
 		log.Println("Failed to assert response type")
 		return nil
 	}
+	log.Printf("Sending response: %d\n", cmd.TransactionID)
 	return resp
 }
 
 func (t *txnServe) Close() {
+	log.Println("Stopping transaction server RPC client")
 	t.client.Stop()
 }
 
 func GetTxnConn() TxnConn {
+	log.Println("Creating transaction server RPC client...")
 	gorpc.RegisterType(&common.Command{})
 
 	client := gorpc.NewTCPClient(common.CFG.TxnServer.Url)
@@ -57,7 +61,7 @@ type TxnRPC struct {
 }
 
 func (ts *TxnRPC) error(cmd *common.Command, msg string) (*common.Response, error) {
-	log.Println("ERROR", msg)
+	// log.Println("ERROR", msg)
 	go ts.logger.ErrorEvent(cmd, msg)
 	return &common.Response{Success: false, Message: msg}, nil
 }
