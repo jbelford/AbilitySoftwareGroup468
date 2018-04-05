@@ -15,7 +15,7 @@ from shared.ttypes import Command
 from transaction import transactionserver
 from utils import process_error, thrift_to_json
 
-
+use_rpc = False
 def crossdomain(origin=None, methods=None, headers=None, max_age=21600,
 				attach_to_all=True, automatic_options=True):
 	"""Decorator function that allows crossdomain requests.
@@ -65,8 +65,8 @@ def crossdomain(origin=None, methods=None, headers=None, max_age=21600,
 	return decorator
 
 
-txn = transactionserver(use_rpc=True, server=False)
-audit = AuditServer(use_rpc=True, server=False)
+txn = transactionserver(use_rpc=use_rpc, server=False)
+audit = AuditServer(use_rpc=use_rpc, server=False)
 executor = ThreadPoolExecutor(max_workers=4)
 
 app = Flask(__name__)
@@ -378,10 +378,10 @@ def start_web_server():
 
 if __name__ == "__main__":
 	root = logging.getLogger()
-	root.setLevel(logging.NOTSET)
+	root.setLevel(logging.INFO)
 
 	ch = logging.StreamHandler(sys.stdout)
-	ch.setLevel(logging.NOTSET)
+	ch.setLevel(logging.INFO)
 	formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s - [%(filename)s:%(lineno)s]')
 	ch.setFormatter(formatter)
 	root.addHandler(ch)

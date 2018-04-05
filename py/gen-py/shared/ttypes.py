@@ -81,8 +81,8 @@ class Response(object):
                 else:
                     iprot.skip(ftype)
             elif fid == 4:
-                if ftype == TType.I64:
-                    self.Quote = iprot.readI64()
+                if ftype == TType.DOUBLE:
+                    self.Quote = iprot.readDouble()
                 else:
                     iprot.skip(ftype)
             elif fid == 5:
@@ -186,8 +186,8 @@ class Response(object):
             oprot.writeString(self.Stock.encode('utf-8') if sys.version_info[0] == 2 else self.Stock)
             oprot.writeFieldEnd()
         if self.Quote is not None:
-            oprot.writeFieldBegin('Quote', TType.I64, 4)
-            oprot.writeI64(self.Quote)
+            oprot.writeFieldBegin('Quote', TType.DOUBLE, 4)
+            oprot.writeDouble(self.Quote)
             oprot.writeFieldEnd()
         if self.ReqAmount is not None:
             oprot.writeFieldBegin('ReqAmount', TType.I64, 5)
@@ -326,8 +326,8 @@ class Command(object):
                 else:
                     iprot.skip(ftype)
             elif fid == 7:
-                if ftype == TType.I64:
-                    self.Timestamp = iprot.readI64()
+                if ftype == TType.DOUBLE:
+                    self.Timestamp = iprot.readDouble()
                 else:
                     iprot.skip(ftype)
             else:
@@ -365,8 +365,8 @@ class Command(object):
             oprot.writeString(self.FileName.encode('utf-8') if sys.version_info[0] == 2 else self.FileName)
             oprot.writeFieldEnd()
         if self.Timestamp is not None:
-            oprot.writeFieldBegin('Timestamp', TType.I64, 7)
-            oprot.writeI64(self.Timestamp)
+            oprot.writeFieldBegin('Timestamp', TType.DOUBLE, 7)
+            oprot.writeDouble(self.Timestamp)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()
@@ -810,8 +810,8 @@ class Transaction(object):
                 else:
                     iprot.skip(ftype)
             elif fid == 6:
-                if ftype == TType.I64:
-                    self.TimeStamp = iprot.readI64()
+                if ftype == TType.DOUBLE:
+                    self.TimeStamp = iprot.readDouble()
                 else:
                     iprot.skip(ftype)
             else:
@@ -845,8 +845,8 @@ class Transaction(object):
             oprot.writeI32(self.Shares)
             oprot.writeFieldEnd()
         if self.TimeStamp is not None:
-            oprot.writeFieldBegin('TimeStamp', TType.I64, 6)
-            oprot.writeI64(self.TimeStamp)
+            oprot.writeFieldBegin('TimeStamp', TType.DOUBLE, 6)
+            oprot.writeDouble(self.TimeStamp)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()
@@ -920,8 +920,8 @@ class PendingTxn(object):
                 else:
                     iprot.skip(ftype)
             elif fid == 5:
-                if ftype == TType.I64:
-                    self.Price = iprot.readI64()
+                if ftype == TType.DOUBLE:
+                    self.Price = iprot.readDouble()
                 else:
                     iprot.skip(ftype)
             elif fid == 6:
@@ -966,8 +966,8 @@ class PendingTxn(object):
             oprot.writeI64(self.Reserved)
             oprot.writeFieldEnd()
         if self.Price is not None:
-            oprot.writeFieldBegin('Price', TType.I64, 5)
-            oprot.writeI64(self.Price)
+            oprot.writeFieldBegin('Price', TType.DOUBLE, 5)
+            oprot.writeDouble(self.Price)
             oprot.writeFieldEnd()
         if self.Shares is not None:
             oprot.writeFieldBegin('Shares', TType.I32, 6)
@@ -1029,8 +1029,8 @@ class QuoteData(object):
             if ftype == TType.STOP:
                 break
             if fid == 1:
-                if ftype == TType.I64:
-                    self.Quote = iprot.readI64()
+                if ftype == TType.DOUBLE:
+                    self.Quote = iprot.readDouble()
                 else:
                     iprot.skip(ftype)
             elif fid == 2:
@@ -1044,8 +1044,8 @@ class QuoteData(object):
                 else:
                     iprot.skip(ftype)
             elif fid == 4:
-                if ftype == TType.I64:
-                    self.Timestamp = iprot.readI64()
+                if ftype == TType.DOUBLE:
+                    self.Timestamp = iprot.readDouble()
                 else:
                     iprot.skip(ftype)
             elif fid == 5:
@@ -1069,8 +1069,8 @@ class QuoteData(object):
             return
         oprot.writeStructBegin('QuoteData')
         if self.Quote is not None:
-            oprot.writeFieldBegin('Quote', TType.I64, 1)
-            oprot.writeI64(self.Quote)
+            oprot.writeFieldBegin('Quote', TType.DOUBLE, 1)
+            oprot.writeDouble(self.Quote)
             oprot.writeFieldEnd()
         if self.Symbol is not None:
             oprot.writeFieldBegin('Symbol', TType.STRING, 2)
@@ -1081,8 +1081,8 @@ class QuoteData(object):
             oprot.writeString(self.UserId.encode('utf-8') if sys.version_info[0] == 2 else self.UserId)
             oprot.writeFieldEnd()
         if self.Timestamp is not None:
-            oprot.writeFieldBegin('Timestamp', TType.I64, 4)
-            oprot.writeI64(self.Timestamp)
+            oprot.writeFieldBegin('Timestamp', TType.DOUBLE, 4)
+            oprot.writeDouble(self.Timestamp)
             oprot.writeFieldEnd()
         if self.Cryptokey is not None:
             oprot.writeFieldBegin('Cryptokey', TType.STRING, 5)
@@ -1114,7 +1114,7 @@ Response.thrift_spec = (
     (1, TType.BOOL, 'Success', None, None, ),  # 1
     (2, TType.STRING, 'Message', 'UTF8', None, ),  # 2
     (3, TType.STRING, 'Stock', 'UTF8', None, ),  # 3
-    (4, TType.I64, 'Quote', None, None, ),  # 4
+    (4, TType.DOUBLE, 'Quote', None, None, ),  # 4
     (5, TType.I64, 'ReqAmount', None, None, ),  # 5
     (6, TType.I64, 'RealAmount', None, None, ),  # 6
     (7, TType.I32, 'Shares', None, None, ),  # 7
@@ -1137,7 +1137,7 @@ Command.thrift_spec = (
     (4, TType.I64, 'Amount', None, None, ),  # 4
     (5, TType.STRING, 'StockSymbol', 'UTF8', None, ),  # 5
     (6, TType.STRING, 'FileName', 'UTF8', None, ),  # 6
-    (7, TType.I64, 'Timestamp', None, None, ),  # 7
+    (7, TType.DOUBLE, 'Timestamp', None, None, ),  # 7
 )
 all_structs.append(UserInfo)
 UserInfo.thrift_spec = (
@@ -1180,7 +1180,7 @@ Transaction.thrift_spec = (
     (3, TType.STRING, 'Stock', 'UTF8', None, ),  # 3
     (4, TType.I64, 'Amount', None, None, ),  # 4
     (5, TType.I32, 'Shares', None, None, ),  # 5
-    (6, TType.I64, 'TimeStamp', None, None, ),  # 6
+    (6, TType.DOUBLE, 'TimeStamp', None, None, ),  # 6
 )
 all_structs.append(PendingTxn)
 PendingTxn.thrift_spec = (
@@ -1189,7 +1189,7 @@ PendingTxn.thrift_spec = (
     (2, TType.STRING, 'Type', 'UTF8', None, ),  # 2
     (3, TType.STRING, 'Stock', 'UTF8', None, ),  # 3
     (4, TType.I64, 'Reserved', None, None, ),  # 4
-    (5, TType.I64, 'Price', None, None, ),  # 5
+    (5, TType.DOUBLE, 'Price', None, None, ),  # 5
     (6, TType.I32, 'Shares', None, None, ),  # 6
     (7, TType.I64, 'Expiry', None, None, ),  # 7
     (8, TType.STRING, 'error', 'UTF8', None, ),  # 8
@@ -1197,10 +1197,10 @@ PendingTxn.thrift_spec = (
 all_structs.append(QuoteData)
 QuoteData.thrift_spec = (
     None,  # 0
-    (1, TType.I64, 'Quote', None, None, ),  # 1
+    (1, TType.DOUBLE, 'Quote', None, None, ),  # 1
     (2, TType.STRING, 'Symbol', 'UTF8', None, ),  # 2
     (3, TType.STRING, 'UserId', 'UTF8', None, ),  # 3
-    (4, TType.I64, 'Timestamp', None, None, ),  # 4
+    (4, TType.DOUBLE, 'Timestamp', None, None, ),  # 4
     (5, TType.STRING, 'Cryptokey', 'UTF8', None, ),  # 5
     (6, TType.STRING, 'error', 'UTF8', None, ),  # 6
 )
