@@ -12,25 +12,25 @@
 <body>
   <h1>Welcome dude</h1>
 
-  <input name="quote" id="quote" placeholder="stock id"></input>
-  <input name="amount" id="amount" placeholder="amount"></input><br/>
-<button onclick="g_action(this)" name="DISPLAY_SUMMARY" id="DISPLAY_SUMMARY">DISPLAY_SUMMARY</button></br>
-<button onclick="action(this)" name="ADD" id="ADD">ADD</button></br>
-<button onclick="g_action(this)" name="QUOTE" id="QUOTE">QUOTE</button></br>
-<button onclick="action(this)" name="BUY" id="BUY">BUY</button></br>
-<button onclick="action(this)" name="COMMIT_BUY" id="COMMIT_BUY">COMMIT_BUY</button> </br>
-<button onclick="action(this)" name="CANCEL_BUY" id="CANCEL_BUY">CANCEL_BUY</button> </br>
-<button onclick="action(this)" name="SELL" id="SELL">SELL</button></br>
-<button onclick="action(this)" name="COMMIT_SELL" id="COMMIT_SELL">COMMIT_SELL</button> </br>
-<button onclick="action(this)" name="CANCEL_SELL" id="CANCEL_SELL">CANCEL_SELL</button> </br>
-<button onclick="action(this)" name="SET_BUY_AMOUNT" id="SET_BUY_AMOUNT">SET_BUY_AMOUNT</button></br>
-<button onclick="action(this)" name="SET_BUY_TRIGGER" id="SET_BUY_TRIGGER">SET_BUY_TRIGGER</button> </br>
-<button onclick="action(this)" name="CANCEL_SET_BUY" id="CANCEL_SET_BUY">CANCEL_SET_BUY</button> </br>
-<button onclick="action(this)" name="SET_SELL_AMOUNT" id="SET_SELL_AMOUNT">SET_SELL_AMOUNT</button></br>
-<button onclick="action(this)" name="SET_SELL_TRIGGER" id="SET_SELL_TRIGGER">SET_SELL_TRIGGER</button> </br>
-<button onclick="action(this)" name="CANCEL_SET_SELL" id="CANCEL_SET_SELL">CANCEL_SET_SELL</button> </br>
-<button onclick="g_action(this)" name="DUMPLOG" id="DUMPLOG">DUMPLOG</button> <br/>
-<button onclick="g_action(this)" name="ADMIN_DUMPLOG" id="ADMIN_DUMPLOG">ADMIN_DUMPLOG</button> </br>
+<input name="quote" id="quote" placeholder="stock id"></input>
+<input name="amount" id="amount" placeholder="amount"></input><br/>
+<button onclick="g_action(this)" name="display_summary" id="display_summary">DISPLAY_SUMMARY</button></br>
+<button onclick="action(this)" name="add" id="add">ADD</button></br>
+<button onclick="g_action(this)" name="quote" id="quote">QUOTE</button></br>
+<button onclick="action(this)" name="buy" id="buy">BUY</button></br>
+<button onclick="action(this)" name="commit_buy" id="commit_buy">COMMIT_BUY</button> </br>
+<button onclick="action(this)" name="cancel_buy" id="cancel_buy">CANCEL_BUY</button> </br>
+<button onclick="action(this)" name="sell" id="sell">SELL</button></br>
+<button onclick="action(this)" name="commit_sell" id="commit_sell">COMMIT_SELL</button> </br>
+<button onclick="action(this)" name="cancel_sell" id="cancel_sell">CANCEL_SELL</button> </br>
+<button onclick="action(this)" name="set_buy_amount" id="set_buy_amount">SET_BUY_AMOUNT</button></br>
+<button onclick="action(this)" name="set_buy_trigger" id="set_buy_trigger">SET_BUY_TRIGGER</button> </br>
+<button onclick="action(this)" name="cancel_set_buy" id="cancel_set_buy">CANCEL_SET_BUY</button> </br>
+<button onclick="action(this)" name="set_sell_amount" id="set_sell_amount">SET_SELL_AMOUNT</button></br>
+<button onclick="action(this)" name="set_sell_trigger" id="set_sell_trigger">SET_SELL_TRIGGER</button> </br>
+<button onclick="action(this)" name="cancel_set_sell" id="cancel_set_sell">CANCEL_SET_SELL</button> </br>
+<button onclick="g_action(this)" name="dumplog" id="dumplog">DUMPLOG</button> <br/>
+<button onclick="g_action(this)" name="admin_dumplog" id="admin_dumplog">ADMIN_DUMPLOG</button> </br>
 
 <h4>User info </h4>
 <div id="user">
@@ -38,7 +38,7 @@
 </div>
 
 <script>
-var tid = 0;
+var tid = 1;
 var uid = "asdf";
 window.onload = function(){
   //document.getElementByTagName("button").click()
@@ -55,7 +55,12 @@ function action(t){
 function g_action(t){
   console.log(t.id)
   var xhttp = new XMLHttpRequest();
-  xhttp.open("GET",tid + "/" + uid + "/" + t.id + "?amount=" + document.getElementById("amount").value + "&stock=" + document.getElementById("quote").value,true);
+  if(t.id == "admin_dumplog"){
+    xhttp.open("GET",tid + "/admin/dumplog?filename=tmp.xml",true);
+  }
+  else{
+    xhttp.open("GET",tid + "/" + uid + "/" + t.id + "?amount=" + document.getElementById("amount").value + "&stock=" + document.getElementById("quote").value + "&filename=tmp.xml",true);
+  }
   xhttp.send()
   document.getElementById("user").innerHTML = xhttp.response;
   tid ++;

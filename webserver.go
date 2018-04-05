@@ -68,7 +68,7 @@ func (ws *WebServer) Start() {
 	//user log
 	r.HandleFunc("/{t_id}/{user_id}/dumplog", wrapHandler(ws.userDumplogHandler)).Methods("GET")
 
-	r.PathPrefix("/templates/").Handler(http.StripPrefix("/templates/", http.FileServer(http.Dir(dir))))
+	r.Handler(http.FileServer(http.Dir(dir))))
 
 	log.Println("Listening on:", common.CFG.WebServer.LUrl)
 	srv := &http.Server{
@@ -85,7 +85,7 @@ returns page template
 */
 func (ws *WebServer) indexHandler(w http.ResponseWriter, r *http.Request) {
 	t := template.New("test.html")
-	t, _ = t.ParseFiles("./templates/test.html")
+	t, _ = t.ParseFiles("./test.html")
 	t.Execute(w, "")
 }
 
