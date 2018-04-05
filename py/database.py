@@ -20,23 +20,23 @@ from databaseRPC import Database
 
 @Service(thrift_class=Database, port=44423)
 class dbserver(object):
-	tables_lookup = {
+	_tables_lookup = {
 		"Users": 0,
 		"Triggers": 1,
 		"Transactions": 2,
 	}
 
-	tables = []
+	_tables = []
 	_timeout = -1
 
 
 	# TODO:// Make sure you don't return without unlocking!
 
 	def __init__(self, use_rpc=False, server=False):
-		self.tables = {}
+		self._tables = {}
 		self._timeout = 10000  # default timeout of 10 seconds.
 		self.__init_tables()
-		self.lock = Locker(use_rpc=use_rpc, server=False)
+		self._lock = Locker(use_rpc=use_rpc, server=False)
 		self._my_lock = Lock()
 		
 		self._update_queue = Queue()
@@ -48,17 +48,17 @@ class dbserver(object):
 	
 	
 	def __init_tables(self):
-		self.tables = [None] * len(self.tables_lookup.keys())
+		self._tables = [None] * len(self._tables_lookup.keys())
 		
 		logging.debug("Initializing Tables.")
-		# TODO:// Read in split tables properly
-		for table, ind in self.tables_lookup.items():
+		# TODO:// Read in split _tables properly
+		for table, ind in self._tables_lookup.items():
 			if os.path.exists(table + ".pkl"):
 				with open(table + ".pkl", "r") as my_pickle:
-					self.tables[ind] = pickle.load(my_pickle)
+					self._tables[ind] = pickle.load(my_pickle)
 			else:
 				# Initialize to new dictionary.
-				self.tables[ind] = {}
+				self._tables[ind] = {}
 	
 	def __poll_for_table_changes(self, queue):
 		while True:
@@ -71,16 +71,17 @@ class dbserver(object):
 		logging.debug("Save Table")
 		
 		# Save the partition of the table to file...
-		with open(table + ".pkl", "w") as my_pickle:
+		with open(table + ".pkl", "wb") as my_pickle:
 			table_name = table.split("_")[0]
-			my_table = {k:v for (k, v) in self.tables[self.tables_lookup].items() if
-						    table_name + "_" + hash(k) % self.__num_tables_to_keep == table}
+			my_table = {k:v for (k, v) in self._tables[self._tables_lookup[table_name]].items() if
+			            str(table_name) + "_" + str(hash(k) % self.__num_tables_to_keep) == table}
+			print(my_table)
 			
 			pickle.dump(my_table, my_pickle)
 
 	def __get_key(self, table, key):
-		assert table in self.tables_lookup.keys()
-		my_table = self.tables[self.tables_lookup[table]]
+		assert table in self._tables_lookup.keys()
+		my_table = self._tables[self._tables_lookup[table]]
 
 		if key not in my_table.keys():
 			# Does this update the original object?
@@ -88,8 +89,8 @@ class dbserver(object):
 		return my_table[key]
 
 	def __replace_key(self, table, key, value):
-		assert table in self.tables_lookup.keys()
-		my_table = self.tables[self.tables_lookup[table]]
+		assert table in self._tables_lookup.keys()
+		my_table = self._tables[self._tables_lookup[table]]
 
 		my_table.update({key: value})
 
@@ -113,34 +114,34 @@ class dbserver(object):
 
 	def __lock_user(self, userId):
 		#self._my_lock.acquire()
-		#self.lock.requestLock(userId, "USER")
+		#self._lock.requestLock(userId, "USER")
 		#self._my_lock.release()
 		pass
 
 	def __unlock_user(self, userId):
 		#self._my_lock.acquire()
-		#self.lock.releaseLock(userId, "USER")
+		#self._lock.releaseLock(userId, "USER")
 		#self._my_lock.release()
 		pass
 		
 	def __lock_trigger(self, txn):
 		#self._my_lock.acquire()
-		#self.lock.requestLock(txn, "TRIGGER")
+		#self._lock.requestLock(txn, "TRIGGER")
 		#self._my_lock.release()
 		pass
 
 	def __unlock_triggers(self, txn):
 		#self._my_lock.acquire()
-		#self.lock.releaseLock(txn, "TRIGGER")
+		#self._lock.releaseLock(txn, "TRIGGER")
 		#self._my_lock.release()
 		pass
 
 	def __lock_txn(self, txn):
-		#self.lock.requestLock(txn, "TRANSACTION")
+		#self._lock.requestLock(txn, "TRANSACTION")
 		pass
 
 	def __unlock_txn(self, txn):
-		#self.lock.releaseLock(txn, "TRANSACTION")
+		#self._lock.releaseLock(txn, "TRANSACTION")
 		pass
 
 	def AddUserMoney(self, userId, amount):
@@ -151,14 +152,24 @@ class dbserver(object):
 			logging.debug("Getting new user.")
 			user = self.__get_new_user(userId)
 		
-		logging.debug("Adding user balance")
-		user.update({"balance": user["balance"] + amount})
+		logging.debug("Adding balance")
+		new_balance = user["balance"] + amount
+		logging.debug("Updating balance")
+		user["balance"] = new_balance
+		
+		logging.debug("Replacing Key")
 		self.__replace_key("Users", userId, user)
 
 		self.__unlock_user(userId)
 
 		# Error
-		return DBResponse(user=User(User=userId, Balance=user["balance"], Reserved=0, stock=0))
+		logging.debug("Making User")
+
+		my_user = User(User=userId, Balance=new_balance)
+		
+		logging.debug("Making Response")
+		resp = DBResponse(user=my_user)
+		return resp
 
 
 	def UnreserveMoney(self, userId, amount):
@@ -172,9 +183,11 @@ class dbserver(object):
 		if user["reserved"] - amount < 0:
 			self.__unlock_user(userId)
 			return DBResponse(error="Not Enough Money To Unreserve!")
-
-		user.update({"reserved": user["reserved"] - amount})
-		user.update({"balance": user["balance"] + amount})
+		
+		new_reserved = user["reserved"] - amount
+		new_balance = user["balance"] + amount
+		user["reserved"] = new_reserved
+		user["balance"] = new_balance
 
 		self.__replace_key("Users", userId, user)
 
@@ -192,9 +205,11 @@ class dbserver(object):
 		if user["reserved"] - amount < 0:
 			self.__unlock_user(userId)
 			return DBResponse(error="Not Enough Money To Unreserve!")
-
-		user.update({"reserved": user["reserved"] - amount})
-		user.update({"balance": user["balance"] + amount})
+		new_reserved = user["reserved"] - amount
+		new_balance = user["balance"] + amount
+		
+		user["reserved"] = new_reserved
+		user["balance"] = new_balance
 
 		self.__replace_key("Users", userId, user)
 
@@ -212,11 +227,11 @@ class dbserver(object):
 
 		if user == {}:
 			self.__unlock_user(userId)
-			return DBResponse(error="User does not exist.")
+			return -1
 		if "stocks" not in user.keys() or user["stocks"] == {} or \
 				"shares." + stock + ".real" not in user["stock"].keys():
 			self.__unlock_user(userId)
-			return DBResponse(error="User does not own any of this stock.")
+			return -1
 
 		st = user["stock"][stock]
 		shares = st["shares." + stock + ".reserved"]
@@ -227,7 +242,10 @@ class dbserver(object):
 	def UnreserveShares(self, userId, stock, shares):
 		self.__lock_user(userId)
 		user = self.__get_key("Users", userId)
-
+		
+		real_key = "shares." + stock + ".real"
+		reserved_key = "shares." + stock + ".reserved"
+		
 		if user == {}:
 			self.__unlock_user(userId)
 			return DBResponse(error="User does not exist.")
@@ -235,17 +253,19 @@ class dbserver(object):
 			self.__unlock_user(userId)
 			return DBResponse(error="User does not own any stocks.")
 
-		if "shares." + stock + ".real" not in user["stock"].keys():
+		if real_key not in user["stock"].keys():
 			self.__unlock_user(userId)
 			return DBResponse(error="User does not own stocks!")
-
-		if user["stock"]["shares." + stock + ".real"] < shares:
+		if user["stock"][real_key] < shares:
 			self.__unlock_user(userId)
 			return DBResponse(error="User does not own that many shares")
 
 		st = user["stock"][stock]
-		st.update({"shares." + stock + ".real": st["shares." + stock + ".real"] + shares})
-		st.update({"shares." + stock + ".reserved": st["shares." + stock + ".reserved"] - shares})
+		
+		real_shares = st[real_key] + shares
+		reserved_shares = st[reserved_key] - shares
+		st[real_key] = real_shares
+		st[reserved_key] = reserved_shares
 
 		self.__replace_key("Users", userId, user)
 
@@ -255,22 +275,29 @@ class dbserver(object):
 	def ReserveShares(self, userId, stock, shares):
 		self.__lock_user(userId)
 		user = self.__get_key("Users", userId)
-
+		
+		real_key = "shares." + stock + ".real"
+		reserved_key = "shares." + stock + ".reserved"
+		
 		if user == {}:
 			self.__unlock_user(userId)
 			return DBResponse(error="User does not exist.")
 		if user["stocks"] == {} or \
-				"shares." + stock + ".real" not in user["stock"].keys() or \
-				stock["shares." + stock + ".real"] == 0:
+				real_key not in user["stock"].keys() or \
+				stock[real_key] == 0:
 			self.__unlock_user(userId)
 			return DBResponse(error="User does not own any of this stock.")
 		else:
 			st = user["stock"]
-			if st["shares." + stock + ".real"] < shares:
+			if st[real_key] < shares:
 				self.__unlock_user(userId)
 				return DBResponse(error="User does not own enough of this stock.")
-			st.update({"shares." + stock + ".real": st["shares." + stock + ".real"] - shares})
-			st.update({"shares." + stock + ".reserved": st["shares." + stock + ".reserved"] + shares})
+			
+			real_shares = st[real_key] - shares
+			reserved_shares = st[reserved_key] + shares
+			
+			st[real_key] = real_shares
+			st[reserved_key] = reserved_shares
 
 		self.__replace_key("Users", userId, user)
 
@@ -301,6 +328,8 @@ class dbserver(object):
 			self.buyParams(txn, wasCached)
 		else:
 			self.sellParams(txn, wasCached)
+			
+		return DBResponse()
 
 	def PushPendingTxn(self, pending: PendingTxn):
 		key = pending.UserId + ":" + pending.Type
@@ -321,7 +350,7 @@ class dbserver(object):
 		# TODO:// Ignore any that have expired...
 		curr_pending = self.__get_key("Transactions", key)
 		if curr_pending == {} or len(curr_pending) == 0:
-			last: PendingTxn = None
+			last: PendingTxn = PendingTxn(error="No Transaction Found.")
 		else:
 			last: PendingTxn = curr_pending.pop()
 		self.__replace_key("Transactions", key, curr_pending)

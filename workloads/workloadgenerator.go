@@ -25,7 +25,7 @@ const (
 	WEB_URL = "http://web:44420"
 )
 
-var MAX_WORKERS = uint64(8000)
+var MAX_WORKERS = uint64(1000)
 
 type endpoint struct {
 	Key    string
@@ -183,7 +183,7 @@ func main() {
 	log.Println("Sending Traffic to: " + WEB_URL)
 	start := time.Now()
 
-	rate := uint64(23000000)
+	rate := uint64(1000)
 
 	results := gen.Start(linesInFiles, rate)
 
@@ -287,7 +287,7 @@ func (wl *WorkLoadGenerator) Start(work []endpoint, rate uint64) []*Result {
 	n := len(work) - 1
 	lastReq := work[n]
 	work = work[:n]
-
+        num_sent := 0
 	go func() {
 		defer close(results)
 		defer workers.Wait()
@@ -301,6 +301,8 @@ func (wl *WorkLoadGenerator) Start(work []endpoint, rate uint64) []*Result {
 			nextReq := ReqInfo{Timestamp: max(next, now), Endpoint: work[done]}
 			select {
 			case ticks <- nextReq:
+				num_sent++
+				log.Printf("Sent: %d\n", num_sent)
 				if done++; done == hits {
 					return
 				}

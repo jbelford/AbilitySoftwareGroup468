@@ -73,7 +73,7 @@ class Cache(object):
 			quote, sym, userid, timestamp, cryptokey = (12.55, symbol, userId, time.time(), "<<<MY_CRYPTOKEY>>>")
 			_executor.submit(self._audit.QuoteServer, args=(quote, tid,))
 
-		return QuoteData(UserId=userid, Symbol=symbol, Quote=quote, Timestamp=timestamp, Cryptokey=cryptokey)
+		return QuoteData(UserId=userid, Symbol=symbol, Quote=float(quote), Timestamp=timestamp, Cryptokey=cryptokey)
 
 if __name__ == "__main__":
 	root = logging.getLogger()

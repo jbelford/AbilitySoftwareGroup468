@@ -35,7 +35,7 @@ class Locker(object):
 		return is_locked
 	
 	def requestLock(self, Key, Type):
-		# Return unique key for that lock...
+		# Return unique key for that _lock...
 		if Type == "USER":
 			self._user_lock.acquire(timeout=self._timeout/2)
 			

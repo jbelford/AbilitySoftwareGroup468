@@ -1,10 +1,13 @@
 import logging
 import sys
+
+
 sys.path.append('gen-py')
 
 
 from Service import Service
 from log import LoggerRpc
+from shared.ttypes import Command
 
 
 @Service(thrift_class=LoggerRpc, port=44422)
@@ -12,29 +15,30 @@ class AuditServer(object):
 	def __init__(self, use_rpc=False, server=False):
 		pass
 
-	def UserCommand(self, cmd):
-		return logging.info(cmd)
-
+	def UserCommand(self, cmd: Command):
+		logging.info(cmd)
+		
 	def QuoteServer(self, quote, tid):
-		return logging.info(quote, tid)
+		logging.info(quote, tid)
 
 	def AccountTransaction(self, userid, funds, action, tid):
-		return logging.info(userid, funds, action, tid)
-
+		logging.info(str(userid) + " " + str(funds)
+		                    + " " + str(action) + " " + str(tid))
+		
 	def SystemEvent(self, cmd):
-		return None
+		pass
 
 	def ErrorEvent(self, cmd):
-		return None
+		pass
 
 	def DebugEvent(self, cmd):
-		return None
+		pass
 
 	def DumpLog(self, cmd):
-		return None
+		return ""
 
 	def DumpLogUser(self, cmd):
-		return None
+		return ""
 
 
 
