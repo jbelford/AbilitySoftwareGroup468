@@ -169,7 +169,7 @@ func (c *cacheUtil) GetReservedShares(userId string) map[string]int {
 }
 
 // PushPendingTxn adds a pending transaction (BUY or SELL) to the cache
-// The txn is given a time-to-live of 60s
+// The txn is given a time-to-live of 10s
 func (c *cacheUtil) PushPendingTxn(pending common.PendingTxn) {
 	key := pending.UserId + ":" + pending.Type
 	lock := c.GetLock(key)

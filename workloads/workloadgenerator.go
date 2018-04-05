@@ -178,12 +178,12 @@ func main() {
 		linesInFiles = append(linesInFiles, endpoint)
 	}
 
-	gen := NewGenerator(1000)
+	gen := NewGenerator(2000)
 
 	log.Println("Sending Traffic to: " + WEB_URL)
 	start := time.Now()
 
-	rate := uint64(2300)
+	rate := uint64(10000)
 
 	results := gen.Start(linesInFiles, rate)
 
@@ -192,10 +192,10 @@ func main() {
 	log.Println("Ran for: ", now.Sub(start))
 	log.Println(fmt.Sprintf("Sent %d requests at a rate of %d req/s", len(linesInFiles), rate))
 
-	printStats(results)
-
 	for {
-		time.Sleep(time.Duration(100))
+		printStats(results)
+
+		time.Sleep(time.Duration(10000))
 	}
 }
 
