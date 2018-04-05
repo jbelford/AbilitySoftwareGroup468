@@ -182,7 +182,7 @@ func (ts *TxnRPC) SELL(cmd *common.Command) (*common.Response, error) {
 	}
 
 	sellFor := int64(shares) * quote.Quote
-	expiry := time.Now().Add(time.Minute)
+	expiry := time.Now().Add(time.Second * time.Duration(10))
 
 	pending := common.PendingTxn{UserId: cmd.UserId, Type: "SELL", Price: sellFor, Shares: shares, Stock: quote.Symbol, Expiry: expiry}
 	ts.cache.PushPendingTxn(pending)

@@ -68,11 +68,14 @@ func (c *cache) Get(key string, obj interface{}) error {
 }
 
 func (c *cache) Set(key string, obj interface{}) {
-	if encoded, err := common.EncodeData(obj); err == nil {
-		if err = c.bcache.Set(key, encoded); err != nil {
-			log.Println(err)
+	encoded, err := common.EncodeData(obj)
+	if err == nil {
+		err = c.bcache.Set(key, encoded)
+		if err == nil {
+			return
 		}
 	}
+	log.Printf("Cache: '%s' Failed encoding: '%s'\n", key, err.Error())
 }
 
 func (c *cache) Delete(key string) {
@@ -169,7 +172,7 @@ func (c *cacheUtil) GetReservedShares(userId string) map[string]int {
 }
 
 // PushPendingTxn adds a pending transaction (BUY or SELL) to the cache
-// The txn is given a time-to-live of 60s
+// The txn is given a time-to-live of 10s
 func (c *cacheUtil) PushPendingTxn(pending common.PendingTxn) {
 	key := pending.UserId + ":" + pending.Type
 	lock := c.GetLock(key)
