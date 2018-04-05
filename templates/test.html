@@ -47,7 +47,7 @@ window.onload = function(){
 function action(t){
   console.log(t.id)
   var xhttp = new XMLHttpRequest();
-  xhttp.open("POST",tid + "/" + uid + "/" + t.id + "?amount=" + document.getElementById("amount").value + "&stock=" + document.getElementById("quote").value,true);
+  xhttp.open("POST","../"+tid + "/" + uid + "/" + t.id + "?amount=" + document.getElementById("amount").value + "&stock=" + document.getElementById("quote").value,true);
   xhttp.send()
   document.getElementById("user").innerHTML = xhttp.response;
   tid ++;
@@ -59,7 +59,7 @@ function g_action(t){
     xhttp.open("GET",tid + "/admin/dumplog?filename=tmp.xml",true);
   }
   else{
-    xhttp.open("GET",tid + "/" + uid + "/" + t.id + "?amount=" + document.getElementById("amount").value + "&stock=" + document.getElementById("quote").value + "&filename=tmp.xml",true);
+    xhttp.open("GET","../"+tid + "/" + uid + "/" + t.id + "?amount=" + document.getElementById("amount").value + "&stock=" + document.getElementById("quote").value + "&filename=tmp.xml",true);
   }
   xhttp.send()
   document.getElementById("user").innerHTML = xhttp.response;
