@@ -5,7 +5,7 @@
         "name": "seng468"
     },
     "quoteserver": {
-        "address": "quoteserve.seng:4443",
+        "address": "quoteserve.seng:4444",
         "mock": false
     },
     "transactionserver": {
