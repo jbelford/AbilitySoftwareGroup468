@@ -68,11 +68,14 @@ func (c *cache) Get(key string, obj interface{}) error {
 }
 
 func (c *cache) Set(key string, obj interface{}) {
-	if encoded, err := common.EncodeData(obj); err == nil {
-		if err = c.bcache.Set(key, encoded); err != nil {
-			log.Println(err)
+	encoded, err := common.EncodeData(obj)
+	if err == nil {
+		err = c.bcache.Set(key, encoded)
+		if err == nil {
+			return
 		}
 	}
+	log.Println("Cache: Failed encoding: " + err.Error())
 }
 
 func (c *cache) Delete(key string) {
