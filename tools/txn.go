@@ -2,6 +2,7 @@ package tools
 
 import (
 	"log"
+	"strings"
 	"time"
 
 	"github.com/valyala/gorpc"
@@ -23,6 +24,7 @@ type txnServe struct {
 
 func (t *txnServe) Send(cmd common.Command) *common.Response {
 	// log.Printf("Sending to transaction server: %d\n", cmd.TransactionID)
+	cmd.StockSymbol = strings.ToUpper(cmd.StockSymbol)
 	data, err := t.dispatch.Call(common.Commands[cmd.C_type], cmd)
 	if err != nil {
 		log.Println(err)
