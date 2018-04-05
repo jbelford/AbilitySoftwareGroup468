@@ -75,7 +75,7 @@ func (c *cache) Set(key string, obj interface{}) {
 			return
 		}
 	}
-	log.Println("Cache: Failed encoding: " + err.Error())
+	log.Printf("Cache: '%s' Failed encoding: '%s'\n", key, err.Error())
 }
 
 func (c *cache) Delete(key string) {
