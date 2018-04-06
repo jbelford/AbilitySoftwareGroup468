@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
@@ -52,7 +53,6 @@ func ClusterDialTCP(address string, data []byte, number int) ([]byte, error) {
 	for i := 0; i < number; i++ {
 		go dialTCP(address, data, ch)
 	}
-	defer close(ch)
 	for {
 		data := <-ch
 		if data != nil {
@@ -69,20 +69,19 @@ func dialTCP(address string, data []byte, ch chan []byte) {
 		return
 	}
 	defer tcpConn.Close()
-	_, err = tcpConn.Write(data)
-	if err != nil {
-		log.Printf("dialTCP: Failed to write data to connection '%s' - %s", address, err.Error())
-		ch <- nil
-		return
+	if data != nil {
+		_, err = tcpConn.Write(data)
+		if err != nil {
+			log.Printf("dialTCP: Failed to write data to connection '%s' - %s", address, err.Error())
+			ch <- nil
+			return
+		}
 	}
-	respData, err := ioutil.ReadAll(tcpConn)
+	respData, err := bufio.NewReader(tcpConn).ReadBytes(byte('\n'))
 	if err != nil {
 		log.Printf("dialTCP: Failed to read data from connection '%s' - %s", address, err.Error())
 		ch <- nil
 		return
 	}
-	select {
-	case ch <- respData:
-	default:
-	}
+	ch <- respData
 }
