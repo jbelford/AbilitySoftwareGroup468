@@ -90,6 +90,7 @@ func (ts *TxnRPC) ADD(cmd *common.Command) (*common.Response, error) {
 
 func (ts *TxnRPC) QUOTE(cmd *common.Command) (*common.Response, error) {
 	data, err := ts.cache.GetQuote(cmd.StockSymbol, cmd.UserId, cmd.TransactionID)
+	log.Printf("txn server quote:%s,%d", data.Symbol, data.Quote)
 	if err != nil {
 		return ts.error(cmd, "Quote server failed to respond with quote")
 	}
