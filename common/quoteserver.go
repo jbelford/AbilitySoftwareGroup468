@@ -1,10 +1,8 @@
 package common
 
 import (
-	"bufio"
 	"fmt"
 	"log"
-	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -18,31 +16,28 @@ func GetQuote(symbol string, userid string) (*QuoteData, error) {
 		time.Sleep(time.Millisecond * 300)
 		msg = fmt.Sprintf("12.50,%s,%s,1111111111,123198fadfa\n", symbol, userid)
 	} else {
-		log.Printf("QuoteServer: Requesting quote '%s'\n", symbol)
-		log.Printf("time before tcp dial connecting %s", time.Now())
-		tcpConn, err := net.Dial("tcp", CFG.Quoteserver.Address)
-		log.Printf("time after tcp dial connecting %s", time.Now())
+		body := []byte(fmt.Sprintf("%s, %s\n", symbol, userid))
+		data, err := ClusterDialTCP(CFG.Quoteserver.Address, body, 3)
 		if err != nil {
 			return nil, err
 		}
-		defer tcpConn.Close()
-		_, err = tcpConn.Write([]byte(fmt.Sprintf("%s, %s\n", symbol, userid)))
-		if err != nil {
-			log.Println(err)
-			return nil, err
-		}
-		msg, err = bufio.NewReader(tcpConn).ReadString('\n')
-		if err != nil {
-			return nil, err
-		}
+		msg = string(data[:])
 	}
-
+	log.Println(msg)
 	args := strings.Split(msg, ",")
 	for i, a := range args {
 		args[i] = strings.TrimSpace(a)
 	}
-	quote, _ := strconv.ParseFloat(args[0], 64)
-	timestamp, _ := strconv.ParseUint(args[3], 10, 64)
+	quote, err := strconv.ParseFloat(args[0], 64)
+	if err != nil {
+		log.Println("GetQuote: Failed to parse price data")
+		return nil, err
+	}
+	timestamp, err := strconv.ParseUint(args[3], 10, 64)
+	if err != nil {
+		log.Println("GetQuote: Failed to parse timestamp")
+		return nil, err
+	}
 	data := &QuoteData{
 		Quote:     int64(quote * 100),
 		Symbol:    args[1],

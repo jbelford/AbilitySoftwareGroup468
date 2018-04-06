@@ -1,11 +1,14 @@
 package common
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
 )
 
@@ -44,4 +47,41 @@ func DecodeData(data []byte, obj interface{}) error {
 		log.Println("Failed decoding data: " + err.Error()) // Should also not happen
 	}
 	return err
+}
+func ClusterDialTCP(address string, data []byte, number int) ([]byte, error) {
+	ch := make(chan []byte, number)
+	for i := 0; i < number; i++ {
+		go dialTCP(address, data, ch)
+	}
+	for {
+		data := <-ch
+		if data != nil {
+			return data, nil
+		}
+	}
+	return nil, errors.New("ClusterDialTCP: No connections succeeded")
+}
+
+func dialTCP(address string, data []byte, ch chan []byte) {
+	tcpConn, err := net.Dial("tcp", address)
+	if err != nil {
+		ch <- nil
+		return
+	}
+	defer tcpConn.Close()
+	if data != nil {
+		_, err = tcpConn.Write(data)
+		if err != nil {
+			log.Printf("dialTCP: Failed to write data to connection '%s' - %s", address, err.Error())
+			ch <- nil
+			return
+		}
+	}
+	respData, err := bufio.NewReader(tcpConn).ReadBytes(byte('\n'))
+	if err != nil {
+		log.Printf("dialTCP: Failed to read data from connection '%s' - %s", address, err.Error())
+		ch <- nil
+		return
+	}
+	ch <- respData
 }

@@ -21,6 +21,6 @@
         "lurl": "localhost:8082"
     },
     "logging": {
-        "db" : false
+        "db" : true
     }
 }

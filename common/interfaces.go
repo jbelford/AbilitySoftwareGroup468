@@ -21,6 +21,7 @@ type Response struct {
 	Received     int64          `json:"received,omitempty"`
 	SharesAfford int            `json:"shares_afford,omitempty"`
 	AffordAmount int64          `json:"afford_amount,omitempty"`
+	Trigger      *Trigger       `json:"trigger,omitempty"`
 	Status       *UserInfo      `json:"status,omitempty"`
 	Transactions *[]Transaction `json:"transactions,omitempty"`
 	Triggers     *[]Trigger     `json:"triggers,omitempty"`

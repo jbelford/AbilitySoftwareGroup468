@@ -122,8 +122,10 @@ func (c *cacheUtil) GetQuote(symbol string, userId string, tid int64) (*common.Q
 		}
 		go c.logger.QuoteServer(quote, tid)
 		c.Set(key, quote)
+		log.Printf("key:%s,%d", key, quote)
 	}
 	// log.Printf("CacheUtil:'%d' Got quote for '%s' - %d\n", tid, symbol, quote.Quote)
+
 	return quote, nil
 }
 

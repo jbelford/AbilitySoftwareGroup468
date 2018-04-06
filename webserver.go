@@ -67,8 +67,7 @@ func (ws *WebServer) Start() {
 
 	//user log
 	r.HandleFunc("/{t_id}/{user_id}/dumplog", wrapHandler(ws.userDumplogHandler)).Methods("GET")
-
-	r.Handler(http.FileServer(http.Dir(dir)))
+	r.PathPrefix("/templates/").Handler(http.StripPrefix("/templates/", http.FileServer(http.Dir(dir))))
 
 	log.Println("Listening on:", common.CFG.WebServer.LUrl)
 	srv := &http.Server{
@@ -198,6 +197,7 @@ func (ws *WebServer) userQuoteHandler(w http.ResponseWriter, r *http.Request, t_
 	go ws.logger.UserCommand(&cmd)
 
 	resp := ws.txnConn.Send(cmd)
+	log.Print(resp)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return ws.error(&cmd, "Internal error prevented operation: UserQuote")
