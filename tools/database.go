@@ -382,7 +382,7 @@ func (c *logs) LogEvents(e []*common.EventLog) {
 }
 
 func (c *logs) GetLogs(userid string) ([]common.EventLog, error) {
-	query := bson.M{"Username": userid}
+	query := bson.M{"userId": userid}
 	if userid == "admin" {
 		query = bson.M{}
 	}

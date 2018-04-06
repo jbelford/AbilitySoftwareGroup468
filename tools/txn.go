@@ -2,6 +2,7 @@ package tools
 
 import (
 	"log"
+	"strings"
 	"time"
 
 	"github.com/valyala/gorpc"
@@ -23,6 +24,7 @@ type txnServe struct {
 
 func (t *txnServe) Send(cmd common.Command) *common.Response {
 	// log.Printf("Sending to transaction server: %d\n", cmd.TransactionID)
+	cmd.StockSymbol = strings.ToUpper(cmd.StockSymbol)
 	data, err := t.dispatch.Call(common.Commands[cmd.C_type], cmd)
 	if err != nil {
 		log.Println(err)
@@ -257,7 +259,7 @@ func (ts *TxnRPC) SET_BUY_AMOUNT(cmd *common.Command) (*common.Response, error) 
 	}
 	go ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "reserve", cmd.TransactionID)
 
-	return &common.Response{Success: true}, nil
+	return &common.Response{Success: true, Trigger: trigger}, nil
 }
 
 func (ts *TxnRPC) CANCEL_SET_BUY(cmd *common.Command) (*common.Response, error) {
@@ -280,7 +282,7 @@ func (ts *TxnRPC) CANCEL_SET_BUY(cmd *common.Command) (*common.Response, error) 
 	}
 	go ts.logger.AccountTransaction(cmd.UserId, trig.Amount, "unreserve", cmd.TransactionID)
 
-	return &common.Response{Success: true, Stock: cmd.StockSymbol}, nil
+	return &common.Response{Success: true, Trigger: trig}, nil
 }
 
 func (ts *TxnRPC) SET_BUY_TRIGGER(cmd *common.Command) (*common.Response, error) {
@@ -303,7 +305,7 @@ func (ts *TxnRPC) SET_BUY_TRIGGER(cmd *common.Command) (*common.Response, error)
 		return ts.error(cmd, "Internal error during operation: SET_BUY_TRIGGER")
 	}
 
-	return &common.Response{Success: true}, nil
+	return &common.Response{Success: true, Trigger: trig}, nil
 }
 
 func (ts *TxnRPC) SET_SELL_AMOUNT(cmd *common.Command) (*common.Response, error) {
@@ -347,7 +349,7 @@ func (ts *TxnRPC) SET_SELL_AMOUNT(cmd *common.Command) (*common.Response, error)
 	db.Users.ReserveShares(cmd.UserId, cmd.StockSymbol, reservedShares)
 	go ts.logger.AccountTransaction(cmd.UserId, cmd.Amount, "reserve", cmd.TransactionID)
 
-	return &common.Response{Success: true}, nil
+	return &common.Response{Success: true, Trigger: trigger}, nil
 }
 
 func (ts *TxnRPC) SET_SELL_TRIGGER(cmd *common.Command) (*common.Response, error) {
@@ -367,7 +369,7 @@ func (ts *TxnRPC) SET_SELL_TRIGGER(cmd *common.Command) (*common.Response, error
 	trig.When = cmd.Amount
 	db.Triggers.Set(trig)
 
-	return &common.Response{Success: true}, nil
+	return &common.Response{Success: true, Trigger: trig}, nil
 }
 
 func (ts *TxnRPC) CANCEL_SET_SELL(cmd *common.Command) (*common.Response, error) {
@@ -391,7 +393,7 @@ func (ts *TxnRPC) CANCEL_SET_SELL(cmd *common.Command) (*common.Response, error)
 	}
 	go ts.logger.AccountTransaction(cmd.UserId, trig.Amount, "unreserve", cmd.TransactionID)
 
-	return &common.Response{Success: true}, nil
+	return &common.Response{Success: true, Trigger: trig}, nil
 }
 
 func (ts *TxnRPC) DUMPLOG(cmd *common.Command) (*common.Response, error) {
