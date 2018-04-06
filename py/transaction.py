@@ -1,15 +1,19 @@
-import logging
 import sys
+
+import functools
+
 sys.path.append('gen-py')
 
 import time
+import logging
+from concurrent.futures import ThreadPoolExecutor, Future
+from threading import Thread
+from multiprocessing import Lock
+from CmdType import Cmd
 
+from DistQueue import DistQueue
 from cache import Cache
-
-
-
 from utils import process_error, _executor
-
 from Service import Service
 from transactionRPC import Transaction
 from auditserver import AuditServer
@@ -21,21 +25,103 @@ from databaseRPC.ttypes import DBResponse
 @Service(thrift_class=Transaction, port=44421)
 class transactionserver(object):
 
-	# TODO:// Lock on the user...
-
-	def __init__(self, use_rpc=False, server=False):
+	def __init__(self, use_rpc=False, server=False, queue_to_use=0):
 		self._database = dbserver(use_rpc=use_rpc, server=False)
 		self._audit = AuditServer(use_rpc=use_rpc, server=False)
 		self._cache = Cache(use_rpc=use_rpc, server=False, mock=True)
-
+		self.queue = DistQueue(use_rpc=use_rpc, server=False)
+		self.executor = ThreadPoolExecutor(max_workers=16)
+		
+		for q_i in range(1):
+			worker = Thread(target=functools.partial(self.get_work, q_i))
+			worker.start()
+		
+		
+	def get_work(self, q_i):
+		
+		lock = Lock()
+		
+		while True:
+			# Could be updated so a single transaction server can service multiple queues.
+			lock.acquire()
+			cmd = self.queue.GetItem(q_i)
+			lock.release()
+			if cmd.C_type < 0:
+				logging.debug("Found no work.")
+				continue
+			
+			fn = None
+			
+			logging.debug("Got Work: " + str(cmd.TransactionID))
+			
+			# Choose which function to run.
+			if cmd.C_type == Cmd.ADD.value:
+				fn = self.ADD
+				
+			elif cmd.C_type == Cmd.QUOTE.value:
+				fn = self.QUOTE
+				
+			elif cmd.C_type == Cmd.BUY.value:
+				fn = self.BUY
+				
+			elif cmd.C_type == Cmd.COMMIT_BUY.value:
+				fn = self.COMMIT_SELL
+				
+			elif cmd.C_type == Cmd.CANCEL_BUY.value:
+				fn = self.CANCEL_BUY
+				
+			elif cmd.C_type == Cmd.SELL.value:
+				fn = self.SELL
+			
+			elif cmd.C_type == Cmd.COMMIT_SELL.value:
+				fn = self.COMMIT_SELL
+			
+			elif cmd.C_type == Cmd.CANCEL_SELL.value:
+				fn = self.CANCEL_SELL
+				
+			elif cmd.C_type == Cmd.SET_BUY_AMOUNT.value:
+				fn = self.SET_BUY_AMOUNT
+				
+			elif cmd.C_type == Cmd.CANCEL_SET_BUY.value:
+				fn = self.CANCEL_SET_BUY
+				
+			elif cmd.C_type == Cmd.SET_BUY_TRIGGER.value:
+				fn = self.SET_BUY_TRIGGER
+			
+			elif cmd.C_type == Cmd.SET_SELL_AMOUNT.value:
+				fn = self.SET_SELL_AMOUNT
+			
+			elif cmd.C_type == Cmd.SET_SELL_TRIGGER.value:
+				fn = self.SET_SELL_TRIGGER
+				
+			elif cmd.C_type == Cmd.CANCEL_SET_SELL.value:
+				fn = self.CANCEL_SET_SELL
+			
+			elif cmd.C_type == Cmd.DUMPLOG.value:
+				fn = self.DUMPLOG
+			
+			assert fn is not None, "No Function Set!"
+			
+			self.executor.submit(fn, cmd) \
+				.add_done_callback(
+				functools.partial(self.mark_done, q_i, cmd))
+			
+			
+	def mark_done(self, queue_num: int, cmd:Command, fn:Future):
+		if fn.cancelled():
+			logging.error("Failed Task: " + str(cmd.TransactionID))
+		elif fn.done():
+			logging.debug("Finished Task: " + str(cmd.TransactionID))
+			res = fn.result()
+			# This marks the transaction as completed, and stores the result internally.
+			self.queue.MarkComplete(queue_num, cmd, res)
+			
 	def error(self, cmd, msg):
 		process_error(self._audit, cmd, msg)
 		return Response(Success=False, Message=msg)
 
 	def ADD(self, cmd: Command):
-		logging.debug("Getting Add")
 		resp = self._database.AddUserMoney(userId=cmd.UserId, amount=cmd.Amount)
-		print("Got Response!")
 		if resp.error is not None:
 			return self.error(cmd, "Failed to create and/or add money to account")
 		_executor.submit(self._audit.AccountTransaction, *(cmd.UserId, cmd.Amount, "add", cmd.TransactionID, ))
@@ -157,7 +243,7 @@ class transactionserver(object):
 
 	def SET_BUY_AMOUNT(self, cmd: Command):
 		resp = self._database.GetUser(cmd.UserId)
-		if resp.error is not None:
+		if resp.error is not None or resp.user is None or resp.user.Reserved is None:
 			return self.error(cmd, "The user does not exist.")
 
 		user_reserved = resp.user.Reserved
@@ -305,12 +391,17 @@ class transactionserver(object):
 
 if __name__ == "__main__":
 	root = logging.getLogger()
-	root.setLevel(logging.INFO)
-
+	root.setLevel(logging.DEBUG)
+	
 	ch = logging.StreamHandler(sys.stdout)
-	ch.setLevel(logging.INFO)
+	ch.setLevel(logging.DEBUG)
 	formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s - [%(filename)s:%(lineno)s]')
 	ch.setFormatter(formatter)
 	root.addHandler(ch)
 
 	trans = transactionserver(use_rpc=True, server=True)
+
+if __name__ == "__main__":
+	transactionserver(use_rpc=True, server=True)
+
+

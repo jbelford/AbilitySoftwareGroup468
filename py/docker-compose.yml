@@ -35,10 +35,12 @@ services:
       - audit
       - database
       - cache
+      - distqueue
     links:
       - audit:LoggerRpc
       - database:Database
       - cache:Cache
+      - distqueue:DistQueueRPC
     tty: true
   cache:
     image: "ability:latest"
@@ -62,6 +64,7 @@ services:
     depends_on:
       - transaction
       - audit
+      - distqueue
     ports:
       - 44420
     expose:
@@ -69,6 +72,10 @@ services:
     links:
       - transaction:Transaction
       - audit:LoggerRpc
+      - distqueue:DistQueueRPC
+    deploy:
+      mode: replicated
+      replicas: 3
     build:
       context: .
       dockerfile: Dockerfile
@@ -82,6 +89,14 @@ services:
       dockerfile: Dockerfile
     command: python auditserver.py
     tty: true
+  distqueue:
+    image: "ability:latest"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python DistQueue.py
+    tty: true
+
   triggerman:
     image: "ability:latest"
     #container_name: "TriggerManRpc"

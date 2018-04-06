@@ -3,11 +3,11 @@ from concurrent.futures import ThreadPoolExecutor
 
 from flask import json
 
-_executor = ThreadPoolExecutor(max_workers=4)
+_executor = ThreadPoolExecutor(max_workers=16)
 
 def process_error(audit, cmd, msg):
 	logging.debug(msg)
-	_executor.submit(audit.ErrorEvent, (cmd, msg, ))
+	#_executor.submit(audit.ErrorEvent, (cmd, msg, ))
 	return json.dumps({"Success": False, "Message": msg})
 
 

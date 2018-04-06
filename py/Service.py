@@ -42,7 +42,7 @@ class Service(object):
 
 				server = TServer.TThreadPoolServer(processor, transport,
 				                                   tfactory, pfactory)
-				server.setNumThreads(cpu_count() * 4)
+				server.setNumThreads(cpu_count())
 				
 				logging.info("Serving: " + dec_name)
 				server.serve()

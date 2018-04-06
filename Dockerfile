@@ -14,6 +14,7 @@ RUN apk add --no-cache bash
 RUN apk add --no-cache iputils
 ENV PATH=/bin
 #COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY templates/test.html /root/templates/test.html
 WORKDIR /root/
 ADD config config
 COPY --from=builder /go/src/github.com/mattpaletta/AbilitySoftwareGroup468/app .

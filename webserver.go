@@ -68,7 +68,7 @@ func (ws *WebServer) Start() {
 	//user log
 	r.HandleFunc("/{t_id}/{user_id}/dumplog", wrapHandler(ws.userDumplogHandler)).Methods("GET")
 
-	r.Handler(http.FileServer(http.Dir(dir))))
+	r.Handler(http.FileServer(http.Dir(dir)))
 
 	log.Println("Listening on:", common.CFG.WebServer.LUrl)
 	srv := &http.Server{

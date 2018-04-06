@@ -5,8 +5,6 @@ import sys
 from copy import deepcopy
 from threading import Thread
 
-import time
-
 sys.path.append('gen-py')
 
 from multiprocessing import Lock, Queue
@@ -39,11 +37,11 @@ class dbserver(object):
 		self._lock = Locker(use_rpc=use_rpc, server=False)
 		self._my_lock = Lock()
 		
-		self._update_queue = Queue()
+		self.update_queue = Queue()
 		
 		
 		self.__num_tables_to_keep = 10
-		t = Thread(target=self.__poll_for_table_changes, args=(self._update_queue, ))
+		t = Thread(target=self.poll_for_table_changes, args=(self.update_queue, ))
 		t.start()
 	
 	
@@ -60,7 +58,7 @@ class dbserver(object):
 				# Initialize to new dictionary.
 				self._tables[ind] = {}
 	
-	def __poll_for_table_changes(self, queue):
+	def poll_for_table_changes(self, queue):
 		while True:
 			table_to_update = queue.get()
 			logging.debug("Saving Table: " + str(table_to_update))
@@ -95,7 +93,7 @@ class dbserver(object):
 		my_table.update({key: value})
 
 		# TODO:// Mark as different, write it to a permanent log...
-		self._update_queue.put(str(table) + "_" + str(hash(key) % self.__num_tables_to_keep))
+		self.update_queue.put(str(table) + "_" + str(hash(key) % self.__num_tables_to_keep))
 		
 	def __get_new_user(self, userId):
 		return {
@@ -149,25 +147,17 @@ class dbserver(object):
 
 		user = self.__get_key("Users", userId)
 		if user == {}:
-			logging.debug("Getting new user.")
 			user = self.__get_new_user(userId)
 		
-		logging.debug("Adding balance")
 		new_balance = user["balance"] + amount
-		logging.debug("Updating balance")
 		user["balance"] = new_balance
 		
-		logging.debug("Replacing Key")
 		self.__replace_key("Users", userId, user)
 
 		self.__unlock_user(userId)
 
-		# Error
-		logging.debug("Making User")
-
 		my_user = User(User=userId, Balance=new_balance)
 		
-		logging.debug("Making Response")
 		resp = DBResponse(user=my_user)
 		return resp
 
@@ -421,10 +411,10 @@ class dbserver(object):
 
 if __name__ == "__main__":
 	root = logging.getLogger()
-	root.setLevel(logging.INFO)
-
+	root.setLevel(logging.DEBUG)
+	
 	ch = logging.StreamHandler(sys.stdout)
-	ch.setLevel(logging.INFO)
+	ch.setLevel(logging.DEBUG)
 	formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s - [%(filename)s:%(lineno)s]')
 	ch.setFormatter(formatter)
 	root.addHandler(ch)
