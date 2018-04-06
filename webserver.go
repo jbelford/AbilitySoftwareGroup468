@@ -198,6 +198,7 @@ func (ws *WebServer) userQuoteHandler(w http.ResponseWriter, r *http.Request, t_
 	go ws.logger.UserCommand(&cmd)
 
 	resp := ws.txnConn.Send(cmd)
+	log.Print(resp)
 	if resp == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return ws.error(&cmd, "Internal error prevented operation: UserQuote")
