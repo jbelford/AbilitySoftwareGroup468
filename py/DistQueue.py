@@ -20,7 +20,7 @@ class DistQueue(object):
 	
 	def __init__(self, use_rpc=False, server=False, is_master=False):
 		self.num_queues = 1
-		self.transaction_timeout = 10000  # timeout in (ms)
+		self.transaction_timeout = 10 * 100000  # timeout in (ms)
 		self.transaction_queues = [Queue()] * self.num_queues
 		self.current_incomplete = [[]] * self.num_queues
 		self.completed = [{}] * self.num_queues
@@ -49,7 +49,7 @@ class DistQueue(object):
 			for job in cur_queue:
 				cur_job: Command = job
 				if cur_job.TransactionID in self.timeouts.keys():
-					if self.timeouts[cur_job.TransactionID] >= self.transaction_timeout:
+					if self.timeouts[cur_job.TransactionID] - time.time() >= self.transaction_timeout:
 						to_remove.append(cur_job)
 						logging.warning(str(cur_job.TransactionID) + " timed out for errored.")
 			
