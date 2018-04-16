@@ -1,0 +1,147 @@
+--------------------
+STATISTICs
+--------------------
+
+CANCEL_SELL - Average Latency: 28188.666667 ms - Total Bytes out: 0 - Total Bytes in: 0 - Errors: 6
+	Post http://web:44420/94/oY01WVirLr/cancel_sell: dial tcp 0.0.0.0:0->142.104.193.229:44420: getsockopt: connection refused
+	Post http://web:44420/6/oY01WVirLr/cancel_sell: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/28/oY01WVirLr/cancel_sell: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/91/oY01WVirLr/cancel_sell: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/37/oY01WVirLr/cancel_sell: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/85/oY01WVirLr/cancel_sell: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+
+
+CANCEL_SET_BUY - Average Latency: 30011.200000 ms - Total Bytes out: 0 - Total Bytes in: 0 - Errors: 5
+	Post http://web:44420/20/oY01WVirLr/cancel_set_buy?stock=S: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/56/oY01WVirLr/cancel_set_buy?stock=S: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/57/oY01WVirLr/cancel_set_buy?stock=S: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/75/oY01WVirLr/cancel_set_buy?stock=S: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/78/oY01WVirLr/cancel_set_buy?stock=S: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+
+
+ADD - Average Latency: 30004.333333 ms - Total Bytes out: 0 - Total Bytes in: 0 - Errors: 6
+	Post http://web:44420/1/oY01WVirLr/add?amount=6351153: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/8/oY01WVirLr/add?amount=4501623: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/12/oY01WVirLr/add?amount=7187998: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/18/oY01WVirLr/add?amount=7431514: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/48/oY01WVirLr/add?amount=5280293: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/79/oY01WVirLr/add?amount=8786373: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+
+
+DISPLAY_SUMMARY - Average Latency: 30005.200000 ms - Total Bytes out: 0 - Total Bytes in: 0 - Errors: 5
+	Get http://web:44420/29/oY01WVirLr/display_summary: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Get http://web:44420/11/oY01WVirLr/display_summary: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Get http://web:44420/42/oY01WVirLr/display_summary: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Get http://web:44420/47/oY01WVirLr/display_summary: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Get http://web:44420/58/oY01WVirLr/display_summary: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+
+
+SET_SELL_TRIGGER - Average Latency: 30017.000000 ms - Total Bytes out: 0 - Total Bytes in: 0 - Errors: 3
+	Post http://web:44420/73/oY01WVirLr/set_sell_trigger?stock=S&amount=3004: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/50/oY01WVirLr/set_sell_trigger?stock=S&amount=5923: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/62/oY01WVirLr/set_sell_trigger?stock=S&amount=5192: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+
+
+COMMIT_SELL - Average Latency: 26510.750000 ms - Total Bytes out: 0 - Total Bytes in: 0 - Errors: 8
+	Post http://web:44420/35/oY01WVirLr/commit_sell: dial tcp 0.0.0.0:0->142.104.193.229:44420: getsockopt: connection refused
+	Post http://web:44420/21/oY01WVirLr/commit_sell: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/5/oY01WVirLr/commit_sell: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/24/oY01WVirLr/commit_sell: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/17/oY01WVirLr/commit_sell: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/32/oY01WVirLr/commit_sell: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/55/oY01WVirLr/commit_sell: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/74/oY01WVirLr/commit_sell: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+
+
+QUOTE - Average Latency: 30009.333333 ms - Total Bytes out: 0 - Total Bytes in: 0 - Errors: 6
+	Get http://web:44420/2/oY01WVirLr/quote?stock=S: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Get http://web:44420/7/oY01WVirLr/quote?stock=S: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Get http://web:44420/39/oY01WVirLr/quote?stock=S: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Get http://web:44420/60/oY01WVirLr/quote?stock=S: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Get http://web:44420/80/oY01WVirLr/quote?stock=S: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Get http://web:44420/59/oY01WVirLr/quote?stock=S: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+
+
+SET_BUY_AMOUNT - Average Latency: 30017.000000 ms - Total Bytes out: 0 - Total Bytes in: 0 - Errors: 1
+	Post http://web:44420/30/oY01WVirLr/set_buy_amount?stock=S&amount=65838: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+
+
+DUMPLOG - Average Latency: 2008.000000 ms - Total Bytes out: 0 - Total Bytes in: 0 - Errors: 1
+	Get http://web:44420/100/admin/dumplog?filename=./testLOG: dial tcp 0.0.0.0:0->142.104.193.229:44420: getsockopt: connection refused
+
+
+COMMIT_BUY - Average Latency: 30004.809524 ms - Total Bytes out: 0 - Total Bytes in: 0 - Errors: 21
+	Post http://web:44420/4/oY01WVirLr/commit_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/23/oY01WVirLr/commit_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/26/oY01WVirLr/commit_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/9/oY01WVirLr/commit_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/92/oY01WVirLr/commit_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/10/oY01WVirLr/commit_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/33/oY01WVirLr/commit_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/14/oY01WVirLr/commit_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/15/oY01WVirLr/commit_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/16/oY01WVirLr/commit_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/64/oY01WVirLr/commit_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/97/oY01WVirLr/commit_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/65/oY01WVirLr/commit_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/41/oY01WVirLr/commit_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/54/oY01WVirLr/commit_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/46/oY01WVirLr/commit_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/44/oY01WVirLr/commit_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/82/oY01WVirLr/commit_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/89/oY01WVirLr/commit_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/52/oY01WVirLr/commit_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/87/oY01WVirLr/commit_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+
+
+SELL - Average Latency: 30009.833333 ms - Total Bytes out: 0 - Total Bytes in: 0 - Errors: 6
+	Post http://web:44420/31/oY01WVirLr/sell?stock=S&amount=64190: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/99/oY01WVirLr/sell?stock=S&amount=66410: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/72/oY01WVirLr/sell?stock=S&amount=4147: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/83/oY01WVirLr/sell?stock=S&amount=21324: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/61/oY01WVirLr/sell?stock=S&amount=42974: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/90/oY01WVirLr/sell?stock=S&amount=64465: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+
+
+CANCEL_BUY - Average Latency: 30004.833333 ms - Total Bytes out: 0 - Total Bytes in: 0 - Errors: 6
+	Post http://web:44420/36/oY01WVirLr/cancel_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/19/oY01WVirLr/cancel_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/98/oY01WVirLr/cancel_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/67/oY01WVirLr/cancel_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/71/oY01WVirLr/cancel_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/53/oY01WVirLr/cancel_buy: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+
+
+SET_SELL_AMOUNT - Average Latency: 30016.000000 ms - Total Bytes out: 0 - Total Bytes in: 0 - Errors: 1
+	Post http://web:44420/68/oY01WVirLr/set_sell_amount?stock=S&amount=21683: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+
+
+BUY - Average Latency: 30007.300000 ms - Total Bytes out: 0 - Total Bytes in: 0 - Errors: 20
+	Post http://web:44420/22/oY01WVirLr/buy?stock=S&amount=5149: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/3/oY01WVirLr/buy?stock=S&amount=27683: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/25/oY01WVirLr/buy?stock=S&amount=15607: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/27/oY01WVirLr/buy?stock=S&amount=57527: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/13/oY01WVirLr/buy?stock=S&amount=30383: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/38/oY01WVirLr/buy?stock=S&amount=26417: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/96/oY01WVirLr/buy?stock=S&amount=74986: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/66/oY01WVirLr/buy?stock=S&amount=35757: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/40/oY01WVirLr/buy?stock=S&amount=65749: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/43/oY01WVirLr/buy?stock=S&amount=71047: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/70/oY01WVirLr/buy?stock=S&amount=51629: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/45/oY01WVirLr/buy?stock=S&amount=20811: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/49/oY01WVirLr/buy?stock=S&amount=43322: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/77/oY01WVirLr/buy?stock=S&amount=28968: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/63/oY01WVirLr/buy?stock=S&amount=38467: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/84/oY01WVirLr/buy?stock=S&amount=42736: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/86/oY01WVirLr/buy?stock=S&amount=73008: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/51/oY01WVirLr/buy?stock=S&amount=38759: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/81/oY01WVirLr/buy?stock=S&amount=33391: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/88/oY01WVirLr/buy?stock=S&amount=3679: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+
+
+CANCEL_SET_SELL - Average Latency: 30004.800000 ms - Total Bytes out: 0 - Total Bytes in: 0 - Errors: 5
+	Post http://web:44420/93/oY01WVirLr/cancel_set_sell?stock=S: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/34/oY01WVirLr/cancel_set_sell?stock=S: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/95/oY01WVirLr/cancel_set_sell?stock=S: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/69/oY01WVirLr/cancel_set_sell?stock=S: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout
+	Post http://web:44420/76/oY01WVirLr/cancel_set_sell?stock=S: dial tcp 0.0.0.0:0->142.104.193.229:44420: i/o timeout

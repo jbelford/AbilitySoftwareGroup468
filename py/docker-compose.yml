@@ -1,0 +1,130 @@
+version: '3'
+services:
+  workloadgen:
+    #container_name: "Workload"
+    image: workloadgen:latest
+    build:
+      context: ../workloads
+      dockerfile: Dockerfile
+    tty: true
+    entrypoint: go run workloadgenerator.go 10User_testWorkLoad.txt
+    depends_on:
+      - web
+    links:
+      - web
+  locker:
+    #container_name: "Locker"
+    image: "ability:latest"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python locker.py
+    depends_on:
+      - audit
+    links:
+      - audit:LoggerRpc
+    tty: true
+  transaction:
+    #container_name: "Transaction"
+    image: "ability:latest"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python transaction.py
+    depends_on:
+      - audit
+      - database
+      - cache
+      - distqueue
+    links:
+      - audit:LoggerRpc
+      - database:Database
+      - cache:Cache
+      - distqueue:DistQueueRPC
+    tty: true
+  cache:
+    image: "ability:latest"
+    #container_name: "Cache"
+    depends_on:
+      - audit
+      - locker
+    links:
+      - audit:LoggerRpc
+      - locker:LockerRPC
+    build:
+      context: .
+      dockerfile: Dockerfile
+    extra_hosts:
+      - "quoteserve.seng:192.168.1.135"
+    command: python cache.py
+    tty: true
+  web:
+    image: "ability:latest"
+    #container_name: "web"
+    depends_on:
+      - transaction
+      - audit
+      - distqueue
+    ports:
+      - 44420
+    expose:
+      - 44420
+    links:
+      - transaction:Transaction
+      - audit:LoggerRpc
+      - distqueue:DistQueueRPC
+    deploy:
+      mode: replicated
+      replicas: 3
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python webserver.py
+    tty: true
+  audit:
+    #container_name: "LoggerRpc"
+    image: "ability:latest"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python auditserver.py
+    tty: true
+  distqueue:
+    image: "ability:latest"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python DistQueue.py
+    tty: true
+
+  triggerman:
+    image: "ability:latest"
+    #container_name: "TriggerManRpc"
+    depends_on:
+      - audit
+      - transaction
+      - cache
+      - locker
+    links:
+      - audit:LoggerRpc
+      - transaction:Transaction
+      - cache:Cache
+      - database:Database
+      - locker:LockerRPC
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python triggerman.py
+    tty: true
+  database:
+    image: "ability:latest"
+    #container_name: "Database"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python database.py
+    depends_on:
+      - locker
+    links:
+      - locker:LockerRPC
+    tty: true

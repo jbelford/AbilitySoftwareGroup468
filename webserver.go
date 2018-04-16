@@ -67,7 +67,6 @@ func (ws *WebServer) Start() {
 
 	//user log
 	r.HandleFunc("/{t_id}/{user_id}/dumplog", wrapHandler(ws.userDumplogHandler)).Methods("GET")
-
 	r.PathPrefix("/templates/").Handler(http.StripPrefix("/templates/", http.FileServer(http.Dir(dir))))
 
 	log.Println("Listening on:", common.CFG.WebServer.LUrl)
